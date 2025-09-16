@@ -1,0 +1,8 @@
+# Ignore web bundles
+/web-bundles
+
+# Ignore all files starting with . except .gitignore
+.*
+!.gitignore
+
+
