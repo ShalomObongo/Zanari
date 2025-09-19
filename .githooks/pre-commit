@@ -1,0 +1,130 @@
+#!/bin/bash
+
+# Zanari Fintech Application - Pre-commit Hook
+# Critical security: Prevent secret commits
+
+set -e
+
+echo "🔍 Running pre-commit security checks..."
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Function to check for secrets
+check_secrets() {
+    local files_to_check=$1
+    local secrets_found=0
+
+    # Define secret patterns (critical for fintech app)
+    declare -A secret_patterns=(
+        ["SUPABASE_SERVICE_ROLE_KEY"]="Supabase Service Role Key"
+        ["SUPABASE_ANON_KEY"]="Supabase Anonymous Key"
+        ["SUPABASE_URL"]="Supabase URL"
+        ["EXPO_PUBLIC_SUPABASE"]="Expo Public Supabase Config"
+        ["sk-"]="Stripe Secret Key"
+        ["pk_test_"]="Stripe Test Publishable Key"
+        ["pk_live_"]="Stripe Live Publishable Key"
+        ["AIza"]="Google API Key"
+        ["ghp_"]="GitHub Personal Access Token"
+        ["gho_"]="GitHub OAuth Token"
+        ["ghu_"]="GitHub User Token"
+        ["ghs_"]="GitHub Server Token"
+        ["ghr_"]="GitHub Refresh Token"
+        ["xoxb-"]="Slack Bot Token"
+        ["xoxp-"]="Slack User Token"
+        ["xoxa-"]="Slack App Token"
+        ["AKIA"]="AWS Access Key ID"
+        ["SG\."]="SendGrid API Key"
+        ["AIza"]="Google API Key"
+    )
+
+    # Check files for secret patterns
+    for file in $files_to_check; do
+        if [[ -f "$file" ]]; then
+            for pattern in "${!secret_patterns[@]}"; do
+                if grep -q "$pattern" "$file"; then
+                    echo -e "${RED}🚨 SECRET DETECTED: ${secret_patterns[$pattern]}${NC}"
+                    echo -e "${RED}   File: $file${NC}"
+                    echo -e "${RED}   Pattern: $pattern${NC}"
+                    echo ""
+                    secrets_found=1
+                fi
+            done
+        fi
+    done
+
+    return $secrets_found
+}
+
+# Function to check for large files
+check_large_files() {
+    local large_files=$(find . -type f -not -path "./.git/*" -not -path "./node_modules/*" -size +10M)
+
+    if [[ -n "$large_files" ]]; then
+        echo -e "${YELLOW}⚠️  Large files detected:${NC}"
+        echo "$large_files" | while read -r file; do
+            echo -e "${YELLOW}   $file${NC}"
+        done
+        echo ""
+    fi
+}
+
+# Function to check file types
+check_file_extensions() {
+    local dangerous_files=$(find . -type f -not -path "./.git/*" -not -path "./node_modules/*" \( -name "*.exe" -o -name "*.dll" -o -name "*.so" -o -name "*.dylib" -o -name "*.p12" -o -name "*.pem" -o -name "*.key" \))
+
+    if [[ -n "$dangerous_files" ]]; then
+        echo -e "${RED}🚨 DANGEROUS FILE TYPES DETECTED:${NC}"
+        echo "$dangerous_files" | while read -r file; do
+            echo -e "${RED}   $file${NC}"
+        done
+        echo ""
+        return 1
+    fi
+}
+
+# Get staged files
+staged_files=$(git diff --cached --name-only --diff-filter=ACM)
+
+if [[ -z "$staged_files" ]]; then
+    echo -e "${GREEN}✅ No files staged for commit${NC}"
+    exit 0
+fi
+
+echo -e "${YELLOW}📋 Checking $(echo "$staged_files" | wc -l | tr -d ' ') staged files...${NC}"
+
+# Run security checks
+echo ""
+echo -e "${YELLOW}🔐 Checking for secrets...${NC}"
+if check_secrets "$staged_files"; then
+    echo -e "${RED}❌ SECRETS DETECTED - Commit blocked!${NC}"
+    echo -e "${RED}   Please remove secrets from staged files before committing.${NC}"
+    echo -e "${YELLOW}💡 Tip: Use environment variables for sensitive data${NC}"
+    exit 1
+fi
+
+echo ""
+echo -e "${YELLOW}📏 Checking file sizes...${NC}"
+check_large_files
+
+echo ""
+echo -e "${YELLOW}🔍 Checking file types...${NC}"
+if ! check_file_extensions; then
+    echo -e "${RED}❌ DANGEROUS FILE TYPES DETECTED - Commit blocked!${NC}"
+    exit 1
+fi
+
+# Check if .gitignore is effective
+if git check-ignore --quiet supabase/.env; then
+    echo -e "${GREEN}✅ .gitignore is properly configured${NC}"
+else
+    echo -e "${RED}❌ .gitignore is not blocking sensitive files!${NC}"
+    exit 1
+fi
+
+echo ""
+echo -e "${GREEN}✅ All security checks passed!${NC}"
+echo -e "${GREEN}🚀 Proceeding with commit...${NC}"
