@@ -4,5 +4,10 @@
 # Ignore all files starting with . except .gitignore
 .*
 !.gitignore
+# !.bmad-core
+# !.claude
 
 
+
+.gemini/
+gha-creds-*.json
