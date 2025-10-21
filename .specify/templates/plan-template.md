@@ -47,7 +47,13 @@
 ## Constitution Check
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+**Code Quality**: Does design follow SOLID principles and established patterns?
+**Testing Standards**: Are TDD principles being followed with tests-first approach?
+**Security**: Are security best practices integrated into the design?
+**User Experience**: Does design ensure <200ms response times and consistent UX patterns?
+**Performance**: Are performance requirements (<200ms p95, <100MB memory) considered?
+**Scalability**: Does architecture support horizontal scaling and 10x growth?
+**Library-First**: Are features designed as standalone, testable libraries?
 
 ## Project Structure
 
@@ -209,4 +215,4 @@ ios/ or android/
 - [ ] Complexity deviations documented
 
 ---
-*Based on Constitution v2.1.1 - See `/memory/constitution.md`*
+*Based on Constitution v1.0.0 - See `/memory/constitution.md`*
