@@ -578,7 +578,7 @@ export class PaymentService {
     const currency = request.currency ?? 'KES';
 
     const accountNumber = phone ? this.normalizePhone(phone) : this.deriveVirtualAccountNumber(request.transferId, email);
-    const bankCode = phone ? 'MPSA' : '999999';
+  const bankCode = phone ? 'MPESA' : '999999';
     const type: 'mobile_money' | 'nuban' = phone ? 'mobile_money' : 'nuban';
 
     const response = await this.paystackClient.createTransferRecipient({
@@ -598,7 +598,36 @@ export class PaymentService {
 
   private normalizePhone(phone: string): string {
     const digits = phone.replace(/[^0-9]/g, '');
-    return digits.startsWith('0') ? digits.slice(1) : digits;
+
+    if (digits.length === 0) {
+      throw new Error('Recipient phone number is required for mobile money transfers');
+    }
+
+    if (digits.length === 9 && digits.startsWith('7')) {
+      return `0${digits}`;
+    }
+
+    if (digits.length === 12 && digits.startsWith('254')) {
+      return `0${digits.slice(3)}`;
+    }
+
+    if (digits.length === 13 && digits.startsWith('2540')) {
+      return digits.slice(3);
+    }
+
+    if (digits.length === 10 && digits.startsWith('0')) {
+      return digits;
+    }
+
+    if (digits.length === 10 && digits.startsWith('7')) {
+      return `0${digits.slice(1)}`;
+    }
+
+    if (digits.length > 10) {
+      return `0${digits.slice(-9)}`;
+    }
+
+    return digits.startsWith('0') ? digits : `0${digits}`;
   }
 
   private deriveVirtualAccountNumber(reference: UUID, email?: string): string {

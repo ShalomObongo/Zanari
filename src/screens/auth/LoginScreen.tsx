@@ -1,33 +1,40 @@
-import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
+import { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
   TextInput,
-  TouchableOpacity, 
+  TouchableOpacity,
   StatusBar,
   KeyboardAvoidingView,
   Platform,
   Alert,
+  ActivityIndicator,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useAuthStore } from '@/store/authStore';
 import { ApiError } from '@/services/api';
+import theme from '@/theme';
+
+type AuthMethod = 'email' | 'phone';
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 interface LoginScreenProps {}
 
 const LoginScreen: React.FC<LoginScreenProps> = () => {
   const navigation = useNavigation<any>();
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const [authMethod, setAuthMethod] = useState<AuthMethod>('email');
+  const [emailOrPhone, setEmailOrPhone] = useState('');
   const sendLoginOtp = useAuthStore((state) => state.sendLoginOtp);
   const isLoggingIn = useAuthStore((state) => state.isLoggingIn);
 
   const formatPhoneNumber = (text: string) => {
-    // Remove all non-digits
     const cleaned = text.replace(/\D/g, '');
-    
-    // Format for Kenyan numbers
+
     if (cleaned.startsWith('254')) {
       return cleaned;
     } else if (cleaned.startsWith('0')) {
@@ -35,42 +42,36 @@ const LoginScreen: React.FC<LoginScreenProps> = () => {
     } else if (cleaned.startsWith('7') || cleaned.startsWith('1')) {
       return '254' + cleaned;
     }
-    
+
     return cleaned;
   };
 
   const isValidKenyanNumber = (number: string) => {
-    // Kenyan mobile numbers: 254 followed by 7XX, 1XX patterns
     const kenyanRegex = /^254(7[0-9]{8}|1[0-9]{8})$/;
     return kenyanRegex.test(number);
   };
 
-  const handlePhoneNumberChange = (text: string) => {
-    const formatted = formatPhoneNumber(text);
-    if (formatted.length <= 12) { // Max length for 254XXXXXXXXX
-      setPhoneNumber(formatted);
-    }
-  };
-
-  const displayPhoneNumber = (number: string) => {
-    if (number.startsWith('254') && number.length > 3) {
-      return `+${number.slice(0, 3)} ${number.slice(3, 6)} ${number.slice(6, 9)} ${number.slice(9)}`;
-    }
-    return number;
-  };
-
   const handleContinue = async () => {
-    if (!phoneNumber || phoneNumber.length < 12) {
-      Alert.alert('Invalid Number', 'Please enter a valid Kenyan mobile number');
+    if (!emailOrPhone.trim()) {
+      Alert.alert('Required', `Please enter your ${authMethod === 'email' ? 'email address' : 'phone number'}`);
       return;
     }
 
-    if (!isValidKenyanNumber(phoneNumber)) {
-      Alert.alert('Invalid Number', 'Please enter a valid Kenyan mobile number (07XX XXX XXX)');
-      return;
+    if (authMethod === 'email') {
+      if (!EMAIL_REGEX.test(emailOrPhone.trim().toLowerCase())) {
+        Alert.alert('Invalid Email', 'Please enter a valid email address');
+        return;
+      }
+    } else {
+      const formattedPhone = formatPhoneNumber(emailOrPhone);
+      if (!isValidKenyanNumber(formattedPhone)) {
+        Alert.alert('Invalid Number', 'Please enter a valid Kenyan mobile number (07XX XXX XXX)');
+        return;
+      }
     }
 
     try {
+      const phoneNumber = authMethod === 'phone' ? formatPhoneNumber(emailOrPhone) : emailOrPhone.trim();
       await sendLoginOtp({ phone: phoneNumber });
       navigation.navigate('OTP', { phoneNumber });
     } catch (error) {
@@ -81,87 +82,109 @@ const LoginScreen: React.FC<LoginScreenProps> = () => {
     }
   };
 
-  const handleGoBack = () => {
-    navigation.goBack();
-  };
-
   const handleSignup = () => {
     navigation.navigate('Signup');
   };
 
+  const handleGoBack = () => {
+    navigation.goBack();
+  };
+
   return (
     <>
-      <StatusBar barStyle="light-content" backgroundColor="#1B4332" />
-      <SafeAreaView style={styles.container}>
-        <KeyboardAvoidingView 
+      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <KeyboardAvoidingView
           style={styles.keyboardContainer}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
-          {/* Header */}
-          <View style={styles.header}>
+          {/* Back Button */}
+          <View style={styles.headerContainer}>
             <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
-              <Text style={styles.backButtonText}>←</Text>
+              <Icon name="arrow-back" size={24} color={theme.colors.textPrimary} />
             </TouchableOpacity>
           </View>
 
-          <View style={styles.content}>
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+          >
+            {/* Logo Header */}
+            <View style={styles.logoContainer}>
+              <Icon name="account-balance" size={40} color={theme.colors.primary} />
+              <Text style={styles.logoText}>Zanari</Text>
+            </View>
+
             {/* Title Section */}
             <View style={styles.titleSection}>
-              <Text style={styles.title}>Welcome back</Text>
-              <Text style={styles.subtitle}>
-                Enter your phone number to receive a verification code
-              </Text>
+              <Text style={styles.title}>Welcome Back</Text>
+              <Text style={styles.subtitle}>Sign in to access your account.</Text>
             </View>
 
-            {/* Form Section */}
+            {/* Auth Method Switcher */}
+            <View style={styles.switcherContainer}>
+              <TouchableOpacity
+                style={[styles.switcherButton, authMethod === 'email' && styles.switcherButtonActive]}
+                onPress={() => setAuthMethod('email')}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.switcherText, authMethod === 'email' && styles.switcherTextActive]}>
+                  Email
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.switcherButton, authMethod === 'phone' && styles.switcherButtonActive]}
+                onPress={() => setAuthMethod('phone')}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.switcherText, authMethod === 'phone' && styles.switcherTextActive]}>
+                  Phone
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Input Section */}
             <View style={styles.formSection}>
               <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Phone Number</Text>
-                <View style={styles.phoneInputContainer}>
-                  <Text style={styles.countryCode}>🇰🇪 +254</Text>
-                  <TextInput
-                    style={styles.phoneInput}
-                    value={phoneNumber.startsWith('254') ? phoneNumber.slice(3) : phoneNumber}
-                    onChangeText={(text) => handlePhoneNumberChange('254' + text)}
-                    placeholder="7XX XXX XXX"
-                    placeholderTextColor="#95D5B2"
-                    keyboardType="phone-pad"
-                    maxLength={9}
-                    autoFocus={true}
-                  />
-                </View>
-                <Text style={styles.inputHint}>
-                  We'll send a 6-digit code to verify your number
+                <Text style={styles.inputLabel}>
+                  {authMethod === 'email' ? 'Email address' : 'Phone number'}
                 </Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={emailOrPhone}
+                  onChangeText={setEmailOrPhone}
+                  placeholder={authMethod === 'email' ? 'Enter your email' : 'Enter your phone'}
+                  placeholderTextColor={theme.colors.textTertiary}
+                  keyboardType={authMethod === 'email' ? 'email-address' : 'phone-pad'}
+                  autoCapitalize="none"
+                  returnKeyType="done"
+                />
               </View>
-
-              {/* Continue Button */}
-              <TouchableOpacity 
-                style={[
-                  styles.continueButton, 
-                  (!phoneNumber || phoneNumber.length < 12 || isLoggingIn) && styles.continueButtonDisabled
-                ]}
-                onPress={handleContinue}
-                disabled={!phoneNumber || phoneNumber.length < 12 || isLoggingIn}
-              >
-                <Text style={[
-                  styles.continueButtonText,
-                  (!phoneNumber || phoneNumber.length < 12 || isLoggingIn) && styles.continueButtonTextDisabled
-                ]}>
-                  {isLoggingIn ? 'Sending...' : 'Continue'}
-                </Text>
-              </TouchableOpacity>
             </View>
+          </ScrollView>
 
-            {/* Footer */}
-            <View style={styles.footer}>
-              
-              <TouchableOpacity style={styles.signupPrompt} onPress={handleSignup}>
-                <Text style={styles.signupText}>
-                  New to Zanari? <Text style={styles.signupLink}>Create an account</Text>
-                </Text>
-              </TouchableOpacity>
-            </View>
+          {/* Footer with button */}
+          <View style={styles.footer}>
+            <TouchableOpacity
+              style={[styles.continueButton, isLoggingIn && styles.continueButtonDisabled]}
+              onPress={handleContinue}
+              disabled={isLoggingIn}
+              activeOpacity={0.8}
+            >
+              {isLoggingIn ? (
+                <ActivityIndicator color={theme.colors.onPrimaryText} />
+              ) : (
+                <Text style={styles.continueButtonText}>Continue</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={handleSignup} style={styles.signupPrompt}>
+              <Text style={styles.footerText}>
+                Don't have an account? <Text style={styles.footerLink}>Create one</Text>
+              </Text>
+            </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
@@ -172,149 +195,151 @@ const LoginScreen: React.FC<LoginScreenProps> = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1B4332',
+    backgroundColor: theme.colors.surface,
   },
   keyboardContainer: {
     flex: 1,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 8,
+  headerContainer: {
+    paddingHorizontal: theme.spacing.base,
+    paddingTop: theme.spacing.sm,
+    paddingBottom: theme.spacing.xs,
   },
   backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(183, 228, 199, 0.2)',
+    width: 40,
+    height: 40,
     justifyContent: 'center',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
-  backButtonText: {
-    fontSize: 20,
-    color: '#ffffff',
-    fontWeight: '600',
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: theme.spacing.base,
+    paddingBottom: theme.spacing['3xl'],
   },
-  content: {
-    flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 32,
-  },
-  titleSection: {
-    marginBottom: 48,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    marginBottom: 12,
-    fontFamily: 'System',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#B7E4C7',
-    lineHeight: 24,
-    fontFamily: 'System',
-  },
-  formSection: {
-    flex: 1,
-  },
-  inputContainer: {
-    marginBottom: 32,
-  },
-  inputLabel: {
-    fontSize: 14,
-    color: '#ffffff',
-    fontWeight: '600',
-    marginBottom: 12,
-    fontFamily: 'System',
-  },
-  phoneInputContainer: {
+  logoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(183, 228, 199, 0.1)',
-    borderRadius: 12,
+    justifyContent: 'center',
+    gap: theme.spacing.sm,
+    paddingTop: theme.spacing.xl,
+    paddingBottom: theme.spacing.lg,
+  },
+  logoText: {
+    fontSize: theme.fontSizes['3xl'],
+    fontFamily: theme.fonts.bold,
+    color: theme.colors.primary,
+  },
+  titleSection: {
+    alignItems: 'center',
+    marginBottom: theme.spacing['2xl'],
+  },
+  title: {
+    fontSize: theme.fontSizes['4xl'],
+    fontFamily: theme.fonts.bold,
+    color: theme.colors.textPrimary,
+    marginBottom: theme.spacing.sm,
+    letterSpacing: -0.5,
+  },
+  subtitle: {
+    fontSize: theme.fontSizes.base,
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+  },
+  switcherContainer: {
+    flexDirection: 'row',
+    backgroundColor: theme.colors.gray100,
+    borderRadius: theme.borderRadius.lg,
+    padding: 4,
+    marginBottom: theme.spacing.xl,
     borderWidth: 1,
-    borderColor: 'rgba(183, 228, 199, 0.3)',
-    paddingHorizontal: 16,
+    borderColor: theme.colors.gray200,
+  },
+  switcherButton: {
+    flex: 1,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.borderRadius.DEFAULT,
+    alignItems: 'center',
+  },
+  switcherButtonActive: {
+    backgroundColor: theme.colors.surface,
+    ...theme.shadows.sm,
+  },
+  switcherText: {
+    fontSize: theme.fontSizes.sm,
+    fontFamily: theme.fonts.medium,
+    color: theme.colors.textSecondary,
+  },
+  switcherTextActive: {
+    color: theme.colors.textPrimary,
+  },
+  formSection: {
+    gap: theme.spacing.base,
+  },
+  inputContainer: {
+    marginBottom: theme.spacing.base,
+  },
+  inputLabel: {
+    fontSize: theme.fontSizes.base,
+    fontFamily: theme.fonts.medium,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.sm,
+  },
+  textInput: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.xl,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    paddingHorizontal: theme.spacing.base,
+    paddingVertical: theme.spacing.base,
+    fontSize: theme.fontSizes.base,
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.textPrimary,
     height: 56,
   },
-  countryCode: {
-    fontSize: 16,
-    color: '#ffffff',
-    marginRight: 12,
-    fontFamily: 'System',
-  },
-  phoneInput: {
-    flex: 1,
-    fontSize: 16,
-    color: '#ffffff',
-    fontFamily: 'System',
-  },
-  inputHint: {
-    fontSize: 12,
-    color: '#95D5B2',
-    marginTop: 8,
-    fontFamily: 'System',
-  },
   continueButton: {
-    backgroundColor: '#52B788',
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    borderRadius: 12,
+    backgroundColor: theme.colors.primary,
+    height: 56,
+    borderRadius: theme.borderRadius.xl,
+    justifyContent: 'center',
     alignItems: 'center',
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    ...theme.shadows.md,
   },
   continueButtonDisabled: {
-    backgroundColor: 'rgba(82, 183, 136, 0.3)',
-    elevation: 0,
-    shadowOpacity: 0,
+    opacity: 0.5,
   },
   continueButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'System',
-  },
-  continueButtonTextDisabled: {
-    color: 'rgba(255, 255, 255, 0.5)',
+    color: theme.colors.onPrimaryText,
+    fontSize: theme.fontSizes.base,
+    fontFamily: theme.fonts.bold,
   },
   footer: {
-    paddingBottom: 32,
-    paddingTop: 24,
-  },
-  footerText: {
-    fontSize: 12,
-    color: '#95D5B2',
-    textAlign: 'center',
-    lineHeight: 18,
-    fontFamily: 'System',
-  },
-  footerLink: {
-    color: '#B7E4C7',
-    fontWeight: '500',
+    paddingHorizontal: theme.spacing.base,
+    paddingTop: theme.spacing['2xl'],
+    paddingBottom: theme.spacing.lg,
+    backgroundColor: theme.colors.surface,
+    borderTopWidth: 0,
+    gap: theme.spacing.sm,
   },
   signupPrompt: {
-    marginTop: 16,
     alignItems: 'center',
+    paddingVertical: theme.spacing.sm,
   },
-  signupText: {
-    fontSize: 14,
-    color: '#B7E4C7',
-    fontFamily: 'System',
+  footerText: {
+    fontSize: theme.fontSizes.sm,
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
   },
-  signupLink: {
-    color: '#52B788',
-    fontWeight: '600',
+  footerLink: {
+    fontFamily: theme.fonts.bold,
+    color: theme.colors.accentDarker,
+  },
+  securityText: {
+    fontSize: theme.fontSizes.xs,
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.textTertiary,
+    textAlign: 'center',
   },
 });
 

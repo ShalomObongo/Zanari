@@ -53,6 +53,7 @@ interface TopUpBody {
   amount?: number;
   payment_method?: string;
   description?: string;
+  pin_token?: string;
 }
 
 export interface PaymentRouteDependencies {
@@ -296,8 +297,10 @@ export function createPaymentRoutes({
       }
 
       try {
+        const transferId = randomUUID();
+
         const result = await paymentService.transferPeer({
-          transferId: recipient.generateTransactionId('transfer'),
+          transferId,
           userId: request.userId,
           amount,
           pinToken,
@@ -386,10 +389,16 @@ export function createPaymentRoutes({
 
       const amount = rawAmount;
       const description = request.body?.description?.trim() ?? 'Wallet top-up';
+      const pinToken = parsePinToken(request.body?.pin_token, 'PIN token is required for top-up authorization');
 
       const user = await userRepository.findById(request.userId);
       if (!user) {
         throw new HttpError(404, 'User not found', 'USER_NOT_FOUND');
+      }
+
+      const pinValid = await authService.validatePinToken(request.userId, pinToken);
+      if (!pinValid) {
+        throw new HttpError(401, 'PIN token expired', 'PIN_TOKEN_EXPIRED');
       }
 
       const customerEmail = user.email ?? `${request.userId}@zanari.app`;
@@ -447,6 +456,8 @@ export function createPaymentRoutes({
           depositId,
           paystackReference: checkout.reference,
         });
+
+        await authService.invalidatePinToken(pinToken);
 
         return ok(responseBody);
       } catch (error) {

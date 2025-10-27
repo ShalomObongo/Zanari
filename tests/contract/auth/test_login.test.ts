@@ -51,10 +51,12 @@ describe('POST /auth/login Contract Tests', () => {
       });
 
       expect(response.status).toBe(200);
-      expect(response.body).toHaveProperty('message', 'OTP sent to your phone');
+  expect(response.body).toHaveProperty('message', 'OTP sent to your phone and email');
       expect(response.body.session_id).toMatch(/^sess_[a-zA-Z0-9]+$/);
       expect(ctx.integration.stubs.otpSender.lastSmsOtp).not.toBeNull();
       expect(ctx.integration.stubs.otpSender.lastSmsOtp?.phone).toBe(ctx.integration.user.phone);
+  expect(ctx.integration.stubs.otpSender.lastEmailOtp).not.toBeNull();
+  expect(ctx.integration.stubs.otpSender.lastEmailOtp?.email).toBe(ctx.integration.user.email);
     });
 
     it('should reject invalid phone number format', async () => {

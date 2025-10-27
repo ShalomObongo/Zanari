@@ -1,0 +1,24 @@
+# Zanari2 Overview
+
+- Purpose: Cross-platform React Native (Expo) app enabling savings via round-up rules, payments via Paystack (merchant, P2P, bills), and KYC—backed by a Node/Express API integrated with Supabase.
+- Key Features: Round-up savings with auto-analysis; PIN security with progressive delays + biometrics; offline-ready browsing/sync; Paystack checkout via WebView and verification flow.
+- Tech Stack:
+  - Frontend: React Native 0.81, Expo 54, React 19, React Navigation, Zustand state.
+  - Backend: Express 5 + TypeScript, Supabase repositories, Paystack client.
+  - Testing: Jest + Testing Library RN (jest-expo preset). Contract/integration/unit/perf suites.
+  - Tooling: TypeScript strict, ESLint (TS rules + RN plugins), Prettier.
+- Structure:
+  - `src/` app code (components, screens, services, store, utils)
+  - `api/` server (`server.ts`, `src/` modules, `migrations/`)
+  - `tests/` organized by `unit/`, `integration/`, `performance/`, `security`, `contract`
+  - `docs/` setup guides, flows, and implementation summaries
+- Entrypoints & Dev:
+  - App: `npm start`, `npm run ios`, `npm run android`, `npm run web`
+  - API: `npm run dev:api` (tsx watch `api/server.ts`)
+- Env:
+  - Mobile: `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`, Paystack public key
+  - API: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `PAYSTACK_SECRET_KEY`, `PAYSTACK_WEBHOOK_SECRET`, `API_PORT`
+- Notes:
+  - API supports in-memory sandbox when Supabase/Paystack are missing.
+  - Tests exclude `api/` for Jest here; backend tests are separate.
+  - Paths alias `@/` to `src/` configured in TS + Jest.

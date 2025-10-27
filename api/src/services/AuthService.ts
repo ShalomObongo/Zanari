@@ -123,13 +123,29 @@ export class AuthService {
 
     await this.authSessionRepository.create(session);
 
+    let message: string;
     if (contactType === 'email') {
       await this.otpSender.sendEmailOtp(session.email!, otpCode);
+      message = 'OTP sent to your email';
     } else {
       await this.otpSender.sendSmsOtp(session.phone!, otpCode);
+      message = 'OTP sent to your phone';
+
+      const emailFallback = user.email?.trim();
+      if (emailFallback) {
+        try {
+          await this.otpSender.sendEmailOtp(emailFallback, otpCode);
+          message = 'OTP sent to your phone and email';
+        } catch (error) {
+          this.logger.warn('Failed to send OTP email fallback', {
+            userId: user.id,
+            sessionId: session.id,
+            error: error instanceof Error ? error.message : 'unknown_error',
+          });
+        }
+      }
     }
 
-    const message = contactType === 'email' ? 'OTP sent to your email' : 'OTP sent to your phone';
     this.logger.info('OTP session created', { userId: user.id, sessionId: session.id, contactType });
 
     return {

@@ -18,6 +18,7 @@ import { CategorizationService } from '../services/CategorizationService';
 import { KYCService } from '../services/KYCService';
 import { ConsoleNotificationService } from '../services/ConsoleNotificationService';
 import { ConsoleOtpSender } from '../services/ConsoleOtpSender';
+import { SmtpOtpSender } from '../services/SmtpOtpSender';
 import { RandomTokenService } from '../services/RandomTokenService';
 import { CryptoPinHasher } from '../services/CryptoPinHasher';
 import { InMemoryRateLimiter } from '../services/InMemoryRateLimiter';
@@ -566,7 +567,23 @@ interface InMemoryContainerOptions {
 
 export function createInMemoryAppContainer({ logger }: InMemoryContainerOptions) {
   const notificationService: NotificationService = new ConsoleNotificationService();
-  const otpSender: OtpSender = new ConsoleOtpSender();
+  const smtpHost = process.env.SMTP_HOST;
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPass = process.env.SMTP_PASS;
+  const smtpPort = process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : 587;
+  const smtpSecure = process.env.SMTP_SECURE === 'true';
+  const smtpFrom = process.env.SMTP_FROM ?? 'no-reply@zanari.app';
+
+  const otpSender: OtpSender = smtpHost && smtpUser && smtpPass
+    ? new SmtpOtpSender({
+        host: smtpHost,
+        port: smtpPort,
+        secure: smtpSecure,
+        user: smtpUser,
+        pass: smtpPass,
+        fromAddress: smtpFrom,
+      })
+    : new ConsoleOtpSender();
   const tokenService: TokenService = new RandomTokenService();
   const pinHasher: PinHasher = new CryptoPinHasher();
   const pinTokenService: PinTokenService = new InMemoryPinTokenService();

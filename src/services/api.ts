@@ -209,7 +209,11 @@ class ApiClient {
       responseContext.payload = payload as TResponse;
 
       if (!response.ok) {
-        if (response.status === 401 && this.unauthorizedHandler) {
+        // Don't trigger unauthorized handler for PIN verification endpoints
+        // Users are already authenticated, they're just verifying their PIN
+        const isPinVerification = normalizedPath === '/auth/verify-pin';
+
+        if (response.status === 401 && this.unauthorizedHandler && !isPinVerification) {
           this.unauthorizedHandler();
         }
 

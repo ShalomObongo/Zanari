@@ -19,12 +19,11 @@ export type AuthStackParamList = {
     phoneNumber: string;
   };
   PINSetup: {
-    accessToken: string;
-    refreshToken: string;
-  };
+    phoneNumber?: string;
+  } | undefined;
   PINEntry: {
     returnScreen?: keyof AuthStackParamList;
-  };
+  } | undefined;
 };
 
 export const AuthNavigator: React.FC = () => {

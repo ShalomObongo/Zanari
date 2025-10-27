@@ -8,6 +8,7 @@ import DashboardScreen from '@/screens/main/DashboardScreen';
 import PaymentScreen from '@/screens/payments/PaymentScreen';
 import TransferScreen from '@/screens/payments/TransferScreen';
 import TransactionHistoryScreen from '@/screens/transactions/TransactionHistoryScreen';
+import TransactionDetailsScreen from '@/screens/transactions/TransactionDetailsScreen';
 import SavingsGoalsScreen from '@/screens/savings/SavingsGoalsScreen';
 import SettingsScreen from '@/screens/settings/SettingsScreen';
 import KYCUploadScreen from '@/screens/kyc/KYCUploadScreen';
@@ -27,6 +28,7 @@ export type MainStackParamList = {
   MainTabs: undefined;
   Payment: undefined;
   Transfer: undefined;
+  TransactionDetails: { transactionId: string };
   KYCUpload: undefined;
 } & MainTabParamList;
 
@@ -35,19 +37,29 @@ const MainTabs: React.FC = () => {
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#2196F3',
-        tabBarInactiveTintColor: '#757575',
+        tabBarActiveTintColor: '#52B788', // theme.colors.accent
+        tabBarInactiveTintColor: '#666666', // theme.colors.textSecondary
         tabBarStyle: {
-          backgroundColor: '#ffffff',
+          backgroundColor: '#FFFFFF', // theme.colors.surface
           borderTopWidth: 1,
-          borderTopColor: '#e0e0e0',
-          paddingBottom: 8,
+          borderTopColor: 'rgba(229, 231, 235, 0.8)', // subtle border
           paddingTop: 8,
-          height: 60,
+          paddingBottom: 8,
+          height: 80,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -1 },
+          shadowOpacity: 0.05,
+          shadowRadius: 3,
+          elevation: 8,
         },
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: '600',
+          marginTop: 4,
+          fontFamily: 'Manrope_600SemiBold',
+        },
+        tabBarIconStyle: {
+          marginTop: 4,
         },
       }}
     >
@@ -56,18 +68,8 @@ const MainTabs: React.FC = () => {
         component={DashboardScreen}
         options={{
           title: 'Home',
-          tabBarIcon: ({ color, size }) => (
-            <Icon name="dashboard" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Payments"
-        component={PaymentScreen}
-        options={{
-          title: 'Pay',
-          tabBarIcon: ({ color, size }) => (
-            <Icon name="payment" size={size} color={color} />
+          tabBarIcon: ({ color }) => (
+            <Icon name="home" size={24} color={color} />
           ),
         }}
       />
@@ -75,9 +77,19 @@ const MainTabs: React.FC = () => {
         name="History"
         component={TransactionHistoryScreen}
         options={{
-          title: 'History',
-          tabBarIcon: ({ color, size }) => (
-            <Icon name="history" size={size} color={color} />
+          title: 'Transactions',
+          tabBarIcon: ({ color }) => (
+            <Icon name="swap-horiz" size={24} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Payments"
+        component={PaymentScreen}
+        options={{
+          title: 'Payments',
+          tabBarIcon: ({ color }) => (
+            <Icon name="payment" size={24} color={color} />
           ),
         }}
       />
@@ -86,8 +98,8 @@ const MainTabs: React.FC = () => {
         component={SavingsGoalsScreen}
         options={{
           title: 'Savings',
-          tabBarIcon: ({ color, size }) => (
-            <Icon name="savings" size={size} color={color} />
+          tabBarIcon: ({ color }) => (
+            <Icon name="account-balance-wallet" size={24} color={color} />
           ),
         }}
       />
@@ -96,8 +108,8 @@ const MainTabs: React.FC = () => {
         component={SettingsScreen}
         options={{
           title: 'Settings',
-          tabBarIcon: ({ color, size }) => (
-            <Icon name="settings" size={size} color={color} />
+          tabBarIcon: ({ color }) => (
+            <Icon name="settings" size={24} color={color} />
           ),
         }}
       />
@@ -109,13 +121,7 @@ export const MainNavigator: React.FC = () => {
   return (
     <Stack.Navigator
       screenOptions={{
-        headerStyle: {
-          backgroundColor: '#2196F3',
-        },
-        headerTintColor: '#ffffff',
-        headerTitleStyle: {
-          fontWeight: 'bold',
-        },
+        headerShown: false, // Hide headers by default, let screens manage their own
       }}
     >
       <Stack.Screen
@@ -129,7 +135,7 @@ export const MainNavigator: React.FC = () => {
         name="Payment"
         component={PaymentScreen}
         options={{
-          title: 'Make Payment',
+          headerShown: false,
           presentation: 'modal', // Present as modal for payment flow
         }}
       />
@@ -137,7 +143,7 @@ export const MainNavigator: React.FC = () => {
         name="Transfer"
         component={TransferScreen}
         options={{
-          title: 'Send Money',
+          headerShown: false,
           presentation: 'modal',
         }}
       />
@@ -145,8 +151,15 @@ export const MainNavigator: React.FC = () => {
         name="KYCUpload"
         component={KYCUploadScreen}
         options={{
-          title: 'Identity Verification',
+          headerShown: false,
           gestureEnabled: false, // Prevent dismissing KYC flow
+        }}
+      />
+      <Stack.Screen
+        name="TransactionDetails"
+        component={TransactionDetailsScreen}
+        options={{
+          headerShown: false,
         }}
       />
     </Stack.Navigator>

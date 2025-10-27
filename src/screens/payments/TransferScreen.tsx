@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
+import { useState, useEffect, useRef } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
   TextInput,
   TouchableOpacity,
   StatusBar,
@@ -10,45 +10,45 @@ import {
   Platform,
   Alert,
   ScrollView,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import Icon from 'react-native-vector-icons/MaterialIcons';
+import PinVerificationModal from '@/components/PinVerificationModal';
+import { useAuthStore } from '@/store/authStore';
 import { useWalletStore } from '@/store/walletStore';
 import { useTransactionStore } from '@/store/transactionStore';
 import { formatCurrency, parseCentsFromInput } from '@/utils/formatters';
+import api, { ApiError } from '@/services/api';
+import theme from '@/theme';
 
 interface TransferScreenProps {}
 
 const TransferScreen: React.FC<TransferScreenProps> = () => {
   const navigation = useNavigation<any>();
-  
+
   const [amount, setAmount] = useState('');
   const [recipientPhone, setRecipientPhone] = useState('');
   const [recipientName, setRecipientName] = useState('');
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [selectedContactPhone, setSelectedContactPhone] = useState('');
+  const [pinModalVisible, setPinModalVisible] = useState(false);
+  const [showAccountModal, setShowAccountModal] = useState(false);
+  const [selectedAccountType, setSelectedAccountType] = useState<'main' | 'savings'>('main');
+  const pinRequestRef = useRef<{ resolve: (token: string) => void; reject: (error: Error) => void } | null>(null);
 
   // Zustand stores
   const wallets = useWalletStore((state) => state.wallets);
   const refreshWallets = useWalletStore((state) => state.refreshWallets);
   const transactions = useTransactionStore((state) => state.transactions);
-  
-  const mainWallet = wallets.find(w => w.wallet_type === 'main');
-  const availableBalance = mainWallet?.available_balance ?? 0;
-  
-  // Extract recent contacts from transfer transactions
-  const recentContacts = transactions
-    .filter(t => t.type === 'transfer_out' && t.recipient_info)
-    .map(t => ({
-      phone: (t.recipient_info as any)?.phone || '',
-      name: (t.recipient_info as any)?.name || 'Contact',
-      avatar: ((t.recipient_info as any)?.name || 'U')[0].toUpperCase(),
-    }))
-    .filter((contact, index, self) => 
-      contact.phone && self.findIndex(c => c.phone === contact.phone) === index
-    )
-    .slice(0, 5);
+  const refreshTransactions = useTransactionStore((state) => state.refreshTransactions);
+  const isPinSet = useAuthStore((state) => state.isPinSet);
+  const consumePinToken = useAuthStore((state) => state.consumePinToken);
+
+  const selectedWallet = wallets.find(w => w.wallet_type === selectedAccountType);
+  const availableBalance = selectedWallet?.available_balance ?? 0;
 
   const formatAmount = (text: string) => {
     const cleaned = text.replace(/\D/g, '');
@@ -101,11 +101,34 @@ const TransferScreen: React.FC<TransferScreenProps> = () => {
     return kenyanRegex.test(number);
   };
 
-  const handleContactSelect = (contact: typeof recentContacts[0]) => {
-    setSelectedContactPhone(contact.phone);
-    setRecipientPhone(contact.phone.replace('+', ''));
-    setRecipientName(contact.name);
+  const requestPinToken = () =>
+    new Promise<string>((resolve, reject) => {
+      pinRequestRef.current = { resolve, reject };
+      setPinModalVisible(true);
+    });
+
+  const handlePinModalSuccess = (token: string) => {
+    if (pinRequestRef.current) {
+      pinRequestRef.current.resolve(token);
+      pinRequestRef.current = null;
+    }
+    setPinModalVisible(false);
   };
+
+  const handlePinModalCancel = () => {
+    if (pinRequestRef.current) {
+      pinRequestRef.current.reject(new Error('PIN entry cancelled'));
+      pinRequestRef.current = null;
+    }
+    setPinModalVisible(false);
+  };
+
+  useEffect(() => () => {
+    if (pinRequestRef.current) {
+      pinRequestRef.current.reject(new Error('PIN entry cancelled'));
+      pinRequestRef.current = null;
+    }
+  }, []);
 
   const handleSendTransfer = async () => {
     const amountCents = parseCentsFromInput(amount.replace(/,/g, ''));
@@ -142,27 +165,124 @@ const TransferScreen: React.FC<TransferScreenProps> = () => {
       return;
     }
 
+    if (!isPinSet) {
+      Alert.alert(
+        'Set up your PIN',
+        'You need a transaction PIN before you can send money.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Set Up PIN',
+            onPress: () => navigation.navigate('MainTabs', { screen: 'Settings' }),
+          },
+        ],
+      );
+      return;
+    }
+
+    let pinToken: string;
+    try {
+      pinToken = await requestPinToken();
+    } catch {
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      // TODO: Implement actual transfer API call
-      // await apiClient.post('/payments/transfer', {
-      //   amount: amountCents,
-      //   pin_token: pinToken,
-      //   recipient: { phone: recipientPhone, name: recipientName }
-      // });
-      
+      const trimmedName = recipientName.trim();
+      const trimmedMessage = message.trim();
+
+      const response = await api.post('/payments/transfer', {
+        amount: amountCents,
+        pin_token: pinToken,
+        recipient: {
+          phone: recipientPhone,
+          name: trimmedName,
+        },
+        description: trimmedMessage || undefined,
+      });
+
+      const payload = (response as Record<string, unknown>) ?? {};
+      const status = typeof payload.status === 'string' ? payload.status : 'pending';
+      const roundUpAmount = typeof payload.round_up_amount === 'number' ? payload.round_up_amount : 0;
+      const transferId = typeof payload.transfer_transaction_id === 'string'
+        ? payload.transfer_transaction_id
+        : undefined;
+
+      await Promise.all([refreshWallets(), refreshTransactions()]);
+
+      setAmount('');
+      setRecipientPhone('');
+      setRecipientName('');
+      setMessage('');
+      setSelectedContactPhone('');
+
+      const friendlyAmount = formatCurrency(amountCents);
+      const successTitle = status === 'pending' ? 'Transfer Processing' : 'Transfer Sent';
+      const successFragments = [`We've initiated your transfer of ${friendlyAmount} to ${trimmedName}.`];
+
+      if (roundUpAmount > 0) {
+        successFragments.push(`An extra ${formatCurrency(roundUpAmount)} was moved to your savings.`);
+      }
+
+      const successMessage = successFragments.join(' ');
+
       Alert.alert(
-        'Coming Soon',
-        'P2P transfers will be available soon. This feature requires PIN verification and backend API integration.'
+        successTitle,
+        successMessage,
+        [
+          {
+            text: 'View History',
+            onPress: () => navigation.navigate('MainTabs', { screen: 'History' }),
+          },
+          {
+            text: 'Done',
+            onPress: () => navigation.goBack(),
+          },
+        ],
+        { cancelable: false },
       );
-      
-      // Refresh wallet balance after successful transfer
-      await refreshWallets();
+
+      if (transferId) {
+        console.log('Transfer initiated with transaction id:', transferId);
+      }
     } catch (error) {
-      Alert.alert('Transfer Failed', 'Unable to process transfer. Please try again.');
+      if (error instanceof ApiError) {
+        switch (error.code) {
+          case 'INSUFFICIENT_FUNDS': {
+            const available = typeof error.details?.available_balance === 'number'
+              ? formatCurrency(error.details.available_balance as number)
+              : formatCurrency(availableBalance);
+            Alert.alert('Insufficient Balance', `You only have ${available} available.`);
+            break;
+          }
+          case 'PIN_TOKEN_EXPIRED':
+            Alert.alert('PIN Expired', 'Please try again and authorize with your PIN.');
+            break;
+          case 'PAYSTACK_TRANSFER_UNAVAILABLE':
+            Alert.alert('Service Unavailable', 'Transfers are temporarily unavailable. Please try again shortly.');
+            break;
+          case 'DAILY_LIMIT_EXCEEDED': {
+            const availableToday = typeof error.details?.available_today === 'number'
+              ? formatCurrency(error.details.available_today as number)
+              : 'KES 0.00';
+            Alert.alert('Daily Limit Reached', `You can only send ${availableToday} more today.`);
+            break;
+          }
+          case 'SELF_TRANSFER_NOT_ALLOWED':
+            Alert.alert('Invalid Recipient', 'You cannot transfer money to yourself.');
+            break;
+          default:
+            Alert.alert('Transfer Failed', error.message || 'Unable to process transfer. Please try again.');
+            break;
+        }
+      } else {
+        Alert.alert('Transfer Failed', 'Unable to process transfer. Please try again.');
+      }
       console.error('Transfer error:', error);
     } finally {
+      consumePinToken();
       setIsLoading(false);
     }
   };
@@ -171,173 +291,202 @@ const TransferScreen: React.FC<TransferScreenProps> = () => {
     navigation.goBack();
   };
 
-  const renderRecentContacts = () => {
-    if (recentContacts.length === 0) {
-      return null;
-    }
-    
-    return (
-      <View style={styles.recentContactsContainer}>
-        <Text style={styles.sectionTitle}>Recent Contacts</Text>
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.contactsScrollContainer}
-        >
-          {recentContacts.map((contact, index) => (
-            <TouchableOpacity
-              key={`${contact.phone}-${index}`}
-              style={[
-                styles.contactItem,
-                selectedContactPhone === contact.phone && styles.contactItemSelected
-              ]}
-              onPress={() => handleContactSelect(contact)}
-            >
-              <View style={styles.contactAvatar}>
-                <Text style={styles.contactAvatarText}>{contact.avatar}</Text>
-              </View>
-              <Text style={styles.contactName}>{contact.name.split(' ')[0]}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
-    );
+  const getAccountLabel = (type: 'main' | 'savings') => {
+    return type === 'main' ? 'Main Wallet' : 'Savings Account';
   };
 
   return (
     <>
-      <StatusBar barStyle="light-content" backgroundColor="#1B4332" />
+      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
       <SafeAreaView style={styles.container}>
-        <KeyboardAvoidingView 
+        <KeyboardAvoidingView
           style={styles.keyboardContainer}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
-              <Text style={styles.backButtonText}>←</Text>
+              <Icon name="arrow-back" size={24} color={theme.colors.textPrimary} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Send Money</Text>
+            <Text style={styles.headerTitle}>Transfer</Text>
             <View style={styles.headerSpacer} />
           </View>
 
           <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-            {/* Amount Section */}
-            <View style={styles.amountSection}>
-              <View style={styles.balanceRow}>
-                <Text style={styles.sectionTitle}>Amount to Send</Text>
-                <Text style={styles.availableBalance}>
-                  Available: {formatCurrency(availableBalance)}
-                </Text>
+            {/* From Account Selector */}
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>From</Text>
+              <TouchableOpacity
+                style={styles.accountSelector}
+                onPress={() => setShowAccountModal(true)}
+              >
+                <View style={styles.accountIconContainer}>
+                  <Icon name="account-balance" size={24} color={theme.colors.primary} />
+                </View>
+                <View style={styles.accountInfo}>
+                  <Text style={styles.accountName}>{getAccountLabel(selectedAccountType)}</Text>
+                  <Text style={styles.accountBalance}>
+                    Available Balance: {formatCurrency(availableBalance)}
+                  </Text>
+                </View>
+                <Icon name="unfold-more" size={28} color={theme.colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Recipient Input */}
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>To</Text>
+              <View style={styles.recipientInputContainer}>
+                <TextInput
+                  style={styles.recipientInput}
+                  value={recipientName}
+                  onChangeText={setRecipientName}
+                  placeholder="Name, phone, or account"
+                  placeholderTextColor={theme.colors.textTertiary}
+                />
+                <TouchableOpacity style={styles.contactIconButton}>
+                  <Icon name="contacts" size={24} color={theme.colors.primary} />
+                </TouchableOpacity>
               </View>
+            </View>
+
+            {/* Phone Number Input */}
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>Phone Number</Text>
+              <View style={styles.phoneInputWrapper}>
+                <Text style={styles.countryCode}>+254</Text>
+                <TextInput
+                  style={styles.phoneInput}
+                  value={recipientPhone.startsWith('254') ? recipientPhone.slice(3) : recipientPhone}
+                  onChangeText={(text) => handlePhoneChange('254' + text)}
+                  placeholder="712 345 678"
+                  placeholderTextColor={theme.colors.textTertiary}
+                  keyboardType="phone-pad"
+                  maxLength={9}
+                />
+              </View>
+            </View>
+
+            {/* Amount Input */}
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>Amount</Text>
               <View style={styles.amountInputContainer}>
-                <Text style={styles.currencySymbol}>KES</Text>
+                <Text style={styles.currencySymbol}>$</Text>
                 <TextInput
                   style={styles.amountInput}
                   value={amount}
                   onChangeText={handleAmountChange}
-                  placeholder="0"
-                  placeholderTextColor="#95D5B2"
+                  placeholder="0.00"
+                  placeholderTextColor={theme.colors.textTertiary}
                   keyboardType="numeric"
                   maxLength={15}
-                  autoFocus={true}
-                />
-              </View>
-              <Text style={styles.amountHint}>
-                Daily limit: KES 20,000 • Single limit: KES 5,000
-              </Text>
-            </View>
-
-            {/* Recent Contacts */}
-            {renderRecentContacts()}
-
-            {/* Recipient Section */}
-            <View style={styles.recipientSection}>
-              <Text style={styles.sectionTitle}>Recipient Details</Text>
-              
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Phone Number</Text>
-                <View style={styles.phoneInputContainer}>
-                  <Text style={styles.countryCode}>🇰🇪 +254</Text>
-                  <TextInput
-                    style={styles.phoneInput}
-                    value={recipientPhone.startsWith('254') ? recipientPhone.slice(3) : recipientPhone}
-                    onChangeText={(text) => handlePhoneChange('254' + text)}
-                    placeholder="7XX XXX XXX"
-                    placeholderTextColor="#95D5B2"
-                    keyboardType="phone-pad"
-                    maxLength={9}
-                  />
-                </View>
-              </View>
-
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Recipient Name</Text>
-                <TextInput
-                  style={styles.nameInput}
-                  value={recipientName}
-                  onChangeText={setRecipientName}
-                  placeholder="Enter recipient's full name"
-                  placeholderTextColor="#95D5B2"
-                  autoCapitalize="words"
-                />
-              </View>
-
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Message (Optional)</Text>
-                <TextInput
-                  style={styles.messageInput}
-                  value={message}
-                  onChangeText={setMessage}
-                  placeholder="Add a personal message"
-                  placeholderTextColor="#95D5B2"
-                  multiline
-                  numberOfLines={2}
                 />
               </View>
             </View>
 
-            {/* Transfer Summary */}
-            <View style={styles.summarySection}>
-              <Text style={styles.sectionTitle}>Transfer Summary</Text>
-              <View style={styles.summaryCard}>
-                <View style={styles.summaryRow}>
-                  <Text style={styles.summaryLabel}>Amount</Text>
-                  <Text style={styles.summaryValue}>KES {amount || '0'}</Text>
-                </View>
-                <View style={styles.summaryRow}>
-                  <Text style={styles.summaryLabel}>Transfer Fee</Text>
-                  <Text style={styles.summaryValue}>KES 0.00</Text>
-                </View>
-                <View style={styles.summaryDivider} />
-                <View style={styles.summaryRow}>
-                  <Text style={styles.summaryTotalLabel}>Total</Text>
-                  <Text style={styles.summaryTotalValue}>KES {amount || '0'}</Text>
-                </View>
-              </View>
+            {/* Reference Input */}
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>Reference (Optional)</Text>
+              <TextInput
+                style={styles.referenceInput}
+                value={message}
+                onChangeText={setMessage}
+                placeholder="Add a note for the recipient"
+                placeholderTextColor={theme.colors.textTertiary}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+              />
             </View>
+
+            <View style={styles.spacer} />
           </ScrollView>
 
           {/* Send Button */}
           <View style={styles.sendButtonSection}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[
-                styles.sendButton, 
+                styles.sendButton,
                 (!amount || !recipientPhone || !recipientName || getNumericAmount() <= 0 || isLoading) && styles.sendButtonDisabled
               ]}
               onPress={handleSendTransfer}
               disabled={!amount || !recipientPhone || !recipientName || getNumericAmount() <= 0 || isLoading}
             >
-              <Text style={[
-                styles.sendButtonText,
-                (!amount || !recipientPhone || !recipientName || getNumericAmount() <= 0 || isLoading) && styles.sendButtonTextDisabled
-              ]}>
-                {isLoading ? 'Sending...' : `Send KES ${amount || '0'}`}
+              <Text style={styles.sendButtonText}>
+                {isLoading ? 'Sending...' : 'Send Funds'}
               </Text>
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
+
+        {/* Account Selector Modal */}
+        <Modal
+          visible={showAccountModal}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setShowAccountModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Select Account</Text>
+                <TouchableOpacity onPress={() => setShowAccountModal(false)}>
+                  <Icon name="close" size={24} color={theme.colors.textPrimary} />
+                </TouchableOpacity>
+              </View>
+              <View style={styles.modalList}>
+                <TouchableOpacity
+                  style={styles.accountOption}
+                  onPress={() => {
+                    setSelectedAccountType('main');
+                    setShowAccountModal(false);
+                  }}
+                >
+                  <View style={styles.accountIconContainer}>
+                    <Icon name="account-balance-wallet" size={24} color={theme.colors.primary} />
+                  </View>
+                  <View style={styles.accountInfo}>
+                    <Text style={styles.accountName}>Main Wallet</Text>
+                    <Text style={styles.accountBalance}>
+                      {formatCurrency(wallets.find(w => w.wallet_type === 'main')?.available_balance ?? 0)}
+                    </Text>
+                  </View>
+                  {selectedAccountType === 'main' && (
+                    <Icon name="check" size={20} color={theme.colors.accent} />
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.accountOption}
+                  onPress={() => {
+                    setSelectedAccountType('savings');
+                    setShowAccountModal(false);
+                  }}
+                >
+                  <View style={styles.accountIconContainer}>
+                    <Icon name="savings" size={24} color={theme.colors.primary} />
+                  </View>
+                  <View style={styles.accountInfo}>
+                    <Text style={styles.accountName}>Savings Account</Text>
+                    <Text style={styles.accountBalance}>
+                      {formatCurrency(wallets.find(w => w.wallet_type === 'savings')?.available_balance ?? 0)}
+                    </Text>
+                  </View>
+                  {selectedAccountType === 'savings' && (
+                    <Icon name="check" size={20} color={theme.colors.accent} />
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </SafeAreaView>
+      <PinVerificationModal
+        visible={pinModalVisible}
+        title="Authorize Transfer"
+        subtitle="Enter your PIN to send money"
+        onSuccess={handlePinModalSuccess}
+        onCancel={handlePinModalCancel}
+      />
     </>
   );
 };
@@ -345,7 +494,7 @@ const TransferScreen: React.FC<TransferScreenProps> = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1B4332',
+    backgroundColor: theme.colors.surface,
   },
   keyboardContainer: {
     flex: 1,
@@ -353,257 +502,216 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 16,
+    justifyContent: 'space-between',
+    paddingHorizontal: theme.spacing.base,
+    paddingVertical: theme.spacing.md,
+    backgroundColor: theme.colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
   },
   backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(183, 228, 199, 0.2)',
+    width: 48,
+    height: 48,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  backButtonText: {
-    fontSize: 20,
-    color: '#ffffff',
-    fontWeight: '600',
-  },
   headerTitle: {
+    fontSize: theme.fontSizes.lg,
+    fontFamily: theme.fonts.bold,
+    color: theme.colors.textPrimary,
     flex: 1,
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#ffffff',
     textAlign: 'center',
-    fontFamily: 'System',
+    letterSpacing: -0.5,
   },
   headerSpacer: {
-    width: 44,
+    width: 48,
   },
   content: {
     flex: 1,
-    paddingHorizontal: 24,
+    paddingHorizontal: theme.spacing.base,
+    paddingTop: theme.spacing.base,
+    backgroundColor: theme.colors.surface,
   },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    marginBottom: 12,
-    fontFamily: 'System',
+  section: {
+    marginBottom: theme.spacing.base,
   },
-  balanceRow: {
+  sectionLabel: {
+    fontSize: theme.fontSizes.sm,
+    fontFamily: theme.fonts.medium,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.sm,
+  },
+  accountSelector: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    backgroundColor: theme.colors.backgroundLight,
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    padding: theme.spacing.base,
+    gap: theme.spacing.base,
   },
-  availableBalance: {
-    fontSize: 14,
-    color: '#95D5B2',
-    fontFamily: 'System',
+  accountIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: theme.borderRadius.lg,
+    backgroundColor: `${theme.colors.primary}1A`,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  amountSection: {
-    marginBottom: 32,
+  accountInfo: {
+    flex: 1,
+  },
+  accountName: {
+    fontSize: theme.fontSizes.base,
+    fontFamily: theme.fonts.medium,
+    color: theme.colors.textPrimary,
+    marginBottom: 2,
+  },
+  accountBalance: {
+    fontSize: theme.fontSizes.sm,
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.textSecondary,
+  },
+  recipientInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.backgroundLight,
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    height: 56,
+  },
+  recipientInput: {
+    flex: 1,
+    fontSize: theme.fontSizes.base,
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.textPrimary,
+    paddingHorizontal: theme.spacing.base,
+  },
+  contactIconButton: {
+    paddingHorizontal: theme.spacing.base,
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  phoneInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.backgroundLight,
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    height: 56,
+    paddingHorizontal: theme.spacing.base,
+  },
+  countryCode: {
+    fontSize: theme.fontSizes.base,
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.textPrimary,
+    marginRight: theme.spacing.sm,
+  },
+  phoneInput: {
+    flex: 1,
+    fontSize: theme.fontSizes.base,
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.textPrimary,
   },
   amountInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(183, 228, 199, 0.1)',
-    borderRadius: 16,
+    backgroundColor: theme.colors.backgroundLight,
+    borderRadius: theme.borderRadius.lg,
     borderWidth: 1,
-    borderColor: 'rgba(183, 228, 199, 0.3)',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    borderColor: theme.colors.border,
+    height: 56,
+    paddingHorizontal: theme.spacing.base,
   },
   currencySymbol: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    marginRight: 12,
-    fontFamily: 'System',
+    fontSize: theme.fontSizes['2xl'],
+    fontFamily: theme.fonts.semiBold,
+    color: theme.colors.textTertiary,
+    marginRight: theme.spacing.sm,
   },
   amountInput: {
     flex: 1,
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    fontFamily: 'System',
+    fontSize: theme.fontSizes['2xl'],
+    fontFamily: theme.fonts.semiBold,
+    color: theme.colors.textPrimary,
   },
-  amountHint: {
-    fontSize: 12,
-    color: '#95D5B2',
-    marginTop: 8,
-    fontFamily: 'System',
-  },
-  recentContactsContainer: {
-    marginBottom: 32,
-  },
-  contactsScrollContainer: {
-    paddingRight: 24,
-  },
-  contactItem: {
-    alignItems: 'center',
-    marginRight: 16,
-    padding: 8,
-    borderRadius: 12,
-    backgroundColor: 'rgba(183, 228, 199, 0.1)',
-  },
-  contactItemSelected: {
-    backgroundColor: 'rgba(82, 183, 136, 0.2)',
+  referenceInput: {
+    backgroundColor: theme.colors.backgroundLight,
+    borderRadius: theme.borderRadius.lg,
     borderWidth: 1,
-    borderColor: '#52B788',
+    borderColor: theme.colors.border,
+    minHeight: 112,
+    paddingHorizontal: theme.spacing.base,
+    paddingVertical: theme.spacing.base,
+    fontSize: theme.fontSizes.base,
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.textPrimary,
   },
-  contactAvatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  contactAvatarText: {
-    fontSize: 24,
-  },
-  contactName: {
-    fontSize: 12,
-    color: '#ffffff',
-    textAlign: 'center',
-    fontFamily: 'System',
-  },
-  recipientSection: {
-    marginBottom: 32,
-  },
-  inputContainer: {
-    marginBottom: 16,
-  },
-  inputLabel: {
-    fontSize: 14,
-    color: '#ffffff',
-    fontWeight: '600',
-    marginBottom: 8,
-    fontFamily: 'System',
-  },
-  phoneInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(183, 228, 199, 0.1)',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(183, 228, 199, 0.3)',
-    paddingHorizontal: 16,
-    height: 50,
-  },
-  countryCode: {
-    fontSize: 16,
-    color: '#ffffff',
-    marginRight: 12,
-    fontFamily: 'System',
-  },
-  phoneInput: {
-    flex: 1,
-    fontSize: 16,
-    color: '#ffffff',
-    fontFamily: 'System',
-  },
-  nameInput: {
-    backgroundColor: 'rgba(183, 228, 199, 0.1)',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(183, 228, 199, 0.3)',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    color: '#ffffff',
-    fontFamily: 'System',
-  },
-  messageInput: {
-    backgroundColor: 'rgba(183, 228, 199, 0.1)',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(183, 228, 199, 0.3)',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    color: '#ffffff',
-    fontFamily: 'System',
-    textAlignVertical: 'top',
-    height: 80,
-  },
-  summarySection: {
-    marginBottom: 32,
-  },
-  summaryCard: {
-    backgroundColor: 'rgba(183, 228, 199, 0.1)',
-    borderRadius: 12,
-    padding: 16,
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  summaryLabel: {
-    fontSize: 14,
-    color: '#B7E4C7',
-    fontFamily: 'System',
-  },
-  summaryValue: {
-    fontSize: 14,
-    color: '#ffffff',
-    fontWeight: '500',
-    fontFamily: 'System',
-  },
-  summaryDivider: {
-    height: 1,
-    backgroundColor: 'rgba(183, 228, 199, 0.3)',
-    marginVertical: 8,
-  },
-  summaryTotalLabel: {
-    fontSize: 16,
-    color: '#ffffff',
-    fontWeight: 'bold',
-    fontFamily: 'System',
-  },
-  summaryTotalValue: {
-    fontSize: 16,
-    color: '#52B788',
-    fontWeight: 'bold',
-    fontFamily: 'System',
+  spacer: {
+    height: theme.spacing['3xl'],
   },
   sendButtonSection: {
-    paddingHorizontal: 24,
-    paddingBottom: 32,
-    paddingTop: 16,
+    paddingHorizontal: theme.spacing.base,
+    paddingVertical: theme.spacing.base,
+    backgroundColor: theme.colors.surface,
   },
   sendButton: {
-    backgroundColor: '#52B788',
-    paddingVertical: 16,
-    borderRadius: 12,
+    height: 56,
+    borderRadius: theme.borderRadius.full,
+    backgroundColor: theme.colors.accent,
+    justifyContent: 'center',
     alignItems: 'center',
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    ...theme.shadows.md,
   },
   sendButtonDisabled: {
-    backgroundColor: 'rgba(82, 183, 136, 0.3)',
-    elevation: 0,
-    shadowOpacity: 0,
+    backgroundColor: theme.colors.disabled,
+    ...theme.shadows.sm,
   },
   sendButtonText: {
-    color: '#ffffff',
-    fontSize: 18,
-    fontWeight: 'bold',
-    fontFamily: 'System',
+    fontSize: theme.fontSizes.base,
+    fontFamily: theme.fonts.bold,
+    color: theme.colors.surface,
   },
-  sendButtonTextDisabled: {
-    color: 'rgba(255, 255, 255, 0.5)',
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: theme.colors.surface,
+    borderTopLeftRadius: theme.borderRadius['2xl'],
+    borderTopRightRadius: theme.borderRadius['2xl'],
+    paddingTop: theme.spacing.xl,
+    paddingBottom: theme.spacing['2xl'],
+    maxHeight: '50%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.xl,
+    marginBottom: theme.spacing.base,
+  },
+  modalTitle: {
+    fontSize: theme.fontSizes.xl,
+    fontFamily: theme.fonts.bold,
+    color: theme.colors.textPrimary,
+  },
+  modalList: {
+    paddingHorizontal: theme.spacing.base,
+  },
+  accountOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: theme.spacing.base,
+    paddingHorizontal: theme.spacing.base,
+    gap: theme.spacing.base,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.divider,
   },
 });
 

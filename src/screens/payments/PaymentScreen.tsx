@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
+import {
+  View,
+  Text,
+  StyleSheet,
   TextInput,
   TouchableOpacity,
   StatusBar,
@@ -14,9 +14,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { usePaystack } from 'react-native-paystack-webview';
+import Icon from 'react-native-vector-icons/MaterialIcons';
+import PinVerificationModal from '@/components/PinVerificationModal';
 import { useWalletStore } from '@/store/walletStore';
 import { useAuthStore } from '@/store/authStore';
 import { formatCurrency } from '@/utils/formatters';
+import theme from '@/theme';
 import api from '../../services/api';
 
 interface PaymentScreenProps {}
@@ -42,6 +45,8 @@ const PaymentScreen: React.FC<PaymentScreenProps> = () => {
   const wallets = useWalletStore((state) => state.wallets);
   const refreshWallets = useWalletStore((state) => state.refreshWallets);
   const user = useAuthStore((state) => state.user);
+  const isPinSet = useAuthStore((state) => state.isPinSet);
+  const consumePinToken = useAuthStore((state) => state.consumePinToken);
   
   // Get main wallet balance
   const mainWallet = wallets.find(w => w.wallet_type === 'main');
@@ -52,42 +57,68 @@ const PaymentScreen: React.FC<PaymentScreenProps> = () => {
   const [merchantCode, setMerchantCode] = useState('');
   const [description, setDescription] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [paystackData, setPaystackData] = useState<{
-    accessCode: string;
-    reference: string;
-    email: string;
-  } | null>(null);
+  const [pinModalVisible, setPinModalVisible] = useState(false);
+  const pinRequestRef = useRef<{ resolve: (token: string) => void; reject: (error: Error) => void } | null>(null);
+
+  const requestPinToken = () =>
+    new Promise<string>((resolve, reject) => {
+      pinRequestRef.current = { resolve, reject };
+      setPinModalVisible(true);
+    });
+
+  const handlePinModalSuccess = (token: string) => {
+    if (pinRequestRef.current) {
+      pinRequestRef.current.resolve(token);
+      pinRequestRef.current = null;
+    }
+    setPinModalVisible(false);
+  };
+
+  const handlePinModalCancel = () => {
+    if (pinRequestRef.current) {
+      pinRequestRef.current.reject(new Error('PIN entry cancelled'));
+      pinRequestRef.current = null;
+    }
+    setPinModalVisible(false);
+  };
   
   // Fetch wallets on mount to get current balance
   useEffect(() => {
     refreshWallets();
-  }, []);
+
+    return () => {
+      if (pinRequestRef.current) {
+        pinRequestRef.current.reject(new Error('PIN entry cancelled'));
+        pinRequestRef.current = null;
+      }
+    };
+  }, [refreshWallets]);
 
   const paymentOptions: PaymentOption[] = [
     {
       id: 'mpesa',
       name: 'M-Pesa',
-      icon: '📱',
-      description: 'Pay via M-Pesa mobile money'
+      icon: 'phone-android',
+      description: 'Pay via M-Pesa mobile money',
     },
     {
       id: 'airtel',
       name: 'Airtel Money',
-      icon: '💰',
-      description: 'Pay via Airtel Money'
+      icon: 'smartphone',
+      description: 'Pay via Airtel Money',
     },
     {
       id: 'card',
       name: 'Debit Card',
-      icon: '💳',
-      description: 'Pay with your debit card'
+      icon: 'credit-card',
+      description: 'Pay with your debit card',
     },
     {
       id: 'wallet',
       name: 'Wallet Balance',
-      icon: '👛',
-      description: 'Pay from your Zanari wallet'
-    }
+      icon: 'account-balance-wallet',
+      description: 'Pay from your Zanari wallet',
+    },
   ];
 
   const formatAmount = (text: string) => {
@@ -169,11 +200,33 @@ const PaymentScreen: React.FC<PaymentScreenProps> = () => {
       }
     }
 
+    if (!isPinSet) {
+      Alert.alert(
+        'Set up your PIN',
+        'You need to create a transaction PIN before authorizing payments.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Set Up PIN',
+            onPress: () => navigation.navigate('MainTabs', { screen: 'Settings' }),
+          },
+        ],
+      );
+      return;
+    }
+
+    let pinToken: string;
+    try {
+      pinToken = await requestPinToken();
+    } catch {
+      return;
+    }
+
     setIsLoading(true);
 
     try {
       let response: any;
-      
+
       if (mode === 'topup') {
         // Top-up: Use Paystack to receive external payment and credit wallet
         // This is a DEPOSIT transaction - user pays with M-Pesa/Card to add money
@@ -181,12 +234,13 @@ const PaymentScreen: React.FC<PaymentScreenProps> = () => {
           amount: amountInCents,
           payment_method: selectedPaymentMethod,
           description: description || 'Wallet top-up',
+          pin_token: pinToken,
         });
       } else {
         // Merchant payment: Deduct from wallet and pay merchant
-        const merchantInfo: any = {};
+        const merchantInfo: any = { name: 'Merchant payment' };
         const code = merchantCode.trim();
-        
+
         // Simple validation: if numeric, treat as till_number
         if (/^\d{4,10}$/.test(code)) {
           merchantInfo.till_number = code;
@@ -201,7 +255,7 @@ const PaymentScreen: React.FC<PaymentScreenProps> = () => {
 
         response = await api.post('/payments/merchant', {
           amount: amountInCents,
-          pin_token: 'txn_' + Date.now(), // In production, get from PIN verification screen
+          pin_token: pinToken,
           merchant_info: merchantInfo,
           description: description || undefined,
         });
@@ -329,6 +383,7 @@ const PaymentScreen: React.FC<PaymentScreenProps> = () => {
         );
       }
     } finally {
+      consumePinToken();
       setIsLoading(false);
     }
   };
@@ -350,12 +405,12 @@ const PaymentScreen: React.FC<PaymentScreenProps> = () => {
             key={option.id}
             style={[
               styles.paymentMethodItem,
-              selectedPaymentMethod === option.id && styles.paymentMethodSelected
+              selectedPaymentMethod === option.id && styles.paymentMethodSelected,
             ]}
             onPress={() => handlePaymentMethodSelect(option.id)}
           >
             <View style={styles.paymentMethodIcon}>
-              <Text style={styles.paymentMethodIconText}>{option.icon}</Text>
+              <Icon name={option.icon} size={24} color={theme.colors.primary} />
             </View>
             <View style={styles.paymentMethodDetails}>
               <Text style={styles.paymentMethodName}>{option.name}</Text>
@@ -374,16 +429,16 @@ const PaymentScreen: React.FC<PaymentScreenProps> = () => {
 
   return (
     <>
-      <StatusBar barStyle="light-content" backgroundColor="#1B4332" />
-      <SafeAreaView style={styles.container}>
-        <KeyboardAvoidingView 
+      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <KeyboardAvoidingView
           style={styles.keyboardContainer}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
-              <Text style={styles.backButtonText}>←</Text>
+              <Icon name="arrow-back" size={24} color={theme.colors.textPrimary} />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>
               {mode === 'topup' ? 'Top Up Wallet' : 'Make Payment'}
@@ -409,17 +464,16 @@ const PaymentScreen: React.FC<PaymentScreenProps> = () => {
                   value={amount}
                   onChangeText={handleAmountChange}
                   placeholder="0"
-                  placeholderTextColor="#95D5B2"
+                  placeholderTextColor={theme.colors.textTertiary}
                   keyboardType="numeric"
                   maxLength={15}
                   autoFocus={true}
                 />
               </View>
               <Text style={styles.amountHint}>
-                {mode === 'topup' 
+                {mode === 'topup'
                   ? 'Enter amount to add to your wallet (KES 10 - KES 500,000)'
-                  : 'Enter amount between KES 10 - KES 500,000'
-                }
+                  : 'Enter amount between KES 10 - KES 500,000'}
               </Text>
             </View>
 
@@ -429,7 +483,8 @@ const PaymentScreen: React.FC<PaymentScreenProps> = () => {
                 <View style={styles.merchantHeader}>
                   <Text style={styles.sectionTitle}>Merchant Details</Text>
                   <TouchableOpacity style={styles.qrButton} onPress={handleScanQR}>
-                    <Text style={styles.qrButtonText}>📷 Scan QR</Text>
+                    <Icon name="qr-code-scanner" size={16} color={theme.colors.surface} />
+                    <Text style={styles.qrButtonText}>Scan QR</Text>
                   </TouchableOpacity>
                 </View>
                 <TextInput
@@ -437,7 +492,7 @@ const PaymentScreen: React.FC<PaymentScreenProps> = () => {
                   value={merchantCode}
                   onChangeText={setMerchantCode}
                   placeholder="Enter till number (e.g., 123456)"
-                  placeholderTextColor="#95D5B2"
+                  placeholderTextColor={theme.colors.textTertiary}
                   autoCapitalize="none"
                   keyboardType="numeric"
                 />
@@ -446,7 +501,7 @@ const PaymentScreen: React.FC<PaymentScreenProps> = () => {
                   value={description}
                   onChangeText={setDescription}
                   placeholder="Payment description (optional)"
-                  placeholderTextColor="#95D5B2"
+                  placeholderTextColor={theme.colors.textTertiary}
                   multiline
                   numberOfLines={2}
                 />
@@ -459,7 +514,7 @@ const PaymentScreen: React.FC<PaymentScreenProps> = () => {
                   value={description}
                   onChangeText={setDescription}
                   placeholder="Add note (optional)"
-                  placeholderTextColor="#95D5B2"
+                  placeholderTextColor={theme.colors.textTertiary}
                   multiline
                   numberOfLines={2}
                 />
@@ -472,16 +527,21 @@ const PaymentScreen: React.FC<PaymentScreenProps> = () => {
             {/* Round-up Option */}
             <View style={styles.roundUpSection}>
               <View style={styles.roundUpHeader}>
+                <Icon name="savings" size={20} color={theme.colors.accent} />
                 <Text style={styles.roundUpTitle}>Auto Round-up</Text>
-                <Text style={styles.roundUpBadge}>NEW</Text>
+                <View style={styles.roundUpBadge}>
+                  <Text style={styles.roundUpBadgeText}>NEW</Text>
+                </View>
               </View>
               <Text style={styles.roundUpDescription}>
                 Round up this payment and save the spare change
               </Text>
               <View style={styles.roundUpExample}>
                 <Text style={styles.roundUpExampleText}>
-                  Example: Pay KES {getNumericAmount() || 1250}, 
-                  save KES {getNumericAmount() ? (Math.ceil(getNumericAmount() / 100) * 100 - getNumericAmount()).toFixed(2) : '0.00'} 
+                  Example: Pay KES {getNumericAmount() || 1250}, save KES{' '}
+                  {getNumericAmount()
+                    ? (Math.ceil(getNumericAmount() / 100) * 100 - getNumericAmount()).toFixed(2)
+                    : '0.00'}
                 </Text>
               </View>
             </View>
@@ -489,29 +549,60 @@ const PaymentScreen: React.FC<PaymentScreenProps> = () => {
 
           {/* Pay Button */}
           <View style={styles.payButtonSection}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[
-                styles.payButton, 
-                (!amount || !selectedPaymentMethod || getNumericAmount() <= 0 || isLoading) && styles.payButtonDisabled
+                styles.payButton,
+                (!amount ||
+                  !selectedPaymentMethod ||
+                  getNumericAmount() <= 0 ||
+                  isLoading) &&
+                  styles.payButtonDisabled,
               ]}
               onPress={handleProceedToPay}
               disabled={!amount || !selectedPaymentMethod || getNumericAmount() <= 0 || isLoading}
             >
-              <Text style={[
-                styles.payButtonText,
-                (!amount || !selectedPaymentMethod || getNumericAmount() <= 0 || isLoading) && styles.payButtonTextDisabled
-              ]}>
-                {isLoading ? 'Processing...' : 
-                 mode === 'topup' ? `Add KES ${amount || '0'} to Wallet` : `Pay KES ${amount || '0'}`}
+              <Text
+                style={[
+                  styles.payButtonText,
+                  (!amount ||
+                    !selectedPaymentMethod ||
+                    getNumericAmount() <= 0 ||
+                    isLoading) &&
+                    styles.payButtonTextDisabled,
+                ]}
+              >
+                {isLoading
+                  ? 'Processing...'
+                  : mode === 'topup'
+                  ? `Add KES ${amount || '0'} to Wallet`
+                  : `Pay KES ${amount || '0'}`}
               </Text>
             </TouchableOpacity>
             {mode === 'topup' && (
               <Text style={styles.topupHint}>
-                💡 You'll pay with {selectedPaymentMethod === 'mpesa' ? 'M-Pesa' : selectedPaymentMethod === 'card' ? 'your card' : 'selected method'} to add money to your wallet
+                💡 You'll pay with{' '}
+                {selectedPaymentMethod === 'mpesa'
+                  ? 'M-Pesa'
+                  : selectedPaymentMethod === 'card'
+                  ? 'your card'
+                  : 'selected method'}{' '}
+                to add money to your wallet
               </Text>
             )}
           </View>
         </KeyboardAvoidingView>
+
+        <PinVerificationModal
+          visible={pinModalVisible}
+          title={mode === 'topup' ? 'Authorize top-up' : 'Authorize payment'}
+          subtitle={
+            mode === 'topup'
+              ? 'Enter your PIN to authorize this wallet top-up'
+              : 'Enter your PIN to authorize this payment'
+          }
+          onSuccess={handlePinModalSuccess}
+          onCancel={handlePinModalCancel}
+        />
       </SafeAreaView>
     </>
   );
@@ -520,7 +611,7 @@ const PaymentScreen: React.FC<PaymentScreenProps> = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1B4332',
+    backgroundColor: theme.colors.surface,
   },
   keyboardContainer: {
     flex: 1,
@@ -528,188 +619,179 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 16,
+    justifyContent: 'space-between',
+    paddingHorizontal: theme.spacing.base,
+    paddingVertical: theme.spacing.md,
+    backgroundColor: theme.colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.gray100,
   },
   backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(183, 228, 199, 0.2)',
-    justifyContent: 'center',
+    width: 40,
+    height: 40,
     alignItems: 'center',
-  },
-  backButtonText: {
-    fontSize: 20,
-    color: '#ffffff',
-    fontWeight: '600',
+    justifyContent: 'center',
   },
   headerTitle: {
     flex: 1,
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#ffffff',
+    fontSize: theme.fontSizes.lg,
+    fontFamily: theme.fonts.bold,
+    color: theme.colors.textPrimary,
     textAlign: 'center',
-    fontFamily: 'System',
+    letterSpacing: -0.5,
   },
   headerSpacer: {
-    width: 44,
+    width: 40,
   },
   content: {
     flex: 1,
-    paddingHorizontal: 24,
+    paddingHorizontal: theme.spacing.base,
+    paddingTop: theme.spacing.base,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    marginBottom: 12,
-    fontFamily: 'System',
+    fontSize: theme.fontSizes.base,
+    fontFamily: theme.fonts.bold,
+    color: theme.colors.textPrimary,
+    marginBottom: theme.spacing.sm,
   },
   amountSection: {
-    marginBottom: 32,
+    marginBottom: theme.spacing.xl,
   },
   balanceHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: theme.spacing.sm,
   },
   availableBalanceText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#B7E4C7',
-    fontFamily: 'System',
+    fontSize: theme.fontSizes.sm,
+    fontFamily: theme.fonts.medium,
+    color: theme.colors.accent,
   },
   amountInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(183, 228, 199, 0.1)',
-    borderRadius: 16,
+    backgroundColor: theme.colors.backgroundLight,
+    borderRadius: theme.borderRadius.lg,
     borderWidth: 1,
-    borderColor: 'rgba(183, 228, 199, 0.3)',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    borderColor: theme.colors.border,
+    paddingHorizontal: theme.spacing.base,
+    paddingVertical: theme.spacing.md,
   },
   currencySymbol: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    marginRight: 12,
-    fontFamily: 'System',
+    fontSize: theme.fontSizes['2xl'],
+    fontFamily: theme.fonts.bold,
+    color: theme.colors.textPrimary,
+    marginRight: theme.spacing.sm,
   },
   amountInput: {
     flex: 1,
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    fontFamily: 'System',
+    fontSize: theme.fontSizes['2xl'],
+    fontFamily: theme.fonts.bold,
+    color: theme.colors.textPrimary,
   },
   amountHint: {
-    fontSize: 12,
-    color: '#95D5B2',
-    marginTop: 8,
-    fontFamily: 'System',
+    fontSize: theme.fontSizes.xs,
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.textSecondary,
+    marginTop: theme.spacing.sm,
   },
   merchantSection: {
-    marginBottom: 32,
+    marginBottom: theme.spacing.xl,
   },
   merchantHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: theme.spacing.sm,
   },
   qrButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: '#52B788',
-    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    backgroundColor: theme.colors.accent,
+    borderRadius: theme.borderRadius.DEFAULT,
   },
   qrButtonText: {
-    fontSize: 12,
-    color: '#ffffff',
-    fontWeight: '600',
-    fontFamily: 'System',
+    fontSize: theme.fontSizes.xs,
+    fontFamily: theme.fonts.semiBold,
+    color: theme.colors.surface,
   },
   merchantInput: {
-    backgroundColor: 'rgba(183, 228, 199, 0.1)',
-    borderRadius: 12,
+    backgroundColor: theme.colors.backgroundLight,
+    borderRadius: theme.borderRadius.lg,
     borderWidth: 1,
-    borderColor: 'rgba(183, 228, 199, 0.3)',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    color: '#ffffff',
-    marginBottom: 12,
-    fontFamily: 'System',
+    borderColor: theme.colors.border,
+    paddingHorizontal: theme.spacing.base,
+    paddingVertical: theme.spacing.md,
+    fontSize: theme.fontSizes.base,
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.textPrimary,
+    marginBottom: theme.spacing.sm,
   },
   descriptionInput: {
-    backgroundColor: 'rgba(183, 228, 199, 0.1)',
-    borderRadius: 12,
+    backgroundColor: theme.colors.backgroundLight,
+    borderRadius: theme.borderRadius.lg,
     borderWidth: 1,
-    borderColor: 'rgba(183, 228, 199, 0.3)',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    color: '#ffffff',
-    fontFamily: 'System',
+    borderColor: theme.colors.border,
+    paddingHorizontal: theme.spacing.base,
+    paddingVertical: theme.spacing.md,
+    fontSize: theme.fontSizes.base,
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.textPrimary,
     textAlignVertical: 'top',
   },
   topupSection: {
-    marginBottom: 32,
+    marginBottom: theme.spacing.xl,
   },
   paymentMethodsContainer: {
-    marginBottom: 32,
+    marginBottom: theme.spacing.xl,
   },
   paymentMethodItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(183, 228, 199, 0.1)',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    backgroundColor: theme.colors.backgroundLight,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.base,
+    marginBottom: theme.spacing.sm,
     borderWidth: 1,
-    borderColor: 'rgba(183, 228, 199, 0.3)',
+    borderColor: theme.colors.border,
   },
   paymentMethodSelected: {
-    borderColor: '#52B788',
-    backgroundColor: 'rgba(82, 183, 136, 0.2)',
+    borderColor: theme.colors.accent,
+    backgroundColor: `${theme.colors.accent}15`,
   },
   paymentMethodIcon: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: `${theme.colors.primary}10`,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
-  },
-  paymentMethodIconText: {
-    fontSize: 20,
+    marginRight: theme.spacing.base,
   },
   paymentMethodDetails: {
     flex: 1,
   },
   paymentMethodName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#ffffff',
-    marginBottom: 4,
-    fontFamily: 'System',
+    fontSize: theme.fontSizes.base,
+    fontFamily: theme.fonts.semiBold,
+    color: theme.colors.textPrimary,
+    marginBottom: 2,
   },
   paymentMethodDescription: {
-    fontSize: 12,
-    color: '#B7E4C7',
-    fontFamily: 'System',
+    fontSize: theme.fontSizes.sm,
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.textSecondary,
   },
   radioButton: {
     width: 20,
     height: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: '#52B788',
+    borderColor: theme.colors.accent,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -717,92 +799,91 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#52B788',
+    backgroundColor: theme.colors.accent,
   },
   roundUpSection: {
-    backgroundColor: 'rgba(82, 183, 136, 0.1)',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 32,
+    backgroundColor: `${theme.colors.accent}10`,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.base,
+    marginBottom: theme.spacing.xl,
+    borderWidth: 1,
+    borderColor: `${theme.colors.accent}30`,
   },
   roundUpHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
   },
   roundUpTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#ffffff',
-    fontFamily: 'System',
+    fontSize: theme.fontSizes.base,
+    fontFamily: theme.fonts.semiBold,
+    color: theme.colors.textPrimary,
+    flex: 1,
   },
   roundUpBadge: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    color: '#1B4332',
-    backgroundColor: '#52B788',
-    paddingHorizontal: 6,
+    paddingHorizontal: theme.spacing.sm,
     paddingVertical: 2,
-    borderRadius: 4,
-    marginLeft: 8,
-    fontFamily: 'System',
+    backgroundColor: theme.colors.accent,
+    borderRadius: theme.borderRadius.sm,
+  },
+  roundUpBadgeText: {
+    fontSize: 10,
+    fontFamily: theme.fonts.bold,
+    color: theme.colors.surface,
   },
   roundUpDescription: {
-    fontSize: 14,
-    color: '#B7E4C7',
-    marginBottom: 8,
-    fontFamily: 'System',
+    fontSize: theme.fontSizes.sm,
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.sm,
+    lineHeight: 20,
   },
   roundUpExample: {
-    backgroundColor: 'rgba(27, 67, 50, 0.3)',
-    padding: 8,
-    borderRadius: 6,
+    backgroundColor: theme.colors.backgroundLight,
+    padding: theme.spacing.sm,
+    borderRadius: theme.borderRadius.DEFAULT,
   },
   roundUpExampleText: {
-    fontSize: 12,
-    color: '#95D5B2',
-    fontFamily: 'System',
+    fontSize: theme.fontSizes.xs,
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.textSecondary,
   },
   payButtonSection: {
-    paddingHorizontal: 24,
-    paddingBottom: 32,
-    paddingTop: 16,
+    paddingHorizontal: theme.spacing.base,
+    paddingBottom: theme.spacing['2xl'],
+    paddingTop: theme.spacing.base,
+    backgroundColor: theme.colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.gray100,
   },
   payButton: {
-    backgroundColor: '#52B788',
-    paddingVertical: 16,
-    borderRadius: 12,
+    backgroundColor: theme.colors.primary,
+    paddingVertical: theme.spacing.base,
+    borderRadius: theme.borderRadius.xl,
     alignItems: 'center',
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    ...theme.shadows.DEFAULT,
   },
   payButtonDisabled: {
-    backgroundColor: 'rgba(82, 183, 136, 0.3)',
+    backgroundColor: theme.colors.disabled,
     elevation: 0,
     shadowOpacity: 0,
   },
   payButtonText: {
-    color: '#ffffff',
-    fontSize: 18,
-    fontWeight: 'bold',
-    fontFamily: 'System',
+    color: theme.colors.surface,
+    fontSize: theme.fontSizes.lg,
+    fontFamily: theme.fonts.bold,
   },
   payButtonTextDisabled: {
-    color: 'rgba(255, 255, 255, 0.5)',
+    color: theme.colors.textTertiary,
   },
   topupHint: {
-    fontSize: 13,
-    color: '#B7E4C7',
+    fontSize: theme.fontSizes.sm,
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.textSecondary,
     textAlign: 'center',
-    marginTop: 12,
-    fontFamily: 'System',
-    lineHeight: 18,
+    marginTop: theme.spacing.sm,
+    lineHeight: 20,
   },
 });
 

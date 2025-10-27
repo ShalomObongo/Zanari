@@ -1,217 +1,162 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
+import React, { useEffect, useState, useRef } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
   TouchableOpacity,
   StatusBar,
   KeyboardAvoidingView,
   Platform,
   Alert,
-  Vibration,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 
-interface PINEntryScreenProps {}
+import PINInput from '@/components/PINInput';
+import { useAuthStore } from '@/store/authStore';
+import { PinLockError } from '@/utils/pinSecurity';
 
-const PINEntryScreen: React.FC<PINEntryScreenProps> = () => {
+const LOCK_REFRESH_INTERVAL = 1000;
+
+const PINEntryScreen: React.FC = () => {
   const navigation = useNavigation<any>();
-  
-  const [pin, setPin] = useState('');
-  const [attempts, setAttempts] = useState(0);
-  const [isBlocked, setIsBlocked] = useState(false);
-  const [remainingTime, setRemainingTime] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
 
-  // Progressive PIN delay: 30s → 2min → 5min → 15min
-  const getBlockDuration = (attemptCount: number): number => {
-    const delays = [0, 30, 120, 300, 900]; // seconds
-    const index = Math.min(attemptCount, delays.length - 1);
-    return (delays[index] || 0) * 1000; // convert to milliseconds
-  };
+  const verifyPin = useAuthStore((state) => state.verifyPin);
+  const clearAuth = useAuthStore((state) => state.clearAuth);
+  const isVerifyingPin = useAuthStore((state) => state.isVerifyingPin);
+  const failedPinAttempts = useAuthStore((state) => state.failedPinAttempts);
+  const pinLockedUntil = useAuthStore((state) => state.pinLockedUntil);
+  const getIsPinLocked = useAuthStore((state) => state.getIsPinLocked);
+  const getRemainingLockTime = useAuthStore((state) => state.getRemainingLockTime);
 
+  const [pinValue, setPinValue] = useState('');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showError, setShowError] = useState(false);
+  const [remainingLockSeconds, setRemainingLockSeconds] = useState<number>(0);
+  const [isLocked, setIsLocked] = useState(false);
+
+  // Track previous lock state to detect transitions
+  const prevLockedRef = useRef(false);
+
+  // Update lock state periodically since pinLockedUntil is a Date we need to check against current time
   useEffect(() => {
-    let timer: ReturnType<typeof setInterval> | undefined;
-    
-    if (isBlocked && remainingTime > 0) {
-      timer = setInterval(() => {
-        setRemainingTime((prev) => {
-          if (prev <= 1000) {
-            setIsBlocked(false);
-            return 0;
-          }
-          return prev - 1000;
-        });
-      }, 1000);
-    }
+    const updateLockState = () => {
+      const locked = getIsPinLocked();
+      const wasLocked = prevLockedRef.current;
 
-    return () => {
-      if (timer) clearInterval(timer);
-    };
-  }, [isBlocked, remainingTime]);
+      setIsLocked(locked);
 
-  const formatTime = (milliseconds: number): string => {
-    const minutes = Math.floor(milliseconds / 60000);
-    const seconds = Math.floor((milliseconds % 60000) / 1000);
-    
-    if (minutes > 0) {
-      return `${minutes}m ${seconds}s`;
-    }
-    return `${seconds}s`;
-  };
+      if (!locked) {
+        setRemainingLockSeconds(0);
 
-  const handleNumberPress = (number: string) => {
-    if (isBlocked || isLoading) return;
-    
-    if (pin.length < 4) {
-      setPin(pin + number);
-    }
-  };
-
-  const handleBackspace = () => {
-    if (isBlocked || isLoading) return;
-    setPin(pin.slice(0, -1));
-  };
-
-  const handlePINSubmit = async () => {
-    if (pin.length !== 4 || isBlocked || isLoading) return;
-
-    setIsLoading(true);
-    
-    try {
-      // Simulate PIN verification API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // For demo purposes, accept "1234" as correct PIN
-      if (pin === '1234') {
-        // Successful authentication
-        setAttempts(0);
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'Main' }],
-        });
-      } else {
-        // Failed attempt
-        const newAttempts = attempts + 1;
-        setAttempts(newAttempts);
-        setPin('');
-        
-        Vibration.vibrate([0, 400, 200, 400]);
-        
-        if (newAttempts >= 3) {
-          // Block user with progressive delay
-          const blockDuration = getBlockDuration(newAttempts);
-          setRemainingTime(blockDuration);
-          setIsBlocked(true);
-          
-          Alert.alert(
-            'Account Temporarily Locked',
-            `Too many failed attempts. Please wait ${formatTime(blockDuration)} before trying again.`,
-            [{ text: 'OK' }]
-          );
-        } else {
-          Alert.alert(
-            'Incorrect PIN',
-            `Wrong PIN. ${3 - newAttempts} attempts remaining.`,
-            [{ text: 'Try Again' }]
-          );
+        // Lock just expired - clear error state
+        if (wasLocked) {
+          setShowError(false);
+          setErrorMessage(null);
+          setPinValue('');
         }
+      } else {
+        setRemainingLockSeconds(getRemainingLockTime());
       }
+
+      prevLockedRef.current = locked;
+    };
+
+    // Initial update
+    updateLockState();
+
+    // Update every second
+    const timer = setInterval(updateLockState, 1000);
+
+    return () => clearInterval(timer);
+  }, [getIsPinLocked, getRemainingLockTime]);
+
+  // Clear PIN value after verification completes
+  useEffect(() => {
+    if (!isVerifyingPin) {
+      setPinValue('');
+    }
+  }, [isVerifyingPin]);
+
+  const formatRemaining = (seconds: number) => {
+    if (seconds <= 0) {
+      return 'a moment';
+    }
+    if (seconds < 60) {
+      return `${seconds}s`;
+    }
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    if (minutes >= 60) {
+      const hours = Math.floor(minutes / 60);
+      const mins = minutes % 60;
+      return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+    }
+    return remainingSeconds > 0 ? `${minutes}m ${remainingSeconds}s` : `${minutes}m`;
+  };
+
+  const handlePinComplete = async (enteredPin: string) => {
+    if (isLocked) {
+      setShowError(true);
+      setErrorMessage(`PIN temporarily locked. Try again in ${formatRemaining(remainingLockSeconds)}.`);
+      return;
+    }
+
+    try {
+      setShowError(false);
+      setErrorMessage(null);
+      await verifyPin({ pin: enteredPin });
     } catch (error) {
-      Alert.alert('Authentication Error', 'Unable to verify PIN. Please try again.');
-      setPin('');
-    } finally {
-      setIsLoading(false);
+      if (error instanceof PinLockError) {
+        setShowError(true);
+        setErrorMessage(
+          `Too many attempts. Try again in ${formatRemaining(
+            Math.max(1, Math.ceil((error.unlockAt.getTime() - Date.now()) / 1000)),
+          )}.`,
+        );
+        setRemainingLockSeconds(getRemainingLockTime());
+        return;
+      }
+
+      const message = error instanceof Error && error.message ? error.message : 'Incorrect PIN. Please try again.';
+      setShowError(true);
+      setErrorMessage(message);
     }
   };
 
-  const handleForgotPIN = () => {
+  const handleGoBack = () => {
     Alert.alert(
-      'Reset PIN',
-      'To reset your PIN, you will need to verify your identity using your registered phone number.',
+      'Log Out',
+      'Are you sure you want to log out? You will need to sign in again.',
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Reset PIN', 
-          onPress: () => {
-            navigation.navigate('Login');
-          }
-        }
-      ]
+        {
+          text: 'Log Out',
+          style: 'destructive',
+          onPress: async () => {
+            await clearAuth();
+          },
+        },
+      ],
     );
   };
 
-  const handleBiometric = () => {
-    Alert.alert('Coming Soon', 'Biometric authentication will be available in a future update.');
-  };
-
-  const renderPinDots = () => {
-    return (
-      <View style={styles.pinDotsContainer}>
-        {[0, 1, 2, 3].map((index) => (
-          <View
-            key={index}
-            style={[
-              styles.pinDot,
-              index < pin.length && styles.pinDotFilled,
-              attempts > 0 && !isBlocked && styles.pinDotError
-            ]}
-          />
-        ))}
-      </View>
-    );
-  };
-
-  const renderKeypad = () => {
-    const keypadNumbers = [
-      ['1', '2', '3'],
-      ['4', '5', '6'],
-      ['7', '8', '9'],
-      ['', '0', 'backspace']
-    ];
-
-    return (
-      <View style={styles.keypadContainer}>
-        {keypadNumbers.map((row, rowIndex) => (
-          <View key={rowIndex} style={styles.keypadRow}>
-            {row.map((item, itemIndex) => (
-              <TouchableOpacity
-                key={itemIndex}
-                style={[
-                  styles.keypadButton,
-                  item === '' && styles.keypadButtonEmpty,
-                  (isBlocked || isLoading) && styles.keypadButtonDisabled
-                ]}
-                onPress={() => {
-                  if (item === 'backspace') {
-                    handleBackspace();
-                  } else if (item !== '') {
-                    handleNumberPress(item);
-                    // Auto-submit when 4 digits entered
-                    if (pin.length === 3) {
-                      setTimeout(() => handlePINSubmit(), 100);
-                    }
-                  }
-                }}
-                disabled={item === '' || isBlocked || isLoading}
-              >
-                {item === 'backspace' ? (
-                  <Text style={[
-                    styles.keypadButtonText,
-                    (isBlocked || isLoading) && styles.keypadButtonTextDisabled
-                  ]}>⌫</Text>
-                ) : (
-                  <Text style={[
-                    styles.keypadButtonText,
-                    (isBlocked || isLoading) && styles.keypadButtonTextDisabled
-                  ]}>{item}</Text>
-                )}
-              </TouchableOpacity>
-            ))}
-          </View>
-        ))}
-      </View>
+  const handleForgotPin = () => {
+    Alert.alert(
+      'Reset PIN',
+      'To reset your PIN, you need to log out and log back in. This will verify your identity with OTP. Continue?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Log Out',
+          style: 'destructive',
+          onPress: async () => {
+            await clearAuth();
+            // The AppNavigator will automatically redirect to Auth screens
+          },
+        },
+      ],
     );
   };
 
@@ -219,68 +164,65 @@ const PINEntryScreen: React.FC<PINEntryScreenProps> = () => {
     <>
       <StatusBar barStyle="light-content" backgroundColor="#1B4332" />
       <SafeAreaView style={styles.container}>
-        <KeyboardAvoidingView 
+        <KeyboardAvoidingView
           style={styles.keyboardContainer}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
+          {/* Header with Back Button */}
+          <View style={styles.header}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={handleGoBack}
+              disabled={isVerifyingPin}
+            >
+              <Icon name="arrow-back" size={24} color="#ffffff" />
+            </TouchableOpacity>
+          </View>
+
           <View style={styles.content}>
-            {/* Logo Section */}
             <View style={styles.logoSection}>
               <View style={styles.logoPlaceholder}>
-                <Text style={styles.logoText}>Z2</Text>
+                <Text style={styles.logoText}>Z</Text>
               </View>
               <Text style={styles.appName}>Zanari</Text>
             </View>
 
-            {/* Title Section */}
             <View style={styles.titleSection}>
               <Text style={styles.title}>Enter your PIN</Text>
-              {isBlocked ? (
+              {isLocked ? (
                 <Text style={styles.blockedText}>
-                  Account locked. Try again in {formatTime(remainingTime)}
+                  Account locked. Try again in {formatRemaining(remainingLockSeconds)}
                 </Text>
               ) : (
                 <Text style={styles.subtitle}>
-                  {attempts > 0 
-                    ? `${3 - attempts} attempts remaining`
-                    : 'Enter your 4-digit PIN to continue'
-                  }
+                  {failedPinAttempts > 0
+                    ? `${Math.max(0, 3 - failedPinAttempts)} attempts remaining`
+                    : 'Enter your 4-digit PIN to continue'}
                 </Text>
               )}
             </View>
 
-            {/* PIN Display */}
             <View style={styles.pinSection}>
-              {renderPinDots()}
-              
-              {isLoading && (
-                <Text style={styles.loadingText}>Verifying...</Text>
-              )}
+              <PINInput
+                value={pinValue}
+                onChangeText={setPinValue}
+                onComplete={handlePinComplete}
+                secureTextEntry
+                autoFocus
+                disabled={isLocked || isVerifyingPin}
+                error={showError}
+                errorMessage={errorMessage ?? undefined}
+                size="large"
+                variant="dark"
+              />
+              {isVerifyingPin && <Text style={styles.loadingText}>Verifying…</Text>}
             </View>
 
-            {/* Keypad */}
-            <View style={styles.keypadSection}>
-              {renderKeypad()}
-            </View>
-
-            {/* Footer Actions */}
             <View style={styles.footerSection}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.footerButton}
-                onPress={handleBiometric}
-                disabled={isBlocked}
-              >
-                <Text style={[
-                  styles.footerButtonText,
-                  isBlocked && styles.footerButtonTextDisabled
-                ]}>
-                  👆 Use Biometrics
-                </Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.footerButton}
-                onPress={handleForgotPIN}
+                onPress={handleForgotPin}
+                disabled={isVerifyingPin}
               >
                 <Text style={styles.footerButtonText}>Forgot PIN?</Text>
               </TouchableOpacity>
@@ -300,53 +242,65 @@ const styles = StyleSheet.create({
   keyboardContainer: {
     flex: 1,
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 8,
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(183, 228, 199, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   content: {
     flex: 1,
     paddingHorizontal: 24,
-    paddingTop: 60,
+    paddingTop: 20,
   },
   logoSection: {
     alignItems: 'center',
-    marginBottom: 60,
+    marginBottom: 48,
   },
   logoPlaceholder: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: '#52B788',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
     elevation: 4,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
   },
   logoText: {
-    fontSize: 20,
+    fontSize: 36,
     fontWeight: 'bold',
     color: '#ffffff',
     fontFamily: 'System',
   },
   appName: {
-    fontSize: 18,
+    fontSize: 24,
     fontWeight: '600',
     color: '#ffffff',
     fontFamily: 'System',
   },
   titleSection: {
     alignItems: 'center',
-    marginBottom: 48,
+    marginBottom: 40,
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#ffffff',
-    marginBottom: 8,
+    marginBottom: 12,
     fontFamily: 'System',
   },
   subtitle: {
@@ -360,28 +314,12 @@ const styles = StyleSheet.create({
     color: '#FF6B6B',
     textAlign: 'center',
     fontFamily: 'System',
+    fontWeight: '600',
   },
   pinSection: {
     alignItems: 'center',
-    marginBottom: 48,
-  },
-  pinDotsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  pinDot: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: 'rgba(183, 228, 199, 0.3)',
-    marginHorizontal: 12,
-  },
-  pinDotFilled: {
-    backgroundColor: '#52B788',
-  },
-  pinDotError: {
-    backgroundColor: '#FF6B6B',
+    marginBottom: 32,
+    minHeight: 120,
   },
   loadingText: {
     marginTop: 16,
@@ -389,60 +327,21 @@ const styles = StyleSheet.create({
     color: '#B7E4C7',
     fontFamily: 'System',
   },
-  keypadSection: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  keypadContainer: {
-    alignSelf: 'center',
-  },
-  keypadRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  keypadButton: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: 'rgba(183, 228, 199, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginHorizontal: 16,
-  },
-  keypadButtonEmpty: {
-    backgroundColor: 'transparent',
-  },
-  keypadButtonDisabled: {
-    backgroundColor: 'rgba(183, 228, 199, 0.05)',
-    opacity: 0.5,
-  },
-  keypadButtonText: {
-    fontSize: 24,
-    color: '#ffffff',
-    fontWeight: '600',
-    fontFamily: 'System',
-  },
-  keypadButtonTextDisabled: {
-    color: 'rgba(255, 255, 255, 0.3)',
-  },
   footerSection: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
+    paddingTop: 16,
     paddingBottom: 32,
   },
   footerButton: {
     paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
   },
   footerButtonText: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#52B788',
-    fontWeight: '500',
+    fontWeight: '600',
     fontFamily: 'System',
-  },
-  footerButtonTextDisabled: {
-    color: 'rgba(82, 183, 136, 0.3)',
   },
 });
 

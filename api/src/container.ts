@@ -21,6 +21,7 @@ import { TransactionService } from './services/TransactionService';
 import { WalletService } from './services/WalletService';
 import { ConsoleNotificationService } from './services/ConsoleNotificationService';
 import { ConsoleOtpSender } from './services/ConsoleOtpSender';
+import { SmtpOtpSender } from './services/SmtpOtpSender';
 import { ConsoleLogger } from './services/ConsoleLogger';
 import { HttpPaystackClient } from './clients/PaystackClient';
 import { createAuthRoutes } from './routes/auth';
@@ -62,7 +63,27 @@ export function createAppContainer() {
   const retryQueue = new SupabaseRetryQueue(supabase);
 
   const notificationService = new ConsoleNotificationService();
-  const otpSender = new ConsoleOtpSender();
+  const smtpHost = process.env.SMTP_HOST;
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPass = process.env.SMTP_PASS;
+  const smtpPort = process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : 587;
+  const smtpSecure = process.env.SMTP_SECURE === 'true';
+  const smtpFrom = process.env.SMTP_FROM ?? 'no-reply@zanari.app';
+
+  const otpSender = smtpHost && smtpUser && smtpPass
+    ? new SmtpOtpSender({
+        host: smtpHost,
+        port: smtpPort,
+        secure: smtpSecure,
+        user: smtpUser,
+        pass: smtpPass,
+        fromAddress: smtpFrom,
+      })
+    : new ConsoleOtpSender();
+  
+  if (!(smtpHost && smtpUser && smtpPass)) {
+    logger.warn('SMTP not fully configured. Falling back to ConsoleOtpSender for email OTP delivery.');
+  }
   const tokenService = new RandomTokenService();
   const pinHasher = new CryptoPinHasher();
   const rateLimiter = new InMemoryRateLimiter();

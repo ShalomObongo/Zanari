@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   View,
   Text,
@@ -10,12 +10,14 @@ import {
   Platform,
   Alert,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-
+import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useAuthStore } from '@/store/authStore';
 import { ApiError } from '@/services/api';
+import theme from '@/theme';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -28,6 +30,8 @@ const SignupScreen: React.FC = () => {
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [emailError, setEmailError] = useState('');
 
   const formatPhoneNumber = (text: string) => {
     const cleaned = text.replace(/\D/g, '');
@@ -46,17 +50,24 @@ const SignupScreen: React.FC = () => {
 
   const isValidKenyanNumber = (value: string) => /^254(7[0-9]{8}|1[0-9]{8})$/.test(value);
 
-  const displayPhoneNumber = (value: string) => {
-    if (value.startsWith('254') && value.length > 3) {
-      return `+${value.slice(0, 3)} ${value.slice(3, 6)} ${value.slice(6, 9)} ${value.slice(9)}`;
-    }
-    return value;
-  };
-
   const handlePhoneChange = (value: string) => {
     const formatted = formatPhoneNumber(value);
     if (formatted.length <= 12) {
       setPhoneNumber(formatted);
+    }
+  };
+
+  const handleEmailChange = (value: string) => {
+    setEmail(value);
+    if (emailError && EMAIL_REGEX.test(value.trim())) {
+      setEmailError('');
+    }
+  };
+
+  const handleEmailBlur = () => {
+    const trimmedEmail = email.trim();
+    if (trimmedEmail && !EMAIL_REGEX.test(trimmedEmail)) {
+      setEmailError('Please enter a valid email address');
     }
   };
 
@@ -85,12 +96,23 @@ const SignupScreen: React.FC = () => {
     }
 
     if (!normalizedEmail || !EMAIL_REGEX.test(normalizedEmail)) {
+      setEmailError('Please enter a valid email address');
       Alert.alert('Invalid Email', 'Please enter a valid email address.');
+      return;
+    }
+
+    if (!normalizedPhone) {
+      Alert.alert('Missing Details', 'Please enter your phone number.');
       return;
     }
 
     if (!isValidKenyanNumber(normalizedPhone)) {
       Alert.alert('Invalid Number', 'Enter a valid Kenyan mobile number (07XX XXX XXX).');
+      return;
+    }
+
+    if (!acceptedTerms) {
+      Alert.alert('Terms Required', 'Please accept the Terms of Service and Privacy Policy to continue.');
       return;
     }
 
@@ -113,112 +135,146 @@ const SignupScreen: React.FC = () => {
     firstName.trim().length >= 2 &&
     lastName.trim().length >= 2 &&
     EMAIL_REGEX.test(email.trim().toLowerCase()) &&
-    isValidKenyanNumber(phoneNumber);
+    phoneNumber.length > 0 &&
+    acceptedTerms;
 
   return (
     <>
-      <StatusBar barStyle="light-content" backgroundColor="#1B4332" />
+      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.backgroundLight} />
       <SafeAreaView style={styles.container}>
         <KeyboardAvoidingView
           style={styles.keyboardContainer}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
+          {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-              <Text style={styles.backButtonText}>←</Text>
+              <Icon name="arrow-back" size={24} color={theme.colors.textPrimary} />
             </TouchableOpacity>
+            <Text style={styles.headerTitle}>Create Account</Text>
+            <View style={styles.headerSpacer} />
           </View>
 
-          <ScrollView contentContainerStyle={styles.content} bounces={false}>
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+          >
+            {/* Title Section */}
             <View style={styles.titleSection}>
-              <Text style={styles.title}>Create your Zanari account</Text>
-              <Text style={styles.subtitle}>
-                Start building smart savings and seamless payments in just a few steps.
-              </Text>
+              <Text style={styles.title}>Create Your Zanari Account</Text>
             </View>
 
+            {/* Form Section */}
             <View style={styles.formSection}>
-              <View style={styles.inputGroupRow}>
-                <View style={[styles.inputContainer, styles.halfWidth]}>
-                  <Text style={styles.inputLabel}>First name</Text>
-                  <TextInput
-                    style={styles.textInput}
-                    value={firstName}
-                    onChangeText={setFirstName}
-                    placeholder="Sarah"
-                    placeholderTextColor="#95D5B2"
-                    autoCapitalize="words"
-                    returnKeyType="next"
-                  />
-                </View>
-                <View style={[styles.inputContainer, styles.halfWidth]}>
-                  <Text style={styles.inputLabel}>Last name</Text>
-                  <TextInput
-                    style={styles.textInput}
-                    value={lastName}
-                    onChangeText={setLastName}
-                    placeholder="Mutindi"
-                    placeholderTextColor="#95D5B2"
-                    autoCapitalize="words"
-                    returnKeyType="next"
-                  />
-                </View>
-              </View>
-
+              {/* First Name */}
               <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Email address</Text>
+                <Text style={styles.inputLabel}>First Name</Text>
                 <TextInput
                   style={styles.textInput}
-                  value={email}
-                  onChangeText={setEmail}
-                  placeholder="you@example.com"
-                  placeholderTextColor="#95D5B2"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
+                  value={firstName}
+                  onChangeText={setFirstName}
+                  placeholder="Enter your first name"
+                  placeholderTextColor={theme.colors.textTertiary}
+                  autoCapitalize="words"
                   returnKeyType="next"
                 />
               </View>
 
+              {/* Last Name */}
               <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Mobile number</Text>
-                <View style={styles.phoneInputContainer}>
-                  <Text style={styles.countryCode}>🇰🇪 +254</Text>
-                  <TextInput
-                    style={styles.phoneInput}
-                    value={phoneNumber.startsWith('254') ? phoneNumber.slice(3) : phoneNumber}
-                    onChangeText={(value) => handlePhoneChange(`254${value}`)}
-                    placeholder="7XX XXX XXX"
-                    placeholderTextColor="#95D5B2"
-                    keyboardType="phone-pad"
-                    maxLength={9}
-                    returnKeyType="done"
-                  />
-                </View>
-                <Text style={styles.inputHint}>We\'ll send a secure 6-digit code to verify this number.</Text>
+                <Text style={styles.inputLabel}>Last Name</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={lastName}
+                  onChangeText={setLastName}
+                  placeholder="Enter your last name"
+                  placeholderTextColor={theme.colors.textTertiary}
+                  autoCapitalize="words"
+                  returnKeyType="next"
+                />
               </View>
 
+              {/* Email Address with error state */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Email Address</Text>
+                <View style={styles.inputWrapper}>
+                  <TextInput
+                    style={[styles.textInput, emailError && styles.textInputError]}
+                    value={email}
+                    onChangeText={handleEmailChange}
+                    onBlur={handleEmailBlur}
+                    placeholder="Enter your email"
+                    placeholderTextColor={theme.colors.textTertiary}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    returnKeyType="next"
+                  />
+                  {emailError && (
+                    <Icon name="error" size={20} color={theme.colors.error} style={styles.errorIcon} />
+                  )}
+                </View>
+                {emailError && <Text style={styles.errorText}>{emailError}</Text>}
+              </View>
+
+              {/* Phone Number */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>
+                  Phone Number <Text style={styles.optionalText}>(Optional)</Text>
+                </Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={phoneNumber}
+                  onChangeText={handlePhoneChange}
+                  placeholder="Enter your phone number"
+                  placeholderTextColor={theme.colors.textTertiary}
+                  keyboardType="phone-pad"
+                  returnKeyType="done"
+                />
+              </View>
+
+              {/* Terms & Conditions */}
               <TouchableOpacity
-                style={[styles.primaryButton, (!canSubmit || isRegistering) && styles.primaryButtonDisabled]}
-                onPress={handleRegister}
-                disabled={!canSubmit || isRegistering}
+                style={styles.checkboxContainer}
+                onPress={() => setAcceptedTerms(!acceptedTerms)}
+                activeOpacity={0.7}
               >
-                <Text style={[styles.primaryButtonText, (!canSubmit || isRegistering) && styles.primaryButtonTextDisabled]}>
-                  {isRegistering ? 'Creating account...' : 'Create account'}
+                <View style={[styles.checkbox, acceptedTerms && styles.checkboxChecked]}>
+                  {acceptedTerms && <Icon name="check" size={16} color={theme.colors.surface} />}
+                </View>
+                <Text style={styles.checkboxText}>
+                  By creating an account, you agree to our{' '}
+                  <Text style={styles.linkText}>Terms of Service</Text> and{' '}
+                  <Text style={styles.linkText}>Privacy Policy</Text>.
                 </Text>
               </TouchableOpacity>
             </View>
-
-            <View style={styles.footer}>
-              <Text style={styles.footerText}>
-                By continuing, you agree to Zanari&apos;s{' '}
-                <Text style={styles.footerLink}>Terms of Service</Text> and{' '}
-                <Text style={styles.footerLink}>Privacy Policy</Text>.
-              </Text>
-              <TouchableOpacity style={styles.signInPrompt} onPress={handleSignIn}>
-                <Text style={styles.signInText}>Already have an account? Sign in</Text>
-              </TouchableOpacity>
-            </View>
           </ScrollView>
+
+          {/* Footer with button */}
+          <View style={styles.footer}>
+            <TouchableOpacity
+              style={[styles.primaryButton, (!canSubmit || isRegistering) && styles.primaryButtonDisabled]}
+              onPress={handleRegister}
+              disabled={!canSubmit || isRegistering}
+              activeOpacity={0.8}
+            >
+              {isRegistering ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator color={theme.colors.onPrimaryText} style={styles.spinner} />
+                  <Text style={styles.primaryButtonText}>Creating account...</Text>
+                </View>
+              ) : (
+                <Text style={styles.primaryButtonText}>Create account</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={handleSignIn} style={styles.signInPrompt}>
+              <Text style={styles.signInText}>
+                Already have an account? <Text style={styles.signInLink}>Sign in</Text>
+              </Text>
+            </TouchableOpacity>
+          </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
     </>
@@ -228,7 +284,7 @@ const SignupScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1B4332',
+    backgroundColor: theme.colors.backgroundLight,
   },
   keyboardContainer: {
     flex: 1,
@@ -236,159 +292,164 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 8,
+    justifyContent: 'space-between',
+    paddingHorizontal: theme.spacing.base,
+    paddingVertical: theme.spacing.md,
+    borderBottomWidth: 0,
   },
   backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(183, 228, 199, 0.2)',
+    width: 48,
+    height: 48,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  backButtonText: {
-    fontSize: 20,
-    color: '#ffffff',
-    fontWeight: '600',
+  headerTitle: {
+    fontSize: theme.fontSizes.lg,
+    fontFamily: theme.fonts.bold,
+    color: theme.colors.textPrimary,
+    textAlign: 'center',
+    flex: 1,
   },
-  content: {
-    paddingHorizontal: 24,
-    paddingBottom: 48,
+  headerSpacer: {
+    width: 48,
+  },
+  scrollContent: {
+    paddingHorizontal: theme.spacing.base,
+    paddingBottom: theme.spacing.xl,
   },
   titleSection: {
-    marginTop: 16,
-    marginBottom: 32,
+    paddingTop: theme.spacing.lg,
+    paddingBottom: theme.spacing.xl,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    marginBottom: 12,
-    fontFamily: 'System',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#B7E4C7',
-    lineHeight: 24,
-    fontFamily: 'System',
+    fontSize: theme.fontSizes['4xl'],
+    fontFamily: theme.fonts.bold,
+    color: theme.colors.textPrimary,
+    letterSpacing: -0.5,
   },
   formSection: {
-    backgroundColor: 'rgba(183, 228, 199, 0.08)',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(183, 228, 199, 0.2)',
-  },
-  inputGroupRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 16,
-    marginBottom: 16,
-  },
-  halfWidth: {
-    flex: 1,
+    gap: theme.spacing.base,
   },
   inputContainer: {
-    marginBottom: 16,
+    marginBottom: theme.spacing.md,
   },
   inputLabel: {
-    fontSize: 14,
-    color: '#ffffff',
-    fontWeight: '600',
-    marginBottom: 8,
-    fontFamily: 'System',
+    fontSize: theme.fontSizes.base,
+    fontFamily: theme.fonts.medium,
+    color: theme.colors.textPrimary,
+    marginBottom: theme.spacing.sm,
+  },
+  optionalText: {
+    color: theme.colors.textTertiary,
+  },
+  inputWrapper: {
+    position: 'relative',
   },
   textInput: {
-    backgroundColor: 'rgba(27, 67, 50, 0.6)',
-    borderRadius: 12,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.xl,
     borderWidth: 1,
-    borderColor: 'rgba(183, 228, 199, 0.3)',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    color: '#ffffff',
-    fontFamily: 'System',
-  },
-  phoneInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(27, 67, 50, 0.6)',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(183, 228, 199, 0.3)',
-    paddingHorizontal: 16,
+    borderColor: theme.colors.border,
+    paddingHorizontal: theme.spacing.base,
+    paddingVertical: theme.spacing.base,
+    fontSize: theme.fontSizes.base,
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.textPrimary,
     height: 56,
   },
-  countryCode: {
-    fontSize: 16,
-    color: '#ffffff',
-    marginRight: 12,
-    fontFamily: 'System',
+  textInputError: {
+    borderColor: theme.colors.error,
+    paddingRight: 48,
   },
-  phoneInput: {
-    flex: 1,
-    fontSize: 16,
-    color: '#ffffff',
-    fontFamily: 'System',
+  errorIcon: {
+    position: 'absolute',
+    right: theme.spacing.base,
+    top: 18,
   },
-  inputHint: {
-    fontSize: 12,
-    color: '#95D5B2',
+  errorText: {
+    fontSize: theme.fontSizes.sm,
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.error,
     marginTop: 6,
-    fontFamily: 'System',
   },
-  primaryButton: {
-    backgroundColor: '#52B788',
-    paddingVertical: 16,
-    borderRadius: 12,
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    marginTop: theme.spacing.base,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+    justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 3,
-    marginTop: 8,
+    marginTop: 2,
   },
-  primaryButtonDisabled: {
-    backgroundColor: 'rgba(82, 183, 136, 0.35)',
-    shadowOpacity: 0,
-    elevation: 0,
+  checkboxChecked: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
   },
-  primaryButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'System',
+  checkboxText: {
+    flex: 1,
+    fontSize: theme.fontSizes.sm,
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.textSecondary,
+    lineHeight: 20,
   },
-  primaryButtonTextDisabled: {
-    color: 'rgba(255, 255, 255, 0.6)',
+  linkText: {
+    fontFamily: theme.fonts.semiBold,
+    color: theme.colors.primary,
   },
   footer: {
+    paddingHorizontal: theme.spacing.base,
+    paddingTop: theme.spacing.base,
+    paddingBottom: theme.spacing.lg,
+    backgroundColor: theme.colors.backgroundLight,
+    borderTopWidth: 0,
+  },
+  primaryButton: {
+    backgroundColor: theme.colors.primary,
+    height: 56,
+    borderRadius: theme.borderRadius.xl,
+    justifyContent: 'center',
     alignItems: 'center',
-    gap: 12,
+    marginBottom: theme.spacing.base,
+    ...theme.shadows.md,
   },
-  footerText: {
-    fontSize: 12,
-    color: '#95D5B2',
-    textAlign: 'center',
-    lineHeight: 18,
-    fontFamily: 'System',
+  primaryButtonDisabled: {
+    backgroundColor: theme.colors.gray300,
   },
-  footerLink: {
-    color: '#B7E4C7',
-    fontWeight: '500',
+  primaryButtonText: {
+    color: theme.colors.onPrimaryText,
+    fontSize: theme.fontSizes.base,
+    fontFamily: theme.fonts.bold,
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.md,
+  },
+  spinner: {
+    marginRight: theme.spacing.sm,
   },
   signInPrompt: {
-    paddingVertical: 8,
+    alignItems: 'center',
+    paddingVertical: theme.spacing.sm,
   },
   signInText: {
-    fontSize: 14,
-    color: '#B7E4C7',
-    fontWeight: '500',
-    fontFamily: 'System',
+    fontSize: theme.fontSizes.base,
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+  },
+  signInLink: {
+    fontFamily: theme.fonts.bold,
+    color: theme.colors.primary,
   },
 });
 

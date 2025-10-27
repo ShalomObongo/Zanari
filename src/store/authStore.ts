@@ -86,6 +86,7 @@ interface AuthState {
   setAuthenticated: (isAuthenticated: boolean) => void;
   setPinStatus: (isPinSet: boolean, isPinVerified: boolean) => void;
   setPinVerificationToken: (token: string | null) => void;
+  consumePinToken: () => void;
   setFailedPinAttempts: (attempts: number) => void;
   setPinLocked: (lockedUntil: Date | null) => void;
   setPinHashData: (data: PinHashPayload | null) => void;
@@ -117,6 +118,11 @@ const parseDate = (value: JsonDate | Date | null): Date | null => {
   if (value instanceof Date) return value;
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const serializeDate = (value: Date | string | null | undefined): string | null => {
+  const parsed = parseDate(value);
+  return parsed ? parsed.toISOString() : null;
 };
 
 export const useAuthStore = create<AuthState>()(
@@ -177,6 +183,10 @@ export const useAuthStore = create<AuthState>()(
 
       setPinVerificationToken: (token) => {
         set({ pinVerificationToken: token });
+      },
+
+      consumePinToken: () => {
+        set({ pinVerificationToken: null });
       },
 
       setFailedPinAttempts: (attempts) => {
@@ -465,10 +475,10 @@ export const useAuthStore = create<AuthState>()(
         isPinSet: state.isPinSet,
         isPinVerified: state.isPinVerified,
         failedPinAttempts: state.failedPinAttempts,
-        pinLockedUntil: state.pinLockedUntil ? state.pinLockedUntil.toISOString() : null,
+  pinLockedUntil: serializeDate(state.pinLockedUntil),
         pinHashData: state.pinHashData,
-        pinLastFailedAt: state.pinLastFailedAt ? state.pinLastFailedAt.toISOString() : null,
-        lastActivity: state.lastActivity ? state.lastActivity.toISOString() : null,
+  pinLastFailedAt: serializeDate(state.pinLastFailedAt),
+  lastActivity: serializeDate(state.lastActivity),
         pinVerificationToken: state.pinVerificationToken,
       }),
       onRehydrateStorage: () => (state) => {

@@ -1,225 +1,234 @@
 import React from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
+import {
+  View,
+  Text,
+  StyleSheet,
   TouchableOpacity,
   Dimensions,
   StatusBar,
+  ScrollView,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
+import Icon from 'react-native-vector-icons/MaterialIcons';
+import theme from '@/theme';
+
+const { width, height } = Dimensions.get('window');
+
+interface FeatureItemProps {
+  icon: string;
+  title: string;
+  description: string;
+  iconBgColor: string;
+}
+
+const FeatureItem: React.FC<FeatureItemProps> = ({ icon, title, description, iconBgColor }) => (
+  <View style={styles.featureItem}>
+    <View style={[styles.iconCircle, { backgroundColor: iconBgColor }]}>
+      <Icon name={icon} size={24} color="#FFFFFF" />
+    </View>
+    <View style={styles.featureTextContainer}>
+      <Text style={styles.featureTitle}>{title}</Text>
+      <Text style={styles.featureDescription}>{description}</Text>
+    </View>
+  </View>
+);
 
 interface WelcomeScreenProps {}
 
 const WelcomeScreen: React.FC<WelcomeScreenProps> = () => {
   const navigation = useNavigation<any>();
 
-  const handleGetStarted = () => {
-    navigation.navigate('Signup');
-  };
-
-  const handleSignIn = () => {
-    navigation.navigate('Login');
-  };
-
   return (
     <>
-      <StatusBar barStyle="light-content" backgroundColor="#1B4332" />
-      <SafeAreaView style={styles.container}>
-        <View style={styles.content}>
-          {/* Logo/Brand Section */}
-          <View style={styles.brandSection}>
-            <View style={styles.logoPlaceholder}>
-              <Text style={styles.logoText}>Z2</Text>
-            </View>
-            <Text style={styles.title}>Zanari</Text>
-            <Text style={styles.subtitle}>Smart Savings, Seamless Payments</Text>
+      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.backgroundLight} />
+      <View style={styles.container}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Gradient Header */}
+          <LinearGradient
+            colors={['#1B4332', '#2D6A4F', '#52B788', '#B7E4C7', '#f6f8f7']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.gradientHeader}
+          />
+
+          {/* Logo and Tagline */}
+          <View style={styles.headerContent}>
+            <Text style={styles.appName}>Zanari</Text>
+            <Text style={styles.tagline}>Smart and simple banking at your fingertips.</Text>
           </View>
 
-          {/* Features Section */}
-          <View style={styles.featuresSection}>
-            <View style={styles.feature}>
-              <View style={styles.featureIcon}>
-                <Text style={styles.featureIconText}>🪙</Text>
-              </View>
-              <Text style={styles.featureTitle}>Auto Round-Up</Text>
-              <Text style={styles.featureText}>Save spare change automatically with every transaction</Text>
-            </View>
-
-            <View style={styles.feature}>
-              <View style={styles.featureIcon}>
-                <Text style={styles.featureIconText}>📱</Text>
-              </View>
-              <Text style={styles.featureTitle}>Mobile Money</Text>
-              <Text style={styles.featureText}>Send, receive, and pay bills with M-Pesa integration</Text>
-            </View>
-
-            <View style={styles.feature}>
-              <View style={styles.featureIcon}>
-                <Text style={styles.featureIconText}>🎯</Text>
-              </View>
-              <Text style={styles.featureTitle}>Savings Goals</Text>
-              <Text style={styles.featureText}>Set and track your financial goals effortlessly</Text>
-            </View>
+          {/* Features List */}
+          <View style={styles.featuresContainer}>
+            <FeatureItem
+              icon="savings"
+              title="Automated Savings"
+              description="Effortlessly save with round-ups on every transaction."
+              iconBgColor={theme.colors.accent}
+            />
+            <FeatureItem
+              icon="shield"
+              title="Secure Payments"
+              description="Your transactions are always protected with top-tier security."
+              iconBgColor={theme.colors.accentDarker}
+            />
+            <FeatureItem
+              icon="verified-user"
+              title="Quick Verification"
+              description="Get verified in minutes with our streamlined KYC process."
+              iconBgColor={theme.colors.accentDarkest}
+            />
+            <FeatureItem
+              icon="wifi-off"
+              title="Offline Access"
+              description="Access your essential account information, even without internet."
+              iconBgColor={theme.colors.primary}
+            />
           </View>
 
-          {/* CTA Buttons */}
-          <View style={styles.buttonSection}>
-            <TouchableOpacity style={styles.primaryButton} onPress={handleGetStarted}>
-              <Text style={styles.primaryButtonText}>Get Started</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.secondaryButton} onPress={handleSignIn}>
-              <Text style={styles.secondaryButtonText}>Already have an account? Sign In</Text>
-            </TouchableOpacity>
-          </View>
+          {/* Spacer for button area */}
+          <View style={{ height: 120 }} />
+        </ScrollView>
 
-          {/* Footer */}
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Secure • Trusted • Licensed</Text>
-          </View>
+        {/* Action Buttons - Fixed at bottom */}
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity
+            style={styles.primaryButton}
+            onPress={() => navigation.navigate('Signup')}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.primaryButtonText}>Get Started</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            onPress={() => navigation.navigate('Login')}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.secondaryButtonText}>Sign In</Text>
+          </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </View>
     </>
   );
 };
 
-const { width } = Dimensions.get('window');
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1B4332', // Deep emerald green
+    backgroundColor: theme.colors.backgroundLight,
   },
-  content: {
+  scrollView: {
     flex: 1,
-    paddingHorizontal: 24,
-    paddingVertical: 32,
   },
-  brandSection: {
+  scrollContent: {
+    flexGrow: 1,
+  },
+  gradientHeader: {
+    width: '100%',
+    height: Math.min(320, height * 0.36),
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+  },
+  headerContent: {
+    paddingHorizontal: theme.spacing.xl,
+    paddingTop: theme.spacing.xl,
+    paddingBottom: theme.spacing.base,
     alignItems: 'center',
-    marginTop: 40,
-    marginBottom: 60,
   },
-  logoPlaceholder: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#52B788',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 24,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+  appName: {
+    fontSize: theme.fontSizes['4xl'],
+    fontFamily: theme.fonts.bold,
+    color: theme.colors.textPrimary,
+    marginBottom: theme.spacing.sm,
+    letterSpacing: -0.5,
   },
-  logoText: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    fontFamily: 'System',
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    marginBottom: 8,
-    fontFamily: 'System',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#B7E4C7',
+  tagline: {
+    fontSize: theme.fontSizes.base,
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.textSecondary,
     textAlign: 'center',
-    fontFamily: 'System',
+    lineHeight: 24,
   },
-  featuresSection: {
+  featuresContainer: {
+    paddingHorizontal: theme.spacing.base,
+    paddingTop: theme.spacing.lg,
+    gap: theme.spacing.sm,
+  },
+  featureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.surface,
+    paddingHorizontal: theme.spacing.base,
+    paddingVertical: theme.spacing.md,
+    borderRadius: theme.borderRadius.lg,
+    minHeight: 72,
+    ...theme.shadows.sm,
+  },
+  iconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: theme.borderRadius.full,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: theme.spacing.base,
+  },
+  featureTextContainer: {
     flex: 1,
-    justifyContent: 'center',
-    marginBottom: 40,
-  },
-  feature: {
-    alignItems: 'center',
-    marginBottom: 36,
-    paddingHorizontal: 20,
-  },
-  featureIcon: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: 'rgba(183, 228, 199, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  featureIconText: {
-    fontSize: 24,
   },
   featureTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#ffffff',
-    marginBottom: 8,
-    textAlign: 'center',
-    fontFamily: 'System',
-  },
-  featureText: {
-    fontSize: 14,
-    color: '#B7E4C7',
-    textAlign: 'center',
+    fontSize: theme.fontSizes.base,
+    fontFamily: theme.fonts.medium,
+    color: theme.colors.textPrimary,
+    marginBottom: 2,
     lineHeight: 20,
-    fontFamily: 'System',
   },
-  buttonSection: {
-    marginBottom: 24,
+  featureDescription: {
+    fontSize: theme.fontSizes.sm,
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.textSecondary,
+    lineHeight: 18,
+  },
+  buttonContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: theme.colors.backgroundLight,
+    paddingHorizontal: theme.spacing.xl,
+    paddingBottom: theme.spacing.xl,
+    paddingTop: theme.spacing.base,
+    borderTopWidth: 0,
   },
   primaryButton: {
-    backgroundColor: '#52B788',
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    borderRadius: 12,
+    backgroundColor: theme.colors.primary,
+    height: 48,
+    borderRadius: theme.borderRadius.full,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    marginBottom: theme.spacing.md,
+    ...theme.shadows.lg,
   },
   primaryButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'System',
+    color: theme.colors.onPrimaryText,
+    fontSize: theme.fontSizes.base,
+    fontFamily: theme.fonts.bold,
   },
   secondaryButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    backgroundColor: 'transparent',
+    height: 48,
+    borderRadius: theme.borderRadius.full,
+    justifyContent: 'center',
     alignItems: 'center',
   },
   secondaryButtonText: {
-    color: '#B7E4C7',
-    fontSize: 14,
-    fontWeight: '500',
-    fontFamily: 'System',
-  },
-  footer: {
-    alignItems: 'center',
-    paddingBottom: 16,
-  },
-  footerText: {
-    color: '#95D5B2',
-    fontSize: 12,
-    fontWeight: '400',
-    fontFamily: 'System',
+    color: theme.colors.primary,
+    fontSize: theme.fontSizes.base,
+    fontFamily: theme.fonts.bold,
   },
 });
 

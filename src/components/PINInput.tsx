@@ -27,7 +27,7 @@ interface PINInputProps {
   clearOnError?: boolean;
   maskDelay?: number; // milliseconds before showing masked character
   size?: 'small' | 'medium' | 'large';
-  variant?: 'default' | 'outline' | 'underline' | 'filled';
+  variant?: 'default' | 'outline' | 'underline' | 'filled' | 'dark';
   style?: ViewStyle;
   testID?: string;
 }
@@ -179,6 +179,26 @@ const PINInput: React.FC<PINInputProps> = ({
     }
   }, [value]);
 
+  // Effect to auto-focus when transitioning from disabled to enabled
+  const prevDisabledRef = useRef(disabled);
+  useEffect(() => {
+    const wasDisabled = prevDisabledRef.current;
+    const isNowEnabled = !disabled;
+
+    if (wasDisabled && isNowEnabled && autoFocus) {
+      // Transitioning from disabled to enabled - refocus
+      const timer = setTimeout(() => {
+        inputRef.current?.focus();
+      }, 150);
+
+      prevDisabledRef.current = disabled;
+      return () => clearTimeout(timer);
+    }
+
+    prevDisabledRef.current = disabled;
+    return undefined;
+  }, [disabled, autoFocus]);
+
   // Get size-based styles
   const getSizeStyles = () => {
     switch (size) {
@@ -219,6 +239,26 @@ const PINInput: React.FC<PINInputProps> = ({
     };
 
     switch (variant) {
+      case 'dark':
+        return {
+          ...baseStyle,
+          borderWidth: 2,
+          borderRadius: 12,
+          borderColor: isError
+            ? '#FF6B6B'
+            : isSuccess
+            ? '#52B788'
+            : isActive
+            ? '#B7E4C7'
+            : hasValue
+            ? '#52B788'
+            : 'rgba(183, 228, 199, 0.3)',
+          backgroundColor: isActive
+            ? 'rgba(183, 228, 199, 0.15)'
+            : hasValue
+            ? 'rgba(82, 183, 136, 0.2)'
+            : 'rgba(183, 228, 199, 0.1)',
+        };
       case 'outline':
         return {
           ...baseStyle,
@@ -292,6 +332,7 @@ const PINInput: React.FC<PINInputProps> = ({
   const getTextColor = () => {
     if (error) return '#FF6B6B';
     if (success) return '#52B788';
+    if (variant === 'dark') return '#ffffff';
     return '#1B4332';
   };
 
@@ -348,6 +389,13 @@ const PINInput: React.FC<PINInputProps> = ({
 
   const sizeStyles = getSizeStyles();
 
+  // Function to focus the input when cells are tapped
+  const focusInput = () => {
+    if (!disabled && inputRef.current) {
+      inputRef.current.focus();
+    }
+  };
+
   return (
     <View style={[styles.container, style]} testID={testID}>
       {/* Hidden TextInput for keyboard handling */}
@@ -366,19 +414,25 @@ const PINInput: React.FC<PINInputProps> = ({
         testID={`${testID}-input`}
       />
 
-      {/* PIN Cells Container */}
-      <Animated.View
-        style={[
-          styles.cellsContainer,
-          {
-            transform: [{ translateX: shakeAnimation }],
-          },
-        ]}
+      {/* PIN Cells Container - Tappable to open keyboard */}
+      <TouchableOpacity
+        activeOpacity={1}
+        onPress={focusInput}
+        disabled={disabled}
       >
-        {Array(length)
-          .fill(0)
-          .map((_, index) => renderCell(index, sizeStyles))}
-      </Animated.View>
+        <Animated.View
+          style={[
+            styles.cellsContainer,
+            {
+              transform: [{ translateX: shakeAnimation }],
+            },
+          ]}
+        >
+          {Array(length)
+            .fill(0)
+            .map((_, index) => renderCell(index, sizeStyles))}
+        </Animated.View>
+      </TouchableOpacity>
 
       {/* Error Message */}
       {error && errorMessage && (

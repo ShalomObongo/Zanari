@@ -74,6 +74,21 @@ If `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY` (or `PAYSTACK_SECRET_KEY`) are mis
 
 This helps you work on the mobile app or API logic before wiring up real infrastructure. Once you're ready for Supabase/Paystack, add the environment variables above and restart the server.
 
+### OTP Email Delivery (SMTP)
+
+To send OTP codes to users via email, configure SMTP environment variables. If these are not set, the API falls back to logging OTPs to the console.
+
+```
+SMTP_HOST=smtp.mailtrap.io
+SMTP_PORT=587
+SMTP_SECURE=false             # true for port 465
+SMTP_USER=your_smtp_username
+SMTP_PASS=your_smtp_password
+SMTP_FROM=no-reply@zanari.app
+```
+
+When configured, the API uses `SmtpOtpSender` to deliver OTP emails and continues using console logs for SMS until an SMS provider is integrated.
+
 ## Testing
 
 - Unit & integration tests:

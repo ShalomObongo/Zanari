@@ -1,19 +1,23 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
+import { useState, useRef, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
   TextInput,
-  TouchableOpacity, 
+  TouchableOpacity,
   StatusBar,
   KeyboardAvoidingView,
   Platform,
   Alert,
+  ActivityIndicator,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useAuthStore } from '@/store/authStore';
 import { ApiError } from '@/services/api';
+import theme from '@/theme';
 
 interface OTPScreenProps {}
 
@@ -25,17 +29,16 @@ const OTPScreen: React.FC<OTPScreenProps> = () => {
   const navigation = useNavigation<any>();
   const route = useRoute();
   const { phoneNumber } = (route.params as RouteParams) || { phoneNumber: '' };
-  
+
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
-  const [timer, setTimer] = useState(60);
+  const [timer, setTimer] = useState(30);
   const [canResend, setCanResend] = useState(false);
-  
+
   const inputRefs = useRef<(TextInput | null)[]>([]);
   const verifyOtp = useAuthStore((state) => state.verifyOtp);
   const sendLoginOtp = useAuthStore((state) => state.sendLoginOtp);
   const sessionId = useAuthStore((state) => state.sessionId);
   const isVerifyingOtp = useAuthStore((state) => state.isVerifyingOtp);
-  const isLoggingIn = useAuthStore((state) => state.isLoggingIn);
 
   useEffect(() => {
     const countdown = setInterval(() => {
@@ -52,34 +55,33 @@ const OTPScreen: React.FC<OTPScreenProps> = () => {
     return () => clearInterval(countdown);
   }, []);
 
-  const formatPhoneNumber = (number: string) => {
-    if (number.startsWith('254') && number.length >= 12) {
-      return `+${number.slice(0, 3)} ${number.slice(3, 6)} ${number.slice(6, 9)} ${number.slice(9)}`;
-    }
-    return number;
+  const formatTimer = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
   const handleOtpChange = (text: string, index: number) => {
     // Only allow digits
     const digit = text.replace(/[^0-9]/g, '');
-    
+
     if (digit.length > 1) {
       // Handle paste scenario
       const digits = digit.slice(0, 6).split('');
       const newOtp = [...otp];
-      
+
       digits.forEach((d, i) => {
         if (index + i < 6) {
           newOtp[index + i] = d;
         }
       });
-      
+
       setOtp(newOtp);
-      
+
       // Focus on the next empty field or last field
       const nextIndex = Math.min(index + digits.length, 5);
       inputRefs.current[nextIndex]?.focus();
-      
+
       return;
     }
 
@@ -99,7 +101,7 @@ const OTPScreen: React.FC<OTPScreenProps> = () => {
     }
   };
 
-  const isOtpComplete = otp.every(digit => digit !== '');
+  const isOtpComplete = otp.every((digit) => digit !== '');
 
   const handleVerify = async () => {
     if (!isOtpComplete) {
@@ -115,22 +117,13 @@ const OTPScreen: React.FC<OTPScreenProps> = () => {
     const otpCode = otp.join('');
 
     try {
-      const { requiresPinSetup } = await verifyOtp({ sessionId, otpCode });
-      if (requiresPinSetup) {
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'PINSetup', params: { phoneNumber } }],
-        });
-      } else {
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'PINEntry' }],
-        });
-      }
+      await verifyOtp({ sessionId, otpCode });
+      // The root navigator will redirect based on authentication and PIN state.
     } catch (error) {
-      const message = error instanceof ApiError
-        ? error.message
-        : (error as Error).message ?? 'Unable to verify code. Please try again.';
+      const message =
+        error instanceof ApiError
+          ? error.message
+          : (error as Error).message ?? 'Unable to verify code. Please try again.';
       Alert.alert('Verification Failed', message);
     }
   };
@@ -138,16 +131,28 @@ const OTPScreen: React.FC<OTPScreenProps> = () => {
   const handleResend = async () => {
     if (!canResend) return;
 
-    setTimer(60);
+    setTimer(30);
     setCanResend(false);
-    
+
     try {
       await sendLoginOtp({ phone: phoneNumber });
       Alert.alert('Code Sent', 'A new verification code has been sent to your phone');
+      // Restart timer
+      const countdown = setInterval(() => {
+        setTimer((prev) => {
+          if (prev <= 1) {
+            setCanResend(true);
+            clearInterval(countdown);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
     } catch (error) {
-      const message = error instanceof ApiError
-        ? error.message
-        : (error as Error).message ?? 'Unable to resend code. Please try again.';
+      const message =
+        error instanceof ApiError
+          ? error.message
+          : (error as Error).message ?? 'Unable to resend code. Please try again.';
       Alert.alert('Error', message);
       setCanResend(true);
       setTimer(0);
@@ -160,26 +165,27 @@ const OTPScreen: React.FC<OTPScreenProps> = () => {
 
   return (
     <>
-      <StatusBar barStyle="light-content" backgroundColor="#1B4332" />
+      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
       <SafeAreaView style={styles.container}>
-        <KeyboardAvoidingView 
+        <KeyboardAvoidingView
           style={styles.keyboardContainer}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
-              <Text style={styles.backButtonText}>←</Text>
+              <Icon name="arrow-back" size={24} color={theme.colors.textPrimary} />
             </TouchableOpacity>
+            <Text style={styles.headerTitle}>Verify Your Identity</Text>
+            <View style={styles.headerSpacer} />
           </View>
 
           <View style={styles.content}>
             {/* Title Section */}
             <View style={styles.titleSection}>
-              <Text style={styles.title}>Enter verification code</Text>
+              <Text style={styles.title}>Enter Code</Text>
               <Text style={styles.subtitle}>
-                We sent a 6-digit code to{'\n'}
-                <Text style={styles.phoneText}>{formatPhoneNumber(phoneNumber)}</Text>
+                Enter the 6-digit code sent to your registered contact method.
               </Text>
             </View>
 
@@ -192,10 +198,7 @@ const OTPScreen: React.FC<OTPScreenProps> = () => {
                     ref={(ref) => {
                       inputRefs.current[index] = ref;
                     }}
-                    style={[
-                      styles.otpInput,
-                      digit !== '' && styles.otpInputFilled
-                    ]}
+                    style={[styles.otpInput, digit !== '' && styles.otpInputFilled]}
                     value={digit}
                     onChangeText={(text) => handleOtpChange(text, index)}
                     onKeyPress={({ nativeEvent }) => handleKeyPress(nativeEvent.key, index)}
@@ -207,47 +210,37 @@ const OTPScreen: React.FC<OTPScreenProps> = () => {
                 ))}
               </View>
 
-              {/* Resend Section */}
-              <View style={styles.resendSection}>
-                {!canResend ? (
-                  <Text style={styles.timerText}>
-                    Resend code in {timer}s
-                  </Text>
-                ) : (
-                  <TouchableOpacity onPress={handleResend}>
-                    <Text style={styles.resendText}>Resend code</Text>
-                  </TouchableOpacity>
-                )}
+              {/* Timer Section */}
+              <View style={styles.timerSection}>
+                <Text style={styles.timerText}>Resend code in {formatTimer(timer)}</Text>
               </View>
-
-              {/* Verify Button */}
-              <TouchableOpacity 
-                style={[
-                  styles.verifyButton, 
-                  (!isOtpComplete || isVerifyingOtp) && styles.verifyButtonDisabled
-                ]}
-                onPress={handleVerify}
-                disabled={!isOtpComplete || isVerifyingOtp}
-              >
-                <Text style={[
-                  styles.verifyButtonText,
-                  (!isOtpComplete || isVerifyingOtp) && styles.verifyButtonTextDisabled
-                ]}>
-                  {isVerifyingOtp ? 'Verifying...' : 'Verify'}
-                </Text>
-              </TouchableOpacity>
             </View>
+          </View>
 
-            {/* Footer */}
-            <View style={styles.footer}>
-              <Text style={styles.footerText}>
-                Didn't receive a code?{' '}
-                <Text style={styles.footerLink}>Check your SMS</Text> or{' '}
-                <Text style={styles.footerLink} onPress={handleGoBack}>
-                  try a different number
-                </Text>
+          {/* Footer with buttons */}
+          <View style={styles.footer}>
+            <TouchableOpacity
+              style={[styles.verifyButton, isVerifyingOtp && styles.verifyButtonDisabled]}
+              onPress={handleVerify}
+              disabled={isVerifyingOtp}
+              activeOpacity={0.8}
+            >
+              {isVerifyingOtp ? (
+                <ActivityIndicator color={theme.colors.surface} />
+              ) : (
+                <Text style={styles.verifyButtonText}>Verify</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={canResend ? handleResend : undefined}
+              style={styles.alternativeMethodButton}
+              disabled={!canResend}
+            >
+              <Text style={[styles.alternativeMethodText, !canResend && styles.alternativeMethodTextDisabled]}>
+                Use another method
               </Text>
-            </View>
+            </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
@@ -258,7 +251,7 @@ const OTPScreen: React.FC<OTPScreenProps> = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1B4332',
+    backgroundColor: theme.colors.surface,
   },
   keyboardContainer: {
     flex: 1,
@@ -266,132 +259,119 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 8,
+    justifyContent: 'space-between',
+    paddingHorizontal: theme.spacing.base,
+    paddingVertical: theme.spacing.md,
   },
   backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(183, 228, 199, 0.2)',
+    width: 48,
+    height: 48,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  backButtonText: {
-    fontSize: 20,
-    color: '#ffffff',
-    fontWeight: '600',
+  headerTitle: {
+    fontSize: theme.fontSizes.lg,
+    fontFamily: theme.fonts.bold,
+    color: theme.colors.textPrimary,
+    textAlign: 'center',
+    flex: 1,
+  },
+  headerSpacer: {
+    width: 48,
   },
   content: {
     flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 32,
+    paddingHorizontal: theme.spacing.base,
+    paddingTop: theme.spacing.xl,
+    justifyContent: 'center',
   },
   titleSection: {
-    marginBottom: 48,
+    alignItems: 'center',
+    marginBottom: theme.spacing['3xl'],
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    marginBottom: 12,
-    fontFamily: 'System',
+    fontSize: theme.fontSizes['4xl'],
+    fontFamily: theme.fonts.bold,
+    color: theme.colors.textPrimary,
+    marginBottom: theme.spacing.sm,
+    letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#B7E4C7',
+    fontSize: theme.fontSizes.base,
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+    paddingHorizontal: theme.spacing.base,
     lineHeight: 24,
-    fontFamily: 'System',
-  },
-  phoneText: {
-    color: '#ffffff',
-    fontWeight: '600',
   },
   otpSection: {
-    flex: 1,
+    alignItems: 'center',
   },
   otpContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 32,
-    paddingHorizontal: 20,
+    justifyContent: 'center',
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.xl,
   },
   otpInput: {
-    width: 45,
+    width: 48,
     height: 56,
-    borderRadius: 12,
-    backgroundColor: 'rgba(183, 228, 199, 0.1)',
+    borderRadius: theme.borderRadius.lg,
+    backgroundColor: theme.colors.surface,
     borderWidth: 1,
-    borderColor: 'rgba(183, 228, 199, 0.3)',
+    borderColor: theme.colors.gray300,
     textAlign: 'center',
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#ffffff',
-    fontFamily: 'System',
+    fontSize: theme.fontSizes['2xl'],
+    fontFamily: theme.fonts.bold,
+    color: theme.colors.textSecondary,
   },
   otpInputFilled: {
-    backgroundColor: 'rgba(82, 183, 136, 0.2)',
-    borderColor: '#52B788',
+    borderColor: theme.colors.accentDarkest,
+    borderWidth: 2,
+    color: theme.colors.textPrimary,
   },
-  resendSection: {
+  timerSection: {
     alignItems: 'center',
-    marginBottom: 32,
+    paddingVertical: theme.spacing.base,
   },
   timerText: {
-    fontSize: 14,
-    color: '#95D5B2',
-    fontFamily: 'System',
-  },
-  resendText: {
-    fontSize: 14,
-    color: '#52B788',
-    fontWeight: '600',
-    fontFamily: 'System',
-  },
-  verifyButton: {
-    backgroundColor: '#52B788',
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    borderRadius: 12,
-    alignItems: 'center',
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-  },
-  verifyButtonDisabled: {
-    backgroundColor: 'rgba(82, 183, 136, 0.3)',
-    elevation: 0,
-    shadowOpacity: 0,
-  },
-  verifyButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'System',
-  },
-  verifyButtonTextDisabled: {
-    color: 'rgba(255, 255, 255, 0.5)',
+    fontSize: theme.fontSizes.sm,
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.textTertiary,
   },
   footer: {
-    paddingBottom: 32,
-    paddingTop: 24,
+    paddingHorizontal: theme.spacing.base,
+    paddingBottom: theme.spacing.xl,
+    paddingTop: theme.spacing.base,
+    gap: theme.spacing.base,
   },
-  footerText: {
-    fontSize: 12,
-    color: '#95D5B2',
-    textAlign: 'center',
-    lineHeight: 18,
-    fontFamily: 'System',
+  verifyButton: {
+    backgroundColor: theme.colors.accent,
+    height: 56,
+    borderRadius: theme.borderRadius.xl,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...theme.shadows.sm,
   },
-  footerLink: {
-    color: '#B7E4C7',
-    fontWeight: '500',
+  verifyButtonDisabled: {
+    opacity: 0.5,
+  },
+  verifyButtonText: {
+    color: theme.colors.surface,
+    fontSize: theme.fontSizes.base,
+    fontFamily: theme.fonts.bold,
+  },
+  alternativeMethodButton: {
+    alignItems: 'center',
+    paddingVertical: theme.spacing.sm,
+  },
+  alternativeMethodText: {
+    fontSize: theme.fontSizes.sm,
+    fontFamily: theme.fonts.semiBold,
+    color: theme.colors.accentDarkest,
+  },
+  alternativeMethodTextDisabled: {
+    color: theme.colors.textTertiary,
   },
 });
 

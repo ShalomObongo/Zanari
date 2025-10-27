@@ -154,10 +154,7 @@ const PINSetupScreen: React.FC<PINSetupScreenProps> = () => {
     try {
       await setupPin({ pin, confirmPin });
       await verifyPin({ pin });
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'Main' }],
-      });
+      // AppNavigator will promote to the main app once PIN is verified.
     } catch (error) {
       const message = error instanceof ApiError
         ? error.message
