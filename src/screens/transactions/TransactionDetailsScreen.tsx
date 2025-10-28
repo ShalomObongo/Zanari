@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useTransactionStore } from '@/store/transactionStore';
+import { formatCurrency } from '@/utils/formatters';
 import theme from '@/theme';
 
 type TransactionDetailsRouteProp = RouteProp<
@@ -55,10 +56,10 @@ const TransactionDetailsScreen: React.FC = () => {
   };
 
   const formatAmount = (amount: number) => {
-    const formatted = Math.abs(amount).toFixed(2);
-    const isDebit = ['payment', 'transfer_out', 'bill_payment', 'withdrawal'].includes(transaction.type);
-    return isDebit ? `-$${formatted}` : `+$${formatted}`;
-  };
+  const formatted = formatCurrency(Math.abs(amount));
+  const isDebit = ['payment', 'transfer_out', 'bill_payment', 'withdrawal'].includes(transaction.type);
+  return isDebit ? `-${formatted}` : `+${formatted}`;
+};
 
   const getCategoryDisplay = (category: string) => {
     const categoryMap: Record<string, string> = {
