@@ -182,7 +182,7 @@ const SettingsScreen: React.FC = () => {
             </View>
             <TouchableOpacity
               style={styles.editProfileButton}
-              onPress={() => Alert.alert('Edit Profile', 'Feature coming soon')}
+              onPress={() => navigation.navigate('EditProfile')}
             >
               <Text style={styles.editProfileText}>Edit Profile</Text>
             </TouchableOpacity>

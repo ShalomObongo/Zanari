@@ -38,6 +38,13 @@ interface VerifyPinBody {
   pin?: string;
 }
 
+interface UpdateProfileBody {
+  first_name?: unknown;
+  last_name?: unknown;
+  email?: unknown;
+  phone?: unknown;
+}
+
 export interface AuthRouteDependencies {
   authService: AuthService;
   registrationService: RegistrationService;
@@ -156,11 +163,48 @@ export function createAuthRoutes({ authService, registrationService }: AuthRoute
           }
 
           throw new HttpError(401, 'Invalid PIN', 'INVALID_PIN', details);
-        }
+      }
+
+      return ok({
+        verified: true,
+        token: result.token,
+      });
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        throw fromValidationError(error);
+      }
+      throw error;
+    }
+    },
+
+    updateProfile: async (request: HttpRequest<UpdateProfileBody>) => {
+      ensureAuthenticated(request);
+
+      const body = request.body ?? {};
+
+      if (body.first_name !== undefined && typeof body.first_name !== 'string') {
+        throw badRequest('first_name must be a string', 'INVALID_FIRST_NAME');
+      }
+      if (body.last_name !== undefined && typeof body.last_name !== 'string') {
+        throw badRequest('last_name must be a string', 'INVALID_LAST_NAME');
+      }
+      if (body.email !== undefined && typeof body.email !== 'string') {
+        throw badRequest('email must be a string', 'INVALID_EMAIL');
+      }
+      if (body.phone !== undefined && typeof body.phone !== 'string') {
+        throw badRequest('phone must be a string', 'INVALID_PHONE');
+      }
+
+      try {
+        const updated = await authService.updateProfile(request.userId!, {
+          firstName: body.first_name as string | undefined,
+          lastName: body.last_name as string | undefined,
+          email: body.email as string | undefined,
+          phone: body.phone as string | undefined,
+        });
 
         return ok({
-          verified: true,
-          token: result.token,
+          user: serializeUser(updated),
         });
       } catch (error) {
         if (error instanceof ValidationError) {

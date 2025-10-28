@@ -145,6 +145,8 @@ app.post('/auth/login', adaptRoute(container.routes.auth.login));
 app.post('/auth/verify-otp', adaptRoute(container.routes.auth.verifyOtp));
 app.post('/auth/setup-pin', adaptRoute(container.routes.auth.setupPin));
 app.post('/auth/verify-pin', adaptRoute(container.routes.auth.verifyPin));
+app.patch('/auth/profile', adaptRoute(container.routes.auth.updateProfile));
+app.put('/auth/profile', adaptRoute(container.routes.auth.updateProfile));
 
 // Wallets
 app.get('/wallets', adaptRoute(container.routes.wallets.listWallets));

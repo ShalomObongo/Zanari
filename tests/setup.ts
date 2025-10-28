@@ -5,6 +5,8 @@
 
 import 'react-native-gesture-handler/jestSetup';
 
+process.env.RNTL_SKIP_DEPS_CHECK = 'true';
+
 // Mock react-native modules that don't work in Jest environment
 const mockJestFn = (): jest.Mock => jest.fn();
 

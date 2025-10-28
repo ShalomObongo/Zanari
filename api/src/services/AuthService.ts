@@ -203,6 +203,97 @@ export class AuthService {
     };
   }
 
+  async updateProfile(
+    userId: UUID,
+    input: { firstName?: string; lastName?: string; email?: string; phone?: string },
+  ): Promise<User> {
+    const hasUpdates =
+      input.firstName !== undefined ||
+      input.lastName !== undefined ||
+      input.email !== undefined ||
+      input.phone !== undefined;
+
+    if (!hasUpdates) {
+      throw new ValidationError('No profile fields provided', 'INVALID_PROFILE_UPDATE');
+    }
+
+    const user = await this.requireUser(userId);
+    const now = this.clock.now();
+    const patch: Partial<User> = {};
+    const updatedFields: string[] = [];
+
+    if (input.firstName !== undefined) {
+      const trimmed = input.firstName.trim();
+      if (trimmed.length < 2 || trimmed.length > 50) {
+        throw new ValidationError('First name must be between 2 and 50 characters', 'INVALID_FIRST_NAME');
+      }
+      if (trimmed !== user.firstName) {
+        patch.firstName = trimmed;
+        updatedFields.push('first_name');
+      }
+    }
+
+    if (input.lastName !== undefined) {
+      const trimmed = input.lastName.trim();
+      if (trimmed.length < 2 || trimmed.length > 50) {
+        throw new ValidationError('Last name must be between 2 and 50 characters', 'INVALID_LAST_NAME');
+      }
+      if (trimmed !== user.lastName) {
+        patch.lastName = trimmed;
+        updatedFields.push('last_name');
+      }
+    }
+
+    if (input.email !== undefined) {
+      const normalizedEmail = input.email.trim().toLowerCase();
+      if (!EMAIL_REGEX.test(normalizedEmail)) {
+        throw new ValidationError('Invalid email format', 'INVALID_EMAIL');
+      }
+      if (normalizedEmail !== user.email) {
+        const existing = await this.userRepository.findByEmail(normalizedEmail);
+        if (existing && existing.id !== user.id) {
+          throw new ValidationError('Account already exists for this email', 'ACCOUNT_EXISTS');
+        }
+        patch.email = normalizedEmail;
+        updatedFields.push('email');
+      }
+    }
+
+    if (input.phone !== undefined) {
+      const normalizedPhone = input.phone.trim();
+      if (!normalizedPhone) {
+        throw new ValidationError('Phone number is required', 'INVALID_PHONE');
+      }
+      if (!KENYAN_PHONE_REGEX.test(normalizedPhone)) {
+        throw new ValidationError('Invalid phone number format', 'INVALID_PHONE');
+      }
+      if (normalizedPhone !== (user.phone ?? null)) {
+        const existing = await this.userRepository.findByPhone(normalizedPhone);
+        if (existing && existing.id !== user.id) {
+          throw new ValidationError('Account already exists for this phone number', 'ACCOUNT_EXISTS');
+        }
+        patch.phone = normalizedPhone;
+        updatedFields.push('phone');
+      }
+    }
+
+    if (updatedFields.length === 0) {
+      return user;
+    }
+
+    patch.updatedAt = now;
+
+    const updated = await this.userRepository.update(user.id, patch);
+    validateUser(updated);
+
+    this.logger.info('User profile updated', {
+      userId: user.id,
+      updatedFields,
+    });
+
+    return updated;
+  }
+
   async setupPin(userId: UUID, pin: string): Promise<User> {
     this.assertValidPin(pin);
 

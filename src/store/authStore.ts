@@ -61,6 +61,10 @@ interface VerifyPinResponse {
   token: string;
 }
 
+interface UpdateProfileResponse {
+  user: AuthUser;
+}
+
 interface AuthState {
   user: AuthUser | null;
   isAuthenticated: boolean;
@@ -79,6 +83,7 @@ interface AuthState {
   isVerifyingOtp: boolean;
   isSettingUpPin: boolean;
   isVerifyingPin: boolean;
+  isUpdatingProfile: boolean;
   sessionId: string | null;
   lastActivity: Date | null;
   setUser: (user: AuthUser | null) => void;
@@ -105,6 +110,7 @@ interface AuthState {
   verifyOtp: (payload: { sessionId: string; otpCode: string }) => Promise<{ requiresPinSetup: boolean }>;
   setupPin: (payload: { pin: string; confirmPin: string }) => Promise<void>;
   verifyPin: (payload: { pin: string }) => Promise<string>;
+  updateProfile: (payload: { firstName: string; lastName: string; email: string; phone: string }) => Promise<void>;
   logout: () => Promise<void>;
   getIsSessionExpired: () => boolean;
   getIsPinLocked: () => boolean;
@@ -135,16 +141,17 @@ export const useAuthStore = create<AuthState>()(
       isPinSet: false,
       isPinVerified: false,
       pinVerificationToken: null,
-    failedPinAttempts: 0,
-    pinLockedUntil: null,
-    pinHashData: null,
-    pinLastFailedAt: null,
-    isLoading: false,
+      failedPinAttempts: 0,
+      pinLockedUntil: null,
+      pinHashData: null,
+      pinLastFailedAt: null,
+      isLoading: false,
       isRegistering: false,
       isLoggingIn: false,
       isVerifyingOtp: false,
       isSettingUpPin: false,
       isVerifyingPin: false,
+      isUpdatingProfile: false,
       sessionId: null,
       lastActivity: null,
 
@@ -167,14 +174,15 @@ export const useAuthStore = create<AuthState>()(
             refreshToken: null,
             isPinSet: false,
             isPinVerified: false,
-            pinVerificationToken: null,
-            failedPinAttempts: 0,
-            pinLockedUntil: null,
-            pinHashData: null,
-            pinLastFailedAt: null,
-            sessionId: null,
-          });
-        }
+          pinVerificationToken: null,
+          failedPinAttempts: 0,
+          pinLockedUntil: null,
+          pinHashData: null,
+          pinLastFailedAt: null,
+          isUpdatingProfile: false,
+          sessionId: null,
+        });
+      }
       },
 
       setPinStatus: (isPinSet, isPinVerified) => {
@@ -241,6 +249,7 @@ export const useAuthStore = create<AuthState>()(
           isVerifyingOtp: false,
           isSettingUpPin: false,
           isVerifyingPin: false,
+          isUpdatingProfile: false,
           lastActivity: null,
         });
 
@@ -439,6 +448,25 @@ export const useAuthStore = create<AuthState>()(
           throw error;
         } finally {
           set({ isVerifyingPin: false, isLoading: false });
+        }
+      },
+
+      updateProfile: async ({ firstName, lastName, email, phone }) => {
+        const { setUser, updateLastActivity } = get();
+        set({ isUpdatingProfile: true, isLoading: true });
+        try {
+          const response = await apiClient.patch<UpdateProfileResponse>('/auth/profile', {
+            first_name: firstName,
+            last_name: lastName,
+            email,
+            phone,
+          });
+          setUser(response.user);
+          updateLastActivity();
+        } catch (error) {
+          throw error;
+        } finally {
+          set({ isUpdatingProfile: false, isLoading: false });
         }
       },
 
