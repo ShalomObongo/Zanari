@@ -16,6 +16,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import PINInput from '@/components/PINInput';
 import { useAuthStore } from '@/store/authStore';
 import { PinLockError } from '@/utils/pinSecurity';
+import theme from '@/theme';
 
 const LOCK_REFRESH_INTERVAL = 1000;
 
@@ -66,8 +67,8 @@ const PINEntryScreen: React.FC = () => {
     // Initial update
     updateLockState();
 
-    // Update every second
-    const timer = setInterval(updateLockState, 1000);
+    // Update lock state on a fixed cadence
+    const timer = setInterval(updateLockState, LOCK_REFRESH_INTERVAL);
 
     return () => clearInterval(timer);
   }, [getIsPinLocked, getRemainingLockTime]);
@@ -162,29 +163,30 @@ const PINEntryScreen: React.FC = () => {
 
   return (
     <>
-      <StatusBar barStyle="light-content" backgroundColor="#1B4332" />
+      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
       <SafeAreaView style={styles.container}>
         <KeyboardAvoidingView
           style={styles.keyboardContainer}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-          {/* Header with Back Button */}
           <View style={styles.header}>
             <TouchableOpacity
               style={styles.backButton}
               onPress={handleGoBack}
               disabled={isVerifyingPin}
             >
-              <Icon name="arrow-back" size={24} color="#ffffff" />
+              <Icon name="arrow-back" size={24} color={theme.colors.textPrimary} />
             </TouchableOpacity>
+            <Text style={styles.headerTitle}>Enter PIN</Text>
+            <View style={styles.headerSpacer} />
           </View>
 
           <View style={styles.content}>
-            <View style={styles.logoSection}>
-              <View style={styles.logoPlaceholder}>
-                <Text style={styles.logoText}>Z</Text>
+            <View style={styles.heroSection}>
+              <View style={styles.heroIcon}>
+                <Icon name="lock" size={32} color={theme.colors.primary} />
               </View>
-              <Text style={styles.appName}>Zanari</Text>
+              <Text style={styles.heroLabel}>Zanari</Text>
             </View>
 
             <View style={styles.titleSection}>
@@ -213,7 +215,7 @@ const PINEntryScreen: React.FC = () => {
                 error={showError}
                 errorMessage={errorMessage ?? undefined}
                 size="large"
-                variant="dark"
+                variant="outline"
               />
               {isVerifyingPin && <Text style={styles.loadingText}>Verifying…</Text>}
             </View>
@@ -237,7 +239,7 @@ const PINEntryScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1B4332',
+    backgroundColor: theme.colors.surface,
   },
   keyboardContainer: {
     flex: 1,
@@ -245,103 +247,99 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 8,
+    justifyContent: 'space-between',
+    paddingHorizontal: theme.spacing.base,
+    paddingVertical: theme.spacing.md,
   },
   backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(183, 228, 199, 0.2)',
+    width: 48,
+    height: 48,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  headerTitle: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: theme.fontSizes.lg,
+    fontFamily: theme.fonts.bold,
+    color: theme.colors.textPrimary,
+  },
+  headerSpacer: {
+    width: 48,
   },
   content: {
     flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 20,
+    paddingHorizontal: theme.spacing.base,
+    paddingTop: theme.spacing['2xl'],
+    paddingBottom: theme.spacing['3xl'],
   },
-  logoSection: {
+  heroSection: {
     alignItems: 'center',
-    marginBottom: 48,
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing['2xl'],
   },
-  logoPlaceholder: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#52B788',
+  heroIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: theme.colors.gray100,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    ...theme.shadows.sm,
   },
-  logoText: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    fontFamily: 'System',
-  },
-  appName: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#ffffff',
-    fontFamily: 'System',
+  heroLabel: {
+    fontSize: theme.fontSizes.lg,
+    fontFamily: theme.fonts.bold,
+    color: theme.colors.textPrimary,
+    letterSpacing: -0.2,
   },
   titleSection: {
     alignItems: 'center',
-    marginBottom: 40,
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing['2xl'],
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    marginBottom: 12,
-    fontFamily: 'System',
+    fontSize: theme.fontSizes['4xl'],
+    fontFamily: theme.fonts.bold,
+    color: theme.colors.textPrimary,
+    letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#B7E4C7',
+    fontSize: theme.fontSizes.base,
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.textSecondary,
     textAlign: 'center',
-    fontFamily: 'System',
+    lineHeight: 24,
+    paddingHorizontal: theme.spacing.base,
   },
   blockedText: {
-    fontSize: 16,
-    color: '#FF6B6B',
+    fontSize: theme.fontSizes.base,
+    fontFamily: theme.fonts.semiBold,
+    color: theme.colors.error,
     textAlign: 'center',
-    fontFamily: 'System',
-    fontWeight: '600',
+    paddingHorizontal: theme.spacing.base,
   },
   pinSection: {
     alignItems: 'center',
-    marginBottom: 32,
-    minHeight: 120,
+    gap: theme.spacing.md,
+    marginBottom: theme.spacing['2xl'],
   },
   loadingText: {
-    marginTop: 16,
-    fontSize: 14,
-    color: '#B7E4C7',
-    fontFamily: 'System',
+    fontSize: theme.fontSizes.sm,
+    fontFamily: theme.fonts.medium,
+    color: theme.colors.textSecondary,
   },
   footerSection: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    paddingTop: 16,
-    paddingBottom: 32,
+    alignItems: 'center',
   },
   footerButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 20,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.base,
   },
   footerButtonText: {
-    fontSize: 15,
-    color: '#52B788',
-    fontWeight: '600',
-    fontFamily: 'System',
+    fontSize: theme.fontSizes.sm,
+    fontFamily: theme.fonts.semiBold,
+    color: theme.colors.accentDarkest,
   },
 });
 

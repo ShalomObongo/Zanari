@@ -22,13 +22,14 @@ import theme from '@/theme';
 interface OTPScreenProps {}
 
 interface RouteParams {
-  phoneNumber: string;
+  identifier: string;
+  method: 'email' | 'phone';
 }
 
 const OTPScreen: React.FC<OTPScreenProps> = () => {
   const navigation = useNavigation<any>();
   const route = useRoute();
-  const { phoneNumber } = (route.params as RouteParams) || { phoneNumber: '' };
+  const { identifier, method } = (route.params as RouteParams) || { identifier: '', method: 'phone' };
 
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [timer, setTimer] = useState(30);
@@ -128,15 +129,24 @@ const OTPScreen: React.FC<OTPScreenProps> = () => {
     }
   };
 
+  const contactLabel = method === 'email' ? 'email address' : 'phone number';
+
   const handleResend = async () => {
     if (!canResend) return;
+
+    if (!identifier) {
+      Alert.alert('Unable to resend', 'We could not determine your contact method. Please go back and try again.');
+      return;
+    }
 
     setTimer(30);
     setCanResend(false);
 
+    const payload = method === 'email' ? { email: identifier } : { phone: identifier };
+
     try {
-      await sendLoginOtp({ phone: phoneNumber });
-      Alert.alert('Code Sent', 'A new verification code has been sent to your phone');
+      await sendLoginOtp(payload);
+      Alert.alert('Code Sent', `A new verification code has been sent to your ${contactLabel}`);
       // Restart timer
       const countdown = setInterval(() => {
         setTimer((prev) => {

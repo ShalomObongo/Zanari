@@ -52,28 +52,40 @@ const LoginScreen: React.FC<LoginScreenProps> = () => {
   };
 
   const handleContinue = async () => {
-    if (!emailOrPhone.trim()) {
-      Alert.alert('Required', `Please enter your ${authMethod === 'email' ? 'email address' : 'phone number'}`);
+    const trimmedValue = emailOrPhone.trim();
+    const method = authMethod;
+
+    if (!trimmedValue) {
+      Alert.alert('Required', `Please enter your ${method === 'email' ? 'email address' : 'phone number'}`);
       return;
     }
 
-    if (authMethod === 'email') {
-      if (!EMAIL_REGEX.test(emailOrPhone.trim().toLowerCase())) {
+    let identifier: string;
+    let payload: { email?: string; phone?: string };
+
+    if (method === 'email') {
+      const normalizedEmail = trimmedValue.toLowerCase();
+      if (!EMAIL_REGEX.test(normalizedEmail)) {
         Alert.alert('Invalid Email', 'Please enter a valid email address');
         return;
       }
+
+      identifier = normalizedEmail;
+      payload = { email: normalizedEmail };
     } else {
-      const formattedPhone = formatPhoneNumber(emailOrPhone);
+      const formattedPhone = formatPhoneNumber(trimmedValue);
       if (!isValidKenyanNumber(formattedPhone)) {
         Alert.alert('Invalid Number', 'Please enter a valid Kenyan mobile number (07XX XXX XXX)');
         return;
       }
+
+      identifier = formattedPhone;
+      payload = { phone: formattedPhone };
     }
 
     try {
-      const phoneNumber = authMethod === 'phone' ? formatPhoneNumber(emailOrPhone) : emailOrPhone.trim();
-      await sendLoginOtp({ phone: phoneNumber });
-      navigation.navigate('OTP', { phoneNumber });
+      await sendLoginOtp(payload);
+      navigation.navigate('OTP', { method, identifier });
     } catch (error) {
       const message = error instanceof ApiError
         ? error.message

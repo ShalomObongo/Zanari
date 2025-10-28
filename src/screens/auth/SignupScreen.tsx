@@ -124,7 +124,7 @@ const SignupScreen: React.FC = () => {
         phone: normalizedPhone,
       });
 
-      navigation.navigate('OTP', { phoneNumber: normalizedPhone });
+      navigation.navigate('OTP', { method: 'phone', identifier: normalizedPhone });
     } catch (error) {
       const message = error instanceof ApiError ? error.message : (error as Error).message ?? 'Unable to create account. Please try again.';
       Alert.alert('Could not complete signup', message);
@@ -135,7 +135,7 @@ const SignupScreen: React.FC = () => {
     firstName.trim().length >= 2 &&
     lastName.trim().length >= 2 &&
     EMAIL_REGEX.test(email.trim().toLowerCase()) &&
-    phoneNumber.length > 0 &&
+    isValidKenyanNumber(phoneNumber) &&
     acceptedTerms;
 
   return (
@@ -219,9 +219,7 @@ const SignupScreen: React.FC = () => {
 
               {/* Phone Number */}
               <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>
-                  Phone Number <Text style={styles.optionalText}>(Optional)</Text>
-                </Text>
+                <Text style={styles.inputLabel}>Phone Number</Text>
                 <TextInput
                   style={styles.textInput}
                   value={phoneNumber}
@@ -235,6 +233,7 @@ const SignupScreen: React.FC = () => {
 
               {/* Terms & Conditions */}
               <TouchableOpacity
+                testID="signup-terms-toggle"
                 style={styles.checkboxContainer}
                 onPress={() => setAcceptedTerms(!acceptedTerms)}
                 activeOpacity={0.7}
@@ -254,6 +253,7 @@ const SignupScreen: React.FC = () => {
           {/* Footer with button */}
           <View style={styles.footer}>
             <TouchableOpacity
+              testID="signup-submit-button"
               style={[styles.primaryButton, (!canSubmit || isRegistering) && styles.primaryButtonDisabled]}
               onPress={handleRegister}
               disabled={!canSubmit || isRegistering}
@@ -338,9 +338,6 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.medium,
     color: theme.colors.textPrimary,
     marginBottom: theme.spacing.sm,
-  },
-  optionalText: {
-    color: theme.colors.textTertiary,
   },
   inputWrapper: {
     position: 'relative',

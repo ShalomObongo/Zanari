@@ -16,7 +16,8 @@ export type AuthStackParamList = {
   Signup: undefined;
   Login: undefined;
   OTP: {
-    phoneNumber: string;
+    method: 'email' | 'phone';
+    identifier: string;
   };
   PINSetup: {
     phoneNumber?: string;
