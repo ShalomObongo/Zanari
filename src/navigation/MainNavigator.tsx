@@ -11,6 +11,7 @@ import TransactionHistoryScreen from '@/screens/transactions/TransactionHistoryS
 import TransactionDetailsScreen from '@/screens/transactions/TransactionDetailsScreen';
 import SavingsGoalsScreen from '@/screens/savings/SavingsGoalsScreen';
 import SettingsScreen from '@/screens/settings/SettingsScreen';
+import ChangePINScreen from '@/screens/settings/ChangePINScreen';
 import KYCUploadScreen from '@/screens/kyc/KYCUploadScreen';
 
 const Tab = createBottomTabNavigator();
@@ -30,6 +31,7 @@ export type MainStackParamList = {
   Transfer: undefined;
   TransactionDetails: { transactionId: string };
   KYCUpload: undefined;
+  ChangePIN: undefined;
 } & MainTabParamList;
 
 const MainTabs: React.FC = () => {
@@ -160,6 +162,14 @@ export const MainNavigator: React.FC = () => {
         component={TransactionDetailsScreen}
         options={{
           headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="ChangePIN"
+        component={ChangePINScreen}
+        options={{
+          headerShown: false,
+          presentation: 'modal',
         }}
       />
     </Stack.Navigator>

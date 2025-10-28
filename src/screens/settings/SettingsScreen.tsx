@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '@/store/authStore';
 import { useWalletStore } from '@/store/walletStore';
 import { useTransactionStore } from '@/store/transactionStore';
@@ -21,6 +22,7 @@ const SettingsScreen: React.FC = () => {
   // Zustand stores
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
+  const navigation = useNavigation<any>();
 
   // Preferences state
   const [preferences, setPreferences] = useState({
@@ -195,7 +197,7 @@ const SettingsScreen: React.FC = () => {
               undefined,
               'arrow',
               undefined,
-              () => Alert.alert('Change PIN', 'Feature coming soon')
+              () => navigation.navigate('ChangePIN')
             )}
             <View style={styles.divider} />
             {renderSettingRow(
