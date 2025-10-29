@@ -102,10 +102,86 @@ const TransactionDetailsScreen: React.FC = () => {
     return statusMap[status] || { label: status, color: theme.colors.textSecondary };
   };
 
-  const merchantName = transaction.merchant_info?.name || transaction.description || 'Transaction';
   const statusInfo = getStatusDisplay(transaction.status);
   const isDebit = ['payment', 'transfer_out', 'bill_payment', 'withdrawal'].includes(transaction.type);
   const amountColor = isDebit ? theme.colors.textSecondary : theme.colors.accentDarker;
+
+  // Determine if this is a transfer and extract recipient/sender info
+  const isTransfer = transaction.type === 'transfer_out' || transaction.type === 'transfer_in';
+  let transferInfo: { label: string; value: string; icon: string } | null = null;
+  let transferPartyName: string | null = null;
+
+  if (isTransfer) {
+    try {
+      // For internal transfers, metadata is in externalReference
+      // For external transfers, sender tx has metadata in externalTransactionId, recipient tx has it in externalReference
+      let metadata: { recipientName?: string; senderName?: string } = {};
+
+      if (transaction.external_reference) {
+        try {
+          metadata = JSON.parse(transaction.external_reference);
+        } catch {
+          // Not JSON, skip
+        }
+      }
+
+      // If no metadata in externalReference, try externalTransactionId (for sender in external transfers)
+      if (!metadata.recipientName && !metadata.senderName && transaction.external_transaction_id) {
+        try {
+          metadata = JSON.parse(transaction.external_transaction_id);
+        } catch {
+          // Not JSON, skip
+        }
+      }
+
+      if (transaction.type === 'transfer_out') {
+        // Sender view - show recipient
+        transferPartyName = metadata.recipientName || 'Zanari User';
+        transferInfo = {
+          label: 'Sent To',
+          value: transferPartyName,
+          icon: 'person',
+        };
+      } else {
+        // Recipient view - show sender
+        transferPartyName = metadata.senderName || 'Zanari User';
+        transferInfo = {
+          label: 'Received From',
+          value: transferPartyName,
+          icon: 'person',
+        };
+      }
+    } catch {
+      // If parsing fails, use fallback
+      if (transaction.type === 'transfer_out') {
+        transferPartyName = 'Zanari User';
+        transferInfo = {
+          label: 'Sent To',
+          value: 'Zanari User',
+          icon: 'person',
+        };
+      } else {
+        transferPartyName = 'Zanari User';
+        transferInfo = {
+          label: 'Received From',
+          value: 'Zanari User',
+          icon: 'person',
+        };
+      }
+    }
+  }
+
+  // For transfers, use the recipient/sender name as merchant name with proper label
+  let merchantName: string;
+  if (transferPartyName) {
+    if (transaction.type === 'transfer_out') {
+      merchantName = `Sent to ${transferPartyName}`;
+    } else {
+      merchantName = `Received from ${transferPartyName}`;
+    }
+  } else {
+    merchantName = transaction.merchant_info?.name || transaction.description || 'Transaction';
+  }
 
   const handleChangeCategory = () => {
     Alert.alert('Change Category', 'Category selection coming soon');
@@ -191,6 +267,21 @@ const TransactionDetailsScreen: React.FC = () => {
 
               <View style={styles.divider} />
 
+              {/* Transfer Info (Recipient or Sender) */}
+              {transferInfo && (
+                <>
+                  <View style={styles.detailRow}>
+                    <View style={styles.detailLeft}>
+                      <Icon name={transferInfo.icon} size={24} color={theme.colors.accentDarkest} />
+                      <Text style={styles.detailLabel}>{transferInfo.label}</Text>
+                    </View>
+                    <Text style={styles.detailValue}>{transferInfo.value}</Text>
+                  </View>
+
+                  <View style={styles.divider} />
+                </>
+              )}
+
               {/* Payment Method */}
               <View style={styles.detailRow}>
                 <View style={styles.detailLeft}>
@@ -209,14 +300,11 @@ const TransactionDetailsScreen: React.FC = () => {
             <View style={styles.detailsCard}>
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>Notes</Text>
-                <TouchableOpacity onPress={handleAddNote}>
-                  <Text style={styles.addButton}>Add Note</Text>
-                </TouchableOpacity>
               </View>
-              {notes ? (
-                <Text style={styles.noteText}>{notes}</Text>
+              {transaction.description ? (
+                <Text style={styles.noteText}>{transaction.description}</Text>
               ) : (
-                <Text style={styles.emptyText}>No notes added yet</Text>
+                <Text style={styles.emptyText}>No notes</Text>
               )}
             </View>
           </View>

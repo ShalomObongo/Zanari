@@ -148,6 +148,9 @@ app.post('/auth/verify-pin', adaptRoute(container.routes.auth.verifyPin));
 app.patch('/auth/profile', adaptRoute(container.routes.auth.updateProfile));
 app.put('/auth/profile', adaptRoute(container.routes.auth.updateProfile));
 
+// Users
+app.get('/users/lookup', adaptRoute(container.routes.users.lookupUser));
+
 // Wallets
 app.get('/wallets', adaptRoute(container.routes.wallets.listWallets));
 app.post('/wallets/:walletId/withdraw', adaptRoute(container.routes.wallets.withdraw));

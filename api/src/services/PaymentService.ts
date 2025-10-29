@@ -84,6 +84,55 @@ export interface PeerTransferResult {
   recipientCreated?: boolean;
 }
 
+export interface InternalTransferRequest {
+  transferId: UUID;
+  userId: UUID; // sender
+  recipientUserId: UUID; // recipient (Zanari user)
+  amount: number; // cents
+  description?: string | null;
+}
+
+export interface InternalTransferResult {
+  status: 'completed';
+  senderTransaction: Transaction; // transfer_out
+  recipientTransaction: Transaction; // transfer_in
+  roundUpTransaction?: Transaction | null;
+  totalCharged: number; // amount + roundUp (no fee for wallet transfers)
+  roundUpAmount: number;
+  fee: 0; // always 0 for internal wallet transfers
+}
+
+export interface DepositToRecipientRequest {
+  transferId: UUID;
+  userId: UUID; // sender (payer)
+  recipientUserId: UUID; // recipient (receiver)
+  amount: number; // cents
+  fee: number; // transfer fee in cents
+  description?: string | null;
+  customerEmail: string;
+  customerPhone?: string | null;
+  channels?: string[];
+  currency?: string;
+  callbackUrl?: string | null;
+  senderName?: string | null;
+  recipientName?: string | null;
+}
+
+export interface DepositToRecipientResult {
+  status: 'pending';
+  senderTransaction: Transaction; // transfer_out (pending)
+  checkoutSession: {
+    authorizationUrl: string;
+    accessCode: string;
+    reference: string;
+    status: 'success' | 'pending';
+    expiresAt?: Date;
+  };
+  totalCharged: number; // amount + fee + roundUp
+  fee: number;
+  roundUpAmount: number;
+}
+
 const RETRY_BACKOFF_MS = [1000, 2000, 4000];
 
 export class PaymentService {
@@ -347,6 +396,110 @@ export class PaymentService {
     }
   }
 
+  /**
+   * Initialize external payment (M-Pesa/Card) that will credit the RECIPIENT's wallet
+   * - Similar to top-up but credits recipient instead of sender
+   * - Includes transfer fee charged to sender
+   * - Applies round-up savings to sender
+   * - Creates pending transfer_out transaction for sender
+   * - Recipient's transfer_in transaction created on payment verification
+   */
+  async initializeDepositToRecipient(request: DepositToRecipientRequest): Promise<DepositToRecipientResult> {
+    const currency = request.currency ?? 'KES';
+
+    // Calculate round-up for sender
+    const roundUpRule = await this.roundUpRuleRepository.findByUserId(request.userId);
+    let { roundUpAmount, incrementUsed } = this.calculateRoundUp(request.amount + request.fee, roundUpRule);
+
+    // Total charged to sender: amount + fee + round-up
+    const totalCharged = request.amount + request.fee + roundUpAmount;
+
+    // Initialize Paystack checkout session (sender pays)
+    const paystackSession = await this.paystackClient.initializeTransaction({
+      email: request.customerEmail,
+      amount: totalCharged, // Sender pays amount + fee + roundUp
+      currency,
+      reference: request.transferId,
+      callbackUrl: request.callbackUrl ?? undefined,
+      metadata: {
+        userId: request.userId,
+        recipientUserId: request.recipientUserId,
+        transferAmount: request.amount, // Actual amount recipient will receive
+        fee: request.fee,
+        roundUpAmount,
+        description: request.description ?? 'Transfer to Zanari user',
+        customerPhone: request.customerPhone,
+        transferType: 'external', // External payment to recipient
+      },
+      channels: request.channels,
+    });
+
+    // Create sender's pending transfer_out transaction
+    const senderTransaction = await this.transactionService.create({
+      id: request.transferId,
+      userId: request.userId,
+      type: 'transfer_out',
+      amount: request.amount,
+      category: 'transfer',
+      autoCategorized: false,
+      metadata: {
+        description: request.description ?? 'Transfer to Zanari user',
+        // Store metadata in the transaction's description for now
+        // We'll encode recipient info that can be retrieved later
+      },
+    });
+
+    // Store recipient info and transfer metadata in externalTransactionId temporarily
+    // Then update with actual Paystack data after initialization
+    const transferMetadata = {
+      recipientUserId: request.recipientUserId,
+      recipientName: request.recipientName || 'Zanari User',
+      senderName: request.senderName || 'Zanari User',
+      fee: request.fee,
+      totalCharged,
+      transferType: 'external',
+    };
+
+    const updatedSenderTx = await this.transactionRepository.update({
+      ...senderTransaction,
+      externalReference: paystackSession.reference, // Store Paystack reference directly for verification
+      externalTransactionId: JSON.stringify(transferMetadata), // Store metadata here temporarily
+      paymentMethod: this.resolvePaymentMethod(request.channels),
+      roundUpDetails: roundUpAmount > 0 ? {
+        originalAmount: request.amount + request.fee,
+        roundUpAmount,
+        roundUpRule: incrementUsed,
+        relatedTransactionId: '', // Will be set when round-up tx is created
+      } : undefined,
+      updatedAt: this.clock.now(),
+    });
+
+    this.logger.info('External transfer to recipient initialized', {
+      userId: request.userId,
+      recipientUserId: request.recipientUserId,
+      amount: request.amount,
+      fee: request.fee,
+      roundUpAmount,
+      totalCharged,
+      paystackReference: paystackSession.reference,
+    });
+
+    return {
+      status: 'pending',
+      senderTransaction: updatedSenderTx,
+      checkoutSession: {
+        authorizationUrl: paystackSession.authorizationUrl,
+        accessCode: paystackSession.accessCode,
+        reference: paystackSession.reference,
+        status: paystackSession.status,
+        expiresAt: paystackSession.expiresAt,
+      },
+      totalCharged,
+      fee: request.fee,
+      roundUpAmount,
+    };
+  }
+
   async transferPeer(request: PeerTransferRequest): Promise<PeerTransferResult> {
     const currency = request.currency ?? 'KES';
     const roundUpRule = await this.roundUpRuleRepository.findByUserId(request.userId);
@@ -497,6 +650,196 @@ export class PaymentService {
           recipientCreated: recipientCode.created,
         };
       }
+
+      throw error;
+    }
+  }
+
+  /**
+   * Transfer money between Zanari users (wallet-to-wallet, internal, FREE)
+   * - No Paystack involvement
+   * - Instant completion
+   * - Creates both transfer_out and transfer_in transactions
+   * - Applies round-up savings
+   */
+  async transferPeerInternal(request: InternalTransferRequest & { senderName?: string; recipientName?: string }): Promise<InternalTransferResult> {
+    const roundUpRule = await this.roundUpRuleRepository.findByUserId(request.userId);
+    let { roundUpAmount, incrementUsed } = this.calculateRoundUp(request.amount, roundUpRule);
+
+    // Check sender's wallet balance (amount + round-up, no fee for internal transfers)
+    const senderWallet = await this.requireMainWallet(request.userId);
+    const totalRequired = request.amount + roundUpAmount;
+
+    if (senderWallet.availableBalance < totalRequired) {
+      if (senderWallet.availableBalance >= request.amount) {
+        this.logger.warn('Skipping round-up for internal transfer due to insufficient funds', {
+          userId: request.userId,
+          requestedRoundUp: roundUpAmount,
+          availableBalance: senderWallet.availableBalance,
+        });
+        roundUpAmount = 0;
+        incrementUsed = '0';
+      } else {
+        throw new Error('Insufficient funds');
+      }
+    }
+
+    // Debit sender's wallet
+    await this.walletService.debit({ userId: request.userId, walletType: 'main', amount: request.amount });
+
+    let senderTx: Transaction;
+    let recipientTx: Transaction;
+    let roundUpTx: Transaction | null = null;
+
+    try {
+      // Apply round-up if applicable
+      if (roundUpAmount > 0) {
+        await this.walletService.transferRoundUp(request.userId, roundUpAmount);
+      }
+
+      // Create sender's transfer_out transaction
+      senderTx = await this.transactionService.create({
+        id: request.transferId,
+        userId: request.userId,
+        type: 'transfer_out',
+        amount: request.amount,
+        category: 'transfer',
+        autoCategorized: false,
+        metadata: {
+          description: request.description ?? 'Transfer to Zanari user',
+        },
+      });
+
+      // Update with metadata
+      senderTx = await this.transactionRepository.update({
+        ...senderTx,
+        paymentMethod: 'internal',
+        externalReference: JSON.stringify({
+          recipientUserId: request.recipientUserId,
+          recipientName: request.recipientName || 'Zanari User',
+          transferType: 'internal',
+        }),
+        updatedAt: this.clock.now(),
+      });
+
+      // Credit recipient's wallet
+      await this.walletService.credit({ userId: request.recipientUserId, walletType: 'main', amount: request.amount });
+
+      // Create recipient's transfer_in transaction
+      const recipientTxId = randomUUID();
+      recipientTx = await this.transactionService.create({
+        id: recipientTxId,
+        userId: request.recipientUserId,
+        type: 'transfer_in',
+        amount: request.amount,
+        category: 'transfer',
+        autoCategorized: false,
+        metadata: {
+          description: request.description ?? 'Received from Zanari user',
+        },
+      });
+
+      // Update recipient tx with metadata
+      recipientTx = await this.transactionRepository.update({
+        ...recipientTx,
+        externalReference: JSON.stringify({
+          senderUserId: request.userId,
+          senderName: request.senderName || 'Zanari User',
+          relatedTransactionId: request.transferId,
+          transferType: 'internal',
+        }),
+        updatedAt: this.clock.now(),
+      });
+
+      // Link transactions
+      senderTx = await this.transactionRepository.update({
+        ...senderTx,
+        externalReference: JSON.stringify({
+          recipientUserId: request.recipientUserId,
+          recipientName: request.recipientName || 'Zanari User',
+          transferType: 'internal',
+          relatedTransactionId: recipientTxId,
+        }),
+        updatedAt: this.clock.now(),
+      });
+
+      // Mark both as completed (instant for internal transfers)
+      senderTx = await this.transactionService.markStatus(senderTx, 'completed');
+      recipientTx = await this.transactionService.markStatus(recipientTx, 'completed');
+
+      // Create round-up transaction if applicable
+      if (roundUpAmount > 0) {
+        roundUpTx = await this.transactionService.create({
+          id: randomUUID(),
+          userId: request.userId,
+          type: 'round_up',
+          amount: roundUpAmount,
+          category: 'savings',
+          autoCategorized: true,
+          metadata: {
+            description: 'Round-up savings for internal transfer',
+            roundUpDetails: {
+              originalAmount: request.amount,
+              roundUpAmount,
+              roundUpRule: incrementUsed,
+              relatedTransactionId: request.transferId,
+            },
+          } as Partial<Transaction>,
+        });
+
+        roundUpTx = await this.transactionService.markStatus(roundUpTx, 'completed');
+
+        // Update sender transaction with round-up details
+        senderTx = await this.transactionRepository.update({
+          ...senderTx,
+          roundUpDetails: {
+            originalAmount: request.amount,
+            roundUpAmount,
+            roundUpRule: incrementUsed,
+            relatedTransactionId: roundUpTx.id,
+          },
+          updatedAt: this.clock.now(),
+        });
+      }
+
+      this.logger.info('Internal peer transfer completed', {
+        userId: request.userId,
+        recipientUserId: request.recipientUserId,
+        amount: request.amount,
+        roundUpAmount,
+        senderTxId: senderTx.id,
+        recipientTxId: recipientTx.id,
+      });
+
+      return {
+        status: 'completed',
+        senderTransaction: senderTx,
+        recipientTransaction: recipientTx,
+        roundUpTransaction: roundUpTx,
+        totalCharged: request.amount + roundUpAmount,
+        roundUpAmount,
+        fee: 0,
+      };
+    } catch (error) {
+      // Rollback: credit sender's wallet back
+      await this.walletService.credit({ userId: request.userId, walletType: 'main', amount: request.amount });
+
+      // Rollback: debit recipient if we credited them
+      if (recipientTx!) {
+        await this.walletService.debit({ userId: request.recipientUserId, walletType: 'main', amount: request.amount });
+      }
+
+      // Rollback: reverse round-up if applied
+      if (roundUpAmount > 0) {
+        await this.walletService.debit({ userId: request.userId, walletType: 'savings', amount: roundUpAmount });
+        await this.walletService.credit({ userId: request.userId, walletType: 'main', amount: roundUpAmount });
+      }
+
+      this.logger.error('Internal peer transfer failed', {
+        userId: request.userId,
+        recipientUserId: request.recipientUserId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
 
       throw error;
     }

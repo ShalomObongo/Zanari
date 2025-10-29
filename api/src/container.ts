@@ -22,10 +22,12 @@ import { WalletService } from './services/WalletService';
 import { ConsoleNotificationService } from './services/ConsoleNotificationService';
 import { ConsoleOtpSender } from './services/ConsoleOtpSender';
 import { SmtpOtpSender } from './services/SmtpOtpSender';
+import { SupabaseOtpSender } from './services/SupabaseOtpSender';
 import { ConsoleLogger } from './services/ConsoleLogger';
 import { HttpPaystackClient } from './clients/PaystackClient';
 import { createAuthRoutes } from './routes/auth';
 import { createPaymentRoutes } from './routes/payments';
+import { createUserRoutes } from './routes/users';
 import { createWalletRoutes } from './routes/wallets';
 import { createTransactionRoutes } from './routes/transactions';
 import { createRoundUpRuleRoutes } from './routes/round-up-rules';
@@ -70,19 +72,24 @@ export function createAppContainer() {
   const smtpSecure = process.env.SMTP_SECURE === 'true';
   const smtpFrom = process.env.SMTP_FROM ?? 'no-reply@zanari.app';
 
-  const otpSender = smtpHost && smtpUser && smtpPass
+  const isSmtpConfigured = Boolean(smtpHost && smtpUser && smtpPass);
+  const otpSender = isSmtpConfigured
     ? new SmtpOtpSender({
-        host: smtpHost,
+        host: smtpHost!,
         port: smtpPort,
         secure: smtpSecure,
-        user: smtpUser,
-        pass: smtpPass,
+        user: smtpUser!,
+        pass: smtpPass!,
         fromAddress: smtpFrom,
       })
-    : new ConsoleOtpSender();
-  
-  if (!(smtpHost && smtpUser && smtpPass)) {
-    logger.warn('SMTP not fully configured. Falling back to ConsoleOtpSender for email OTP delivery.');
+    : new SupabaseOtpSender({
+        client: supabase,
+        logger,
+        smsFallback: new ConsoleOtpSender(),
+      });
+
+  if (!isSmtpConfigured) {
+    logger.warn('SMTP not fully configured. Using Supabase native OTP delivery.');
   }
   const tokenService = new RandomTokenService();
   const pinHasher = new CryptoPinHasher();
@@ -143,6 +150,8 @@ export function createAppContainer() {
     pinTokenService,
     rateLimiter,
     logger,
+    supabaseClient: supabase,
+    emailOtpStrategy: isSmtpConfigured ? 'custom' : 'supabase',
   });
 
   const identityProvider = new SupabaseIdentityProvider(supabase);
@@ -163,6 +172,7 @@ export function createAppContainer() {
   });
 
   const authRoutes = createAuthRoutes({ authService, registrationService });
+  const userRoutes = createUserRoutes({ userRepository, logger });
   const paymentRoutes = createPaymentRoutes({
     paymentService,
     authService,
@@ -211,6 +221,7 @@ export function createAppContainer() {
     },
     routes: {
       auth: authRoutes,
+      users: userRoutes,
       payments: paymentRoutes,
       wallets: walletRoutes,
       transactions: transactionRoutes,

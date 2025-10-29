@@ -84,11 +84,56 @@ const DashboardScreen: React.FC<DashboardScreenProps> = () => {
   const recentTransactions = transactions
     .filter(t => t.status === 'completed')
     .slice(0, 3);
-  
+
   // Get active savings goals (limit to 2)
   const activeSavingsGoals = goals
     .filter(g => g.status === 'active')
     .slice(0, 2);
+
+  const getTransactionTitle = (transaction: typeof transactions[0]) => {
+    // For transfers, extract and display sender/recipient name
+    if (transaction.type === 'transfer_out' || transaction.type === 'transfer_in') {
+      try {
+        let metadata: { recipientName?: string; senderName?: string } = {};
+
+        // Try parsing external_reference first
+        if (transaction.external_reference) {
+          try {
+            metadata = JSON.parse(transaction.external_reference);
+          } catch {
+            // Not JSON, skip
+          }
+        }
+
+        // If no name found, try external_transaction_id (for sender in external transfers)
+        if (!metadata.recipientName && !metadata.senderName && transaction.external_transaction_id) {
+          try {
+            metadata = JSON.parse(transaction.external_transaction_id);
+          } catch {
+            // Not JSON, skip
+          }
+        }
+
+        if (transaction.type === 'transfer_out') {
+          const recipientName = metadata.recipientName || 'Zanari User';
+          return `Sent to ${recipientName}`;
+        } else {
+          const senderName = metadata.senderName || 'Zanari User';
+          return `Received from ${senderName}`;
+        }
+      } catch {
+        // Fallback
+        if (transaction.type === 'transfer_out') {
+          return 'Sent to Zanari User';
+        } else {
+          return 'Received from Zanari User';
+        }
+      }
+    }
+
+    // For non-transfer transactions, use merchant name or description
+    return transaction.merchant_info?.name || transaction.description || 'Transaction';
+  };
 
   const onRefresh = async () => {
     try {
@@ -186,9 +231,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = () => {
 
         {recentTransactions.map((transaction) => {
           const txnType = mapTransactionType(transaction.type);
-          const description = transaction.description || transaction.merchant_info?.name || 'Transaction';
+          const title = getTransactionTitle(transaction);
           const relativeDate = formatRelativeDate(transaction.created_at);
-          const iconName = getTransactionIcon(txnType, description);
+          const iconName = getTransactionIcon(txnType, title);
 
           return (
             <View key={transaction.id} style={styles.transactionItem}>
@@ -196,7 +241,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = () => {
                 <Icon name={iconName} size={24} color={theme.colors.textPrimary} />
               </View>
               <View style={styles.transactionDetails}>
-                <Text style={styles.transactionDescription}>{description}</Text>
+                <Text style={styles.transactionDescription}>{title}</Text>
                 <Text style={styles.transactionDate}>{relativeDate}</Text>
               </View>
               <Text style={[

@@ -4,7 +4,9 @@
 
 import { randomBytes } from 'node:crypto';
 
-import { AuthSession, createAuthSession, generateOtpCode } from '../models/AuthSession';
+import type { SupabaseClient } from '@supabase/supabase-js';
+
+import { AuthSession, SUPABASE_EMAIL_OTP_CODE, createAuthSession, generateOtpCode } from '../models/AuthSession';
 import { ValidationError, UUID } from '../models/base';
 import { User, validateUser } from '../models/User';
 import {
@@ -75,6 +77,8 @@ export class AuthService {
   private readonly rateLimiter: RateLimiter;
   private readonly clock: Clock;
   private readonly logger: Logger;
+  private readonly supabaseClient?: SupabaseClient;
+  private readonly emailOtpStrategy: 'custom' | 'supabase';
 
   constructor(options: {
     userRepository: UserRepository;
@@ -86,6 +90,8 @@ export class AuthService {
     rateLimiter?: RateLimiter;
     clock?: Clock;
     logger?: Logger;
+    supabaseClient?: SupabaseClient;
+    emailOtpStrategy?: 'custom' | 'supabase';
   }) {
     this.userRepository = options.userRepository;
     this.authSessionRepository = options.authSessionRepository;
@@ -96,6 +102,12 @@ export class AuthService {
     this.rateLimiter = options.rateLimiter ?? NullRateLimiter;
     this.clock = options.clock ?? new SystemClock();
     this.logger = options.logger ?? NullLogger;
+    this.supabaseClient = options.supabaseClient;
+    this.emailOtpStrategy = options.emailOtpStrategy ?? 'custom';
+
+    if (this.emailOtpStrategy === 'supabase' && !this.supabaseClient) {
+      throw new Error('Supabase client must be provided when using Supabase email OTP strategy.');
+    }
   }
 
   async requestOtp(input: RequestOtpInput): Promise<RequestOtpResult> {
@@ -112,7 +124,8 @@ export class AuthService {
       throw new ValidationError('Account not found', 'ACCOUNT_NOT_FOUND');
     }
 
-    const otpCode = generateOtpCode();
+    const useSupabaseEmailOtp = this.shouldUseSupabaseEmailOtp(contactType);
+    const otpCode = useSupabaseEmailOtp ? SUPABASE_EMAIL_OTP_CODE : generateOtpCode();
     const session = createAuthSession({
       userId: user.id,
       email: contactType === 'email' ? user.email : null,
@@ -132,7 +145,7 @@ export class AuthService {
       message = 'OTP sent to your phone';
 
       const emailFallback = user.email?.trim();
-      if (emailFallback) {
+      if (emailFallback && this.emailOtpStrategy !== 'supabase') {
         try {
           await this.otpSender.sendEmailOtp(emailFallback, otpCode);
           message = 'OTP sent to your phone and email';
@@ -176,7 +189,23 @@ export class AuthService {
       throw new ValidationError('Maximum OTP attempts exceeded', 'OTP_ATTEMPTS_EXCEEDED');
     }
 
-    if (session.otpCode !== input.otpCode) {
+    const isSupabaseEmailOtp = session.otpCode === SUPABASE_EMAIL_OTP_CODE;
+
+    if (isSupabaseEmailOtp) {
+      const verificationResult = await this.verifyWithSupabaseEmailOtp(session, input.otpCode);
+
+      if (verificationResult === 'expired') {
+        await this.authSessionRepository.delete(session.id);
+        throw new ValidationError('OTP expired', 'OTP_EXPIRED');
+      }
+
+      if (verificationResult === 'invalid') {
+        session.attemptCount += 1;
+        session.updatedAt = now;
+        await this.authSessionRepository.save(session);
+        throw new ValidationError('Invalid OTP code', 'INVALID_OTP');
+      }
+    } else if (session.otpCode !== input.otpCode) {
       session.attemptCount += 1;
       session.updatedAt = now;
       await this.authSessionRepository.save(session);
@@ -465,6 +494,49 @@ export class AuthService {
       }
     }
     return null;
+  }
+
+  private async verifyWithSupabaseEmailOtp(
+    session: AuthSession,
+    otpCode: string,
+  ): Promise<'ok' | 'invalid' | 'expired'> {
+    if (!this.supabaseClient) {
+      this.logger.error('Supabase client not configured for email OTP verification', { sessionId: session.id });
+      throw new Error('Supabase client not configured for email OTP verification.');
+    }
+
+    if (!session.email) {
+      this.logger.error('Supabase email OTP session missing email', { sessionId: session.id });
+      throw new Error('Supabase email OTP session missing email.');
+    }
+
+    try {
+      await this.supabaseClient.auth.verifyOtp({
+        email: session.email,
+        token: otpCode,
+        type: 'email',
+      });
+      return 'ok';
+    } catch (error) {
+      const authError = error as { message: string; status?: number };
+      const status = authError?.status;
+      this.logger.warn('Supabase email OTP verification failed', {
+        sessionId: session.id,
+        email: session.email,
+        error: authError?.message ?? 'unknown_error',
+        status,
+      });
+
+      if (status === 410) {
+        return 'expired';
+      }
+
+      return 'invalid';
+    }
+  }
+
+  private shouldUseSupabaseEmailOtp(contactType: 'email' | 'sms'): boolean {
+    return contactType === 'email' && this.emailOtpStrategy === 'supabase';
   }
 
   private validateContact(input: RequestOtpInput): {

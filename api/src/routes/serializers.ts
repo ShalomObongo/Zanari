@@ -199,6 +199,8 @@ export function serializeTransaction(transaction: Transaction): Record<string, u
     failure_reason: deriveFailureReason(transaction),
     recipient_info: deriveRecipientInfo(transaction),
     bill_info: deriveBillInfo(transaction),
+    external_reference: transaction.externalReference ?? null,
+    external_transaction_id: transaction.externalTransactionId ?? null,
     created_at: iso(transaction.createdAt),
     updated_at: iso(transaction.updatedAt),
     completed_at: iso(transaction.completedAt ?? null),

@@ -7,3 +7,4 @@ export * from './KYCService';
 export * from './AutoAnalyzeService';
 export * from './CategorizationService';
 export * from './types';
+export * from './SupabaseOtpSender';

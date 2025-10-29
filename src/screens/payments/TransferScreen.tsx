@@ -11,9 +11,11 @@ import {
   Alert,
   ScrollView,
   Modal,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { usePaystack } from 'react-native-paystack-webview';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import PinVerificationModal from '@/components/PinVerificationModal';
 import { useAuthStore } from '@/store/authStore';
@@ -27,28 +29,36 @@ interface TransferScreenProps {}
 
 const TransferScreen: React.FC<TransferScreenProps> = () => {
   const navigation = useNavigation<any>();
+  const { popup } = usePaystack();
 
   const [amount, setAmount] = useState('');
   const [recipientPhone, setRecipientPhone] = useState('');
   const [recipientName, setRecipientName] = useState('');
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedContactPhone, setSelectedContactPhone] = useState('');
   const [pinModalVisible, setPinModalVisible] = useState(false);
-  const [showAccountModal, setShowAccountModal] = useState(false);
-  const [selectedAccountType, setSelectedAccountType] = useState<'main' | 'savings'>('main');
+  const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'savings' | 'mpesa' | 'card'>('wallet');
+  const [recipientUser, setRecipientUser] = useState<{ exists: boolean; user_id?: string; name?: string } | null>(null);
+  const [isValidatingRecipient, setIsValidatingRecipient] = useState(false);
+  const [fee, setFee] = useState(0);
+  const [showPaymentMethodModal, setShowPaymentMethodModal] = useState(false);
   const pinRequestRef = useRef<{ resolve: (token: string) => void; reject: (error: Error) => void } | null>(null);
+  const validationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Zustand stores
   const wallets = useWalletStore((state) => state.wallets);
   const refreshWallets = useWalletStore((state) => state.refreshWallets);
   const transactions = useTransactionStore((state) => state.transactions);
   const refreshTransactions = useTransactionStore((state) => state.refreshTransactions);
+  const user = useAuthStore((state) => state.user);
   const isPinSet = useAuthStore((state) => state.isPinSet);
   const consumePinToken = useAuthStore((state) => state.consumePinToken);
 
-  const selectedWallet = wallets.find(w => w.wallet_type === selectedAccountType);
-  const availableBalance = selectedWallet?.available_balance ?? 0;
+  const mainWallet = wallets.find(w => w.wallet_type === 'main');
+  const savingsWallet = wallets.find(w => w.wallet_type === 'savings');
+  const availableBalance = paymentMethod === 'savings'
+    ? (savingsWallet?.available_balance ?? 0)
+    : (mainWallet?.available_balance ?? 0);
 
   const formatAmount = (text: string) => {
     const cleaned = text.replace(/\D/g, '');
@@ -128,18 +138,74 @@ const TransferScreen: React.FC<TransferScreenProps> = () => {
       pinRequestRef.current.reject(new Error('PIN entry cancelled'));
       pinRequestRef.current = null;
     }
+    if (validationTimeoutRef.current) {
+      clearTimeout(validationTimeoutRef.current);
+    }
   }, []);
+
+  // Calculate fee based on payment method
+  useEffect(() => {
+    if (paymentMethod === 'wallet' || paymentMethod === 'savings') {
+      setFee(0);
+    } else {
+      setFee(1000); // KES 10 in cents
+    }
+  }, [paymentMethod]);
+
+  // Real-time recipient validation with debouncing
+  useEffect(() => {
+    if (validationTimeoutRef.current) {
+      clearTimeout(validationTimeoutRef.current);
+    }
+
+    if (recipientPhone.length >= 12 && isValidKenyanNumber(recipientPhone)) {
+      setIsValidatingRecipient(true);
+      validationTimeoutRef.current = setTimeout(async () => {
+        try {
+          const response = await api.get<{ exists: boolean; user_id?: string; name?: string; error?: string; }>(`/users/lookup?phone=${recipientPhone}`);
+
+          if (response.error === 'SELF_TRANSFER_NOT_ALLOWED') {
+            setRecipientUser({ exists: false });
+            setRecipientName('');
+            Alert.alert('Invalid Recipient', 'You cannot transfer money to yourself.');
+          } else if (response.exists && response.name) {
+            setRecipientUser(response);
+            setRecipientName(response.name);
+          } else {
+            setRecipientUser({ exists: false });
+            setRecipientName('');
+          }
+        } catch (error) {
+          console.error('Recipient validation error:', error);
+          setRecipientUser({ exists: false });
+          setRecipientName('');
+        } finally {
+          setIsValidatingRecipient(false);
+        }
+      }, 500); // 500ms debounce
+    } else {
+      setRecipientUser(null);
+      setRecipientName('');
+      setIsValidatingRecipient(false);
+    }
+
+    return () => {
+      if (validationTimeoutRef.current) {
+        clearTimeout(validationTimeoutRef.current);
+      }
+    };
+  }, [recipientPhone]);
 
   const handleSendTransfer = async () => {
     const amountCents = parseCentsFromInput(amount.replace(/,/g, ''));
-    
+
     if (amountCents <= 0) {
       Alert.alert('Invalid Amount', 'Please enter a valid amount');
       return;
     }
 
-    // Check available balance
-    if (amountCents > availableBalance) {
+    // Check available balance for wallet/savings payments
+    if ((paymentMethod === 'wallet' || paymentMethod === 'savings') && amountCents > availableBalance) {
       Alert.alert('Insufficient Balance', `Available: ${formatCurrency(availableBalance)}`);
       return;
     }
@@ -160,11 +226,12 @@ const TransferScreen: React.FC<TransferScreenProps> = () => {
       return;
     }
 
-    if (!recipientName.trim()) {
-      Alert.alert('Recipient Name Required', 'Please enter the recipient\'s name');
+    if (!recipientUser?.exists || !recipientUser.user_id) {
+      Alert.alert('Recipient Not Found', 'This user is not registered on Zanari. Please check the phone number.');
       return;
     }
 
+    // PIN required for all transfers
     if (!isPinSet) {
       Alert.alert(
         'Set up your PIN',
@@ -190,37 +257,127 @@ const TransferScreen: React.FC<TransferScreenProps> = () => {
     setIsLoading(true);
 
     try {
-      const trimmedName = recipientName.trim();
       const trimmedMessage = message.trim();
 
-      const response = await api.post('/payments/transfer', {
+      const response = await api.post<{
+        status: 'completed' | 'pending';
+        transfer_transaction_id: string;
+        recipient_transaction_id?: string;
+        total_charged: number;
+        fee: number;
+        payment_method: string;
+        transfer_type: string;
+        paystack_authorization_url?: string;
+        paystack_reference?: string;
+        paystack_access_code?: string;
+        round_up_amount?: number;
+      }>('/payments/transfer', {
         amount: amountCents,
         pin_token: pinToken,
-        recipient: {
-          phone: recipientPhone,
-          name: trimmedName,
-        },
+        recipient_user_id: recipientUser.user_id,
         description: trimmedMessage || undefined,
+        payment_method: paymentMethod,
       });
 
-      const payload = (response as Record<string, unknown>) ?? {};
-      const status = typeof payload.status === 'string' ? payload.status : 'pending';
-      const roundUpAmount = typeof payload.round_up_amount === 'number' ? payload.round_up_amount : 0;
-      const transferId = typeof payload.transfer_transaction_id === 'string'
-        ? payload.transfer_transaction_id
-        : undefined;
+      if (response.status === 'pending' && response.paystack_reference) {
+        // External payment - open Paystack checkout
+        const paystackReference = response.paystack_reference;
 
+        setIsLoading(false);
+
+        popup.newTransaction({
+          email: user?.email || 'user@zanari.app',
+          amount: (amountCents + fee) / 100, // Convert back to currency units
+          reference: paystackReference,
+          onSuccess: async (res: any) => {
+            console.log('Payment successful:', res);
+
+            // Verify payment with backend
+            try {
+              await api.post('/payments/verify', {
+                reference: paystackReference,
+              });
+
+              // Refresh wallet and transactions
+              await Promise.all([refreshWallets(), refreshTransactions()]);
+
+              // Clear form
+              setAmount('');
+              setRecipientPhone('');
+              setRecipientName('');
+              setMessage('');
+              setRecipientUser(null);
+
+              const friendlyAmount = formatCurrency(amountCents);
+              const roundUpAmount = response.round_up_amount ?? 0;
+              const successFragments = [`Successfully sent ${friendlyAmount} to ${recipientName}.`];
+
+              if (fee > 0) {
+                successFragments.push(`Fee: ${formatCurrency(fee)}.`);
+              }
+
+              if (roundUpAmount > 0) {
+                successFragments.push(`An extra ${formatCurrency(roundUpAmount)} was moved to your savings.`);
+              }
+
+              Alert.alert(
+                'Transfer Complete',
+                successFragments.join(' '),
+                [
+                  {
+                    text: 'View History',
+                    onPress: () => navigation.navigate('MainTabs', { screen: 'History' }),
+                  },
+                  {
+                    text: 'Done',
+                    onPress: () => navigation.goBack(),
+                  },
+                ],
+                { cancelable: false },
+              );
+            } catch (verifyError) {
+              console.error('Verification error:', verifyError);
+              Alert.alert(
+                'Verification Pending',
+                'Payment received but verification is pending. Check your transaction history.',
+                [
+                  {
+                    text: 'OK',
+                    onPress: () => navigation.goBack(),
+                  },
+                ],
+              );
+            }
+          },
+          onCancel: () => {
+            console.log('Payment cancelled');
+            Alert.alert('Payment Cancelled', 'You cancelled the payment');
+          },
+          onError: (err: any) => {
+            console.error('Payment error:', err);
+            Alert.alert('Payment Error', 'An error occurred during payment. Please try again.');
+          },
+        });
+
+        return;
+      }
+
+      // Wallet transfer completed
       await Promise.all([refreshWallets(), refreshTransactions()]);
 
       setAmount('');
       setRecipientPhone('');
       setRecipientName('');
       setMessage('');
-      setSelectedContactPhone('');
+      setRecipientUser(null);
 
       const friendlyAmount = formatCurrency(amountCents);
-      const successTitle = status === 'pending' ? 'Transfer Processing' : 'Transfer Sent';
-      const successFragments = [`We've initiated your transfer of ${friendlyAmount} to ${trimmedName}.`];
+      const roundUpAmount = response.round_up_amount ?? 0;
+      const successFragments = [`Successfully sent ${friendlyAmount} to ${recipientName}.`];
+
+      if (fee > 0) {
+        successFragments.push(`Fee: ${formatCurrency(fee)}.`);
+      }
 
       if (roundUpAmount > 0) {
         successFragments.push(`An extra ${formatCurrency(roundUpAmount)} was moved to your savings.`);
@@ -229,7 +386,7 @@ const TransferScreen: React.FC<TransferScreenProps> = () => {
       const successMessage = successFragments.join(' ');
 
       Alert.alert(
-        successTitle,
+        'Transfer Complete',
         successMessage,
         [
           {
@@ -243,10 +400,6 @@ const TransferScreen: React.FC<TransferScreenProps> = () => {
         ],
         { cancelable: false },
       );
-
-      if (transferId) {
-        console.log('Transfer initiated with transaction id:', transferId);
-      }
     } catch (error) {
       if (error instanceof ApiError) {
         switch (error.code) {
@@ -282,7 +435,10 @@ const TransferScreen: React.FC<TransferScreenProps> = () => {
       }
       console.error('Transfer error:', error);
     } finally {
-      consumePinToken();
+      // Only consume PIN for wallet/savings transfers (external transfers consume PIN on backend)
+      if (paymentMethod === 'wallet' || paymentMethod === 'savings') {
+        consumePinToken();
+      }
       setIsLoading(false);
     }
   };
@@ -291,8 +447,34 @@ const TransferScreen: React.FC<TransferScreenProps> = () => {
     navigation.goBack();
   };
 
-  const getAccountLabel = (type: 'main' | 'savings') => {
-    return type === 'main' ? 'Main Wallet' : 'Savings Account';
+  const getPaymentMethodLabel = (method: 'wallet' | 'savings' | 'mpesa' | 'card') => {
+    switch (method) {
+      case 'wallet':
+        return 'Main Wallet';
+      case 'savings':
+        return 'Savings Account';
+      case 'mpesa':
+        return 'M-Pesa';
+      case 'card':
+        return 'Debit Card';
+      default:
+        return 'Main Wallet';
+    }
+  };
+
+  const getPaymentMethodIcon = (method: 'wallet' | 'savings' | 'mpesa' | 'card') => {
+    switch (method) {
+      case 'wallet':
+        return 'account-balance-wallet';
+      case 'savings':
+        return 'savings';
+      case 'mpesa':
+        return 'phone-android';
+      case 'card':
+        return 'credit-card';
+      default:
+        return 'account-balance-wallet';
+    }
   };
 
   return (
@@ -313,46 +495,31 @@ const TransferScreen: React.FC<TransferScreenProps> = () => {
           </View>
 
           <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-            {/* From Account Selector */}
+            {/* Payment Method Selector (Combined From + Method) */}
             <View style={styles.section}>
-              <Text style={styles.sectionLabel}>From</Text>
+              <Text style={styles.sectionLabel}>Payment Method</Text>
               <TouchableOpacity
                 style={styles.accountSelector}
-                onPress={() => setShowAccountModal(true)}
+                onPress={() => setShowPaymentMethodModal(true)}
               >
                 <View style={styles.accountIconContainer}>
-                  <Icon name="account-balance" size={24} color={theme.colors.primary} />
+                  <Icon name={getPaymentMethodIcon(paymentMethod)} size={24} color={theme.colors.primary} />
                 </View>
                 <View style={styles.accountInfo}>
-                  <Text style={styles.accountName}>{getAccountLabel(selectedAccountType)}</Text>
+                  <Text style={styles.accountName}>{getPaymentMethodLabel(paymentMethod)}</Text>
                   <Text style={styles.accountBalance}>
-                    Available Balance: {formatCurrency(availableBalance)}
+                    {(paymentMethod === 'wallet' || paymentMethod === 'savings')
+                      ? `Available: ${formatCurrency(availableBalance)}`
+                      : fee > 0 ? `Fee: ${formatCurrency(fee)}` : 'No fees'}
                   </Text>
                 </View>
                 <Icon name="unfold-more" size={28} color={theme.colors.textPrimary} />
               </TouchableOpacity>
             </View>
 
-            {/* Recipient Input */}
+            {/* Phone Number Input (Primary field) */}
             <View style={styles.section}>
-              <Text style={styles.sectionLabel}>To</Text>
-              <View style={styles.recipientInputContainer}>
-                <TextInput
-                  style={styles.recipientInput}
-                  value={recipientName}
-                  onChangeText={setRecipientName}
-                  placeholder="Name, phone, or account"
-                  placeholderTextColor={theme.colors.textTertiary}
-                />
-                <TouchableOpacity style={styles.contactIconButton}>
-                  <Icon name="contacts" size={24} color={theme.colors.primary} />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Phone Number Input */}
-            <View style={styles.section}>
-              <Text style={styles.sectionLabel}>Phone Number</Text>
+              <Text style={styles.sectionLabel}>Recipient Phone Number</Text>
               <View style={styles.phoneInputWrapper}>
                 <Text style={styles.countryCode}>+254</Text>
                 <TextInput
@@ -364,14 +531,26 @@ const TransferScreen: React.FC<TransferScreenProps> = () => {
                   keyboardType="phone-pad"
                   maxLength={9}
                 />
+                {isValidatingRecipient && (
+                  <ActivityIndicator size="small" color={theme.colors.primary} style={styles.validationIndicator} />
+                )}
+                {!isValidatingRecipient && recipientUser?.exists && (
+                  <Icon name="check-circle" size={24} color={theme.colors.accent} style={styles.validationIndicator} />
+                )}
               </View>
+              {recipientUser?.exists && recipientName && (
+                <View style={styles.recipientInfoBanner}>
+                  <Icon name="person" size={20} color={theme.colors.accent} />
+                  <Text style={styles.recipientInfoText}>{recipientName}</Text>
+                </View>
+              )}
             </View>
 
             {/* Amount Input */}
             <View style={styles.section}>
               <Text style={styles.sectionLabel}>Amount</Text>
               <View style={styles.amountInputContainer}>
-                <Text style={styles.currencySymbol}>$</Text>
+                <Text style={styles.currencySymbol}>KES</Text>
                 <TextInput
                   style={styles.amountInput}
                   value={amount}
@@ -384,14 +563,14 @@ const TransferScreen: React.FC<TransferScreenProps> = () => {
               </View>
             </View>
 
-            {/* Reference Input */}
+            {/* Notes Input */}
             <View style={styles.section}>
-              <Text style={styles.sectionLabel}>Reference (Optional)</Text>
+              <Text style={styles.sectionLabel}>Notes (Optional)</Text>
               <TextInput
                 style={styles.referenceInput}
                 value={message}
                 onChangeText={setMessage}
-                placeholder="Add a note for the recipient"
+                placeholder="Add a note"
                 placeholderTextColor={theme.colors.textTertiary}
                 multiline
                 numberOfLines={4}
@@ -407,10 +586,10 @@ const TransferScreen: React.FC<TransferScreenProps> = () => {
             <TouchableOpacity
               style={[
                 styles.sendButton,
-                (!amount || !recipientPhone || !recipientName || getNumericAmount() <= 0 || isLoading) && styles.sendButtonDisabled
+                (!amount || !recipientUser?.exists || getNumericAmount() <= 0 || isLoading || isValidatingRecipient) && styles.sendButtonDisabled
               ]}
               onPress={handleSendTransfer}
-              disabled={!amount || !recipientPhone || !recipientName || getNumericAmount() <= 0 || isLoading}
+              disabled={!amount || !recipientUser?.exists || getNumericAmount() <= 0 || isLoading || isValidatingRecipient}
             >
               <Text style={styles.sendButtonText}>
                 {isLoading ? 'Sending...' : 'Send Funds'}
@@ -419,18 +598,18 @@ const TransferScreen: React.FC<TransferScreenProps> = () => {
           </View>
         </KeyboardAvoidingView>
 
-        {/* Account Selector Modal */}
+        {/* Payment Method Selector Modal */}
         <Modal
-          visible={showAccountModal}
+          visible={showPaymentMethodModal}
           animationType="slide"
           transparent={true}
-          onRequestClose={() => setShowAccountModal(false)}
+          onRequestClose={() => setShowPaymentMethodModal(false)}
         >
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Select Account</Text>
-                <TouchableOpacity onPress={() => setShowAccountModal(false)}>
+                <Text style={styles.modalTitle}>Payment Method</Text>
+                <TouchableOpacity onPress={() => setShowPaymentMethodModal(false)}>
                   <Icon name="close" size={24} color={theme.colors.textPrimary} />
                 </TouchableOpacity>
               </View>
@@ -438,8 +617,8 @@ const TransferScreen: React.FC<TransferScreenProps> = () => {
                 <TouchableOpacity
                   style={styles.accountOption}
                   onPress={() => {
-                    setSelectedAccountType('main');
-                    setShowAccountModal(false);
+                    setPaymentMethod('wallet');
+                    setShowPaymentMethodModal(false);
                   }}
                 >
                   <View style={styles.accountIconContainer}>
@@ -447,19 +626,17 @@ const TransferScreen: React.FC<TransferScreenProps> = () => {
                   </View>
                   <View style={styles.accountInfo}>
                     <Text style={styles.accountName}>Main Wallet</Text>
-                    <Text style={styles.accountBalance}>
-                      {formatCurrency(wallets.find(w => w.wallet_type === 'main')?.available_balance ?? 0)}
-                    </Text>
+                    <Text style={styles.accountBalance}>Free, instant transfer</Text>
                   </View>
-                  {selectedAccountType === 'main' && (
+                  {paymentMethod === 'wallet' && (
                     <Icon name="check" size={20} color={theme.colors.accent} />
                   )}
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.accountOption}
                   onPress={() => {
-                    setSelectedAccountType('savings');
-                    setShowAccountModal(false);
+                    setPaymentMethod('savings');
+                    setShowPaymentMethodModal(false);
                   }}
                 >
                   <View style={styles.accountIconContainer}>
@@ -467,11 +644,45 @@ const TransferScreen: React.FC<TransferScreenProps> = () => {
                   </View>
                   <View style={styles.accountInfo}>
                     <Text style={styles.accountName}>Savings Account</Text>
-                    <Text style={styles.accountBalance}>
-                      {formatCurrency(wallets.find(w => w.wallet_type === 'savings')?.available_balance ?? 0)}
-                    </Text>
+                    <Text style={styles.accountBalance}>Free, instant transfer</Text>
                   </View>
-                  {selectedAccountType === 'savings' && (
+                  {paymentMethod === 'savings' && (
+                    <Icon name="check" size={20} color={theme.colors.accent} />
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.accountOption}
+                  onPress={() => {
+                    setPaymentMethod('mpesa');
+                    setShowPaymentMethodModal(false);
+                  }}
+                >
+                  <View style={styles.accountIconContainer}>
+                    <Icon name="phone-android" size={24} color={theme.colors.primary} />
+                  </View>
+                  <View style={styles.accountInfo}>
+                    <Text style={styles.accountName}>M-Pesa</Text>
+                    <Text style={styles.accountBalance}>Fee: {formatCurrency(1000)}</Text>
+                  </View>
+                  {paymentMethod === 'mpesa' && (
+                    <Icon name="check" size={20} color={theme.colors.accent} />
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.accountOption}
+                  onPress={() => {
+                    setPaymentMethod('card');
+                    setShowPaymentMethodModal(false);
+                  }}
+                >
+                  <View style={styles.accountIconContainer}>
+                    <Icon name="credit-card" size={24} color={theme.colors.primary} />
+                  </View>
+                  <View style={styles.accountInfo}>
+                    <Text style={styles.accountName}>Debit Card</Text>
+                    <Text style={styles.accountBalance}>Fee: {formatCurrency(1000)}</Text>
+                  </View>
+                  {paymentMethod === 'card' && (
                     <Icon name="check" size={20} color={theme.colors.accent} />
                   )}
                 </TouchableOpacity>
@@ -588,6 +799,24 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.regular,
     color: theme.colors.textPrimary,
     paddingHorizontal: theme.spacing.base,
+  },
+  validationIndicator: {
+    paddingHorizontal: theme.spacing.base,
+  },
+  recipientInfoBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: `${theme.colors.accent}15`,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.sm,
+    marginTop: theme.spacing.sm,
+    gap: theme.spacing.sm,
+  },
+  recipientInfoText: {
+    fontSize: theme.fontSizes.sm,
+    fontFamily: theme.fonts.medium,
+    color: theme.colors.accent,
+    flex: 1,
   },
   contactIconButton: {
     paddingHorizontal: theme.spacing.base,

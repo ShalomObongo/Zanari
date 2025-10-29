@@ -47,6 +47,7 @@ import {
 import { createAuthRoutes } from '../routes/auth';
 import { createWalletRoutes } from '../routes/wallets';
 import { createPaymentRoutes } from '../routes/payments';
+import { createUserRoutes } from '../routes/users';
 import { createSavingsGoalRoutes } from '../routes/savings-goals';
 import { createRoundUpRuleRoutes } from '../routes/round-up-rules';
 import { createKYCRoutes } from '../routes/kyc';
@@ -670,6 +671,7 @@ export function createInMemoryAppContainer({ logger }: InMemoryContainerOptions)
   const kycService = new KYCService({ repository: kycDocumentRepository, notificationService, logger });
 
   const authRoutes = createAuthRoutes({ authService, registrationService });
+  const userRoutes = createUserRoutes({ userRepository, logger });
   const walletRoutes = createWalletRoutes({ walletService, transactionService, authService, logger });
   const paymentRoutes = createPaymentRoutes({
     paymentService,
@@ -722,6 +724,7 @@ export function createInMemoryAppContainer({ logger }: InMemoryContainerOptions)
     },
     routes: {
       auth: authRoutes,
+      users: userRoutes,
       wallets: walletRoutes,
       payments: paymentRoutes,
       savings: savingsRoutes,

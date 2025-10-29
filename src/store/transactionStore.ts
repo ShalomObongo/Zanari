@@ -56,6 +56,8 @@ export interface Transaction {
   failure_reason?: string | null;
   recipient_info?: Record<string, unknown> | null;
   bill_info?: Record<string, unknown> | null;
+  external_reference?: string | null;
+  external_transaction_id?: string | null;
   created_at: string;
   updated_at: string;
   completed_at: string | null;

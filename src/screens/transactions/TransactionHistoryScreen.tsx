@@ -64,14 +64,59 @@ const TransactionHistoryScreen: React.FC<TransactionHistoryScreenProps> = () => 
     
     loadInitialData();
   }, []);
-  
+
+  const getTransactionTitle = (transaction: typeof transactions[0]) => {
+    // For transfers, extract and display sender/recipient name
+    if (transaction.type === 'transfer_out' || transaction.type === 'transfer_in') {
+      try {
+        let metadata: { recipientName?: string; senderName?: string } = {};
+
+        // Try parsing external_reference first
+        if (transaction.external_reference) {
+          try {
+            metadata = JSON.parse(transaction.external_reference);
+          } catch {
+            // Not JSON, skip
+          }
+        }
+
+        // If no name found, try external_transaction_id (for sender in external transfers)
+        if (!metadata.recipientName && !metadata.senderName && transaction.external_transaction_id) {
+          try {
+            metadata = JSON.parse(transaction.external_transaction_id);
+          } catch {
+            // Not JSON, skip
+          }
+        }
+
+        if (transaction.type === 'transfer_out') {
+          const recipientName = metadata.recipientName || 'Zanari User';
+          return `Sent to ${recipientName}`;
+        } else {
+          const senderName = metadata.senderName || 'Zanari User';
+          return `Received from ${senderName}`;
+        }
+      } catch {
+        // Fallback
+        if (transaction.type === 'transfer_out') {
+          return 'Sent to Zanari User';
+        } else {
+          return 'Received from Zanari User';
+        }
+      }
+    }
+
+    // For non-transfer transactions, use merchant name or description
+    return transaction.merchant_info?.name || transaction.description || 'Transaction';
+  };
+
   // Client-side filtering
   const filterTransactions = () => {
     return transactions.filter(transaction => {
       // Filter by search query
       if (searchQuery) {
-        const description = (transaction.description || transaction.merchant_info?.name || '').toLowerCase();
-        if (!description.includes(searchQuery.toLowerCase())) {
+        const title = getTransactionTitle(transaction).toLowerCase();
+        if (!title.includes(searchQuery.toLowerCase())) {
           return false;
         }
       }
@@ -353,9 +398,9 @@ const TransactionHistoryScreen: React.FC<TransactionHistoryScreenProps> = () => 
 
   const renderTransaction = ({ item }: { item: typeof transactions[0] }) => {
     const txnType = mapTransactionType(item.type);
-    const description = item.description || item.merchant_info?.name || 'Transaction';
+    const title = getTransactionTitle(item);
     const relativeDate = formatRelativeDate(item.created_at);
-    const iconName = getTransactionIcon(txnType, description, item.category);
+    const iconName = getTransactionIcon(txnType, title, item.category);
     const statusStyles = getStatusStyles(item.status);
 
     return (
@@ -367,7 +412,7 @@ const TransactionHistoryScreen: React.FC<TransactionHistoryScreenProps> = () => 
           <Icon name={iconName} size={24} color={theme.colors.textPrimary} />
         </View>
         <View style={styles.transactionDetails}>
-          <Text style={styles.transactionDescription}>{description}</Text>
+          <Text style={styles.transactionDescription}>{title}</Text>
           <Text style={styles.transactionDate}>{relativeDate}</Text>
         </View>
         <View style={styles.transactionRight}>

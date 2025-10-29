@@ -46,7 +46,9 @@ interface TransferPaymentBody {
   amount?: number;
   pin_token?: string;
   recipient?: TransferRecipientPayload;
+  recipient_user_id?: string; // Zanari user ID from lookup
   description?: string;
+  payment_method?: 'wallet' | 'mpesa' | 'card'; // Payment method selection
 }
 
 interface TopUpBody {
@@ -70,6 +72,8 @@ const MIN_TRANSACTION_AMOUNT = 100; // cents → KES 1.00
 const MAX_TRANSACTION_AMOUNT = 500_000; // cents → KES 5,000.00
 const MAX_TOPUP_AMOUNT = 100_000_000; // cents → KES 1,000,000.00
 const DAILY_TRANSACTION_LIMIT = 2_000_000; // cents → KES 20,000.00
+const WALLET_TRANSFER_FEE = 0; // Free for wallet-to-wallet transfers
+const EXTERNAL_TRANSFER_FEE = 1000; // KES 10 for M-Pesa/Card transfers
 
 export function createPaymentRoutes({
   paymentService,
@@ -120,9 +124,120 @@ export function createPaymentRoutes({
           updatedAt: clock.now(),
         });
 
-        // If this is a deposit, credit the user's main wallet
-        if (updatedTransaction.type === 'deposit') {
+        // Parse metadata from externalTransactionId (for external transfers)
+        let transferMetadata: {
+          recipientUserId?: string;
+          recipientName?: string;
+          senderName?: string;
+          transferType?: string;
+          senderUserId?: string;
+        } = {};
+        if (transaction.externalTransactionId) {
+          try {
+            transferMetadata = JSON.parse(transaction.externalTransactionId);
+          } catch {
+            // Not JSON metadata, skip
+          }
+        }
+
+        const recipientUserId = transferMetadata.recipientUserId;
+        const recipientName = transferMetadata.recipientName;
+        const senderName = transferMetadata.senderName;
+        const transferType = transferMetadata.transferType;
+
+        if (updatedTransaction.type === 'transfer_out' && transferType === 'external' && recipientUserId) {
+          // This is an external transfer to a Zanari user
+          // Credit the RECIPIENT's wallet
+          await walletService.credit({
+            userId: recipientUserId,
+            walletType: 'main',
+            amount: updatedTransaction.amount,
+          });
+
+          // Create transfer_in transaction for recipient
+          const recipientTxId = randomUUID();
+          await transactionRepository.create({
+            id: recipientTxId,
+            userId: recipientUserId,
+            type: 'transfer_in',
+            amount: updatedTransaction.amount,
+            category: 'transfer',
+            status: 'completed',
+            autoCategorized: false,
+            description: transaction.description ?? 'Received from Zanari user',
+            externalReference: JSON.stringify({
+              senderUserId: request.userId,
+              senderName: senderName || 'Zanari User',
+              relatedTransactionId: transaction.id,
+              transferType: 'external',
+            }),
+            createdAt: clock.now(),
+            updatedAt: clock.now(),
+            completedAt: clock.now(),
+            retry: {
+              retryCount: 0,
+              lastRetryAt: null,
+              nextRetryAt: null,
+            },
+          });
+
+          // Create round-up transaction for sender if applicable
+          const roundUpAmount = updatedTransaction.roundUpDetails?.roundUpAmount;
+          if (roundUpAmount && roundUpAmount > 0 && updatedTransaction.roundUpDetails) {
+            const roundUpTx = await transactionRepository.create({
+              id: randomUUID(),
+              userId: request.userId,
+              type: 'round_up',
+              amount: roundUpAmount,
+              category: 'savings',
+              status: 'completed',
+              autoCategorized: true,
+              description: 'Round-up savings for external transfer',
+              roundUpDetails: {
+                originalAmount: updatedTransaction.amount,
+                roundUpAmount,
+                roundUpRule: updatedTransaction.roundUpDetails.roundUpRule,
+                relatedTransactionId: transaction.id,
+              },
+              createdAt: clock.now(),
+              updatedAt: clock.now(),
+              completedAt: clock.now(),
+              retry: {
+                retryCount: 0,
+                lastRetryAt: null,
+                nextRetryAt: null,
+              },
+            });
+
+            // Apply round-up to sender's savings
+            await walletService.transferRoundUp(request.userId, roundUpAmount);
+
+            // Update sender transaction with round-up link
+            await transactionRepository.update({
+              ...updatedTransaction,
+              roundUpDetails: {
+                ...updatedTransaction.roundUpDetails,
+                relatedTransactionId: roundUpTx.id,
+              },
+              updatedAt: clock.now(),
+            });
+          }
+
+          logger.info('External transfer to recipient verified', {
+            senderId: request.userId,
+            recipientId: recipientUserId,
+            amount: updatedTransaction.amount,
+            reference,
+          });
+        } else if (updatedTransaction.type === 'deposit' && !recipientUserId) {
+          // Regular top-up - credit sender's wallet
           await walletService.credit({ userId: request.userId, walletType: 'main', amount: updatedTransaction.amount });
+
+          logger.info('Wallet top-up verified', {
+            userId: request.userId,
+            amount: updatedTransaction.amount,
+            reference,
+          });
         }
 
         logger.info('Payment verified successfully', {
@@ -277,79 +392,158 @@ export function createPaymentRoutes({
 
       const amount = parseAmount(request.body?.amount, 'Minimum transfer amount is KES 1.00');
       const pinToken = parsePinToken(request.body?.pin_token, 'PIN token is required for transfer authorization');
-      const recipient = await parseRecipient(request.userId, request.body?.recipient, userRepository);
       const description = request.body?.description?.trim() ?? null;
+      const paymentMethod = request.body?.payment_method ?? 'wallet';
+      const recipientUserId = request.body?.recipient_user_id;
+
+      // Validate payment method
+      if (paymentMethod !== 'wallet' && paymentMethod !== 'mpesa' && paymentMethod !== 'card') {
+        throw badRequest('Invalid payment method. Must be wallet, mpesa, or card', 'INVALID_PAYMENT_METHOD');
+      }
+
+      // Validate recipient user ID is provided
+      if (!recipientUserId) {
+        throw badRequest('Recipient user ID is required (from /users/lookup)', 'MISSING_RECIPIENT_USER_ID');
+      }
+
+      // Verify recipient exists and is not self
+      const recipientUser = await userRepository.findById(recipientUserId);
+      if (!recipientUser) {
+        throw badRequest('Recipient user not found', 'RECIPIENT_NOT_FOUND');
+      }
+
+      if (recipientUserId === request.userId) {
+        throw badRequest('Cannot transfer money to yourself', 'SELF_TRANSFER_NOT_ALLOWED');
+      }
+
+      // Get sender user for email/phone
+      const senderUser = await userRepository.findById(request.userId);
+      if (!senderUser) {
+        throw new HttpError(404, 'User not found', 'USER_NOT_FOUND');
+      }
 
       await enforceDailyLimit(transactionRepository, request.userId, amount, clock);
 
-      const mainWallet = await requireMainWallet(walletService, request.userId);
-      const availableBefore = mainWallet.availableBalance;
-      if (availableBefore < amount) {
-        throw new HttpError(402, 'Insufficient funds', 'INSUFFICIENT_FUNDS', {
-          available_balance: availableBefore,
-          round_up_skipped: false,
-        });
-      }
+      // Calculate fee based on payment method
+      const fee = paymentMethod === 'wallet' ? WALLET_TRANSFER_FEE : EXTERNAL_TRANSFER_FEE;
 
+      // Validate PIN for all transfer types (both wallet and external)
       const pinValid = await authService.validatePinToken(request.userId, pinToken);
       if (!pinValid) {
         throw new HttpError(401, 'PIN token expired', 'PIN_TOKEN_EXPIRED');
       }
 
       try {
-        const transferId = randomUUID();
+        if (paymentMethod === 'wallet') {
+          // WALLET-TO-WALLET TRANSFER (Internal, FREE, Instant)
 
-        const result = await paymentService.transferPeer({
-          transferId,
-          userId: request.userId,
-          amount,
-          pinToken,
-          recipient: recipient.recipient,
-          description,
-        });
+          const mainWallet = await requireMainWallet(walletService, request.userId);
+          const availableBefore = mainWallet.availableBalance;
 
-        await authService.invalidatePinToken(pinToken);
+          // Check balance (amount only, no fee for wallet transfers)
+          if (availableBefore < amount) {
+            throw new HttpError(402, 'Insufficient funds', 'INSUFFICIENT_FUNDS', {
+              available_balance: availableBefore,
+              required_amount: amount,
+            });
+          }
 
-        if (result.status === 'failed') {
-          const retryAfter = computeRetryAfterSeconds(result.scheduledRetry?.runAt, clock.now());
-          throw new HttpError(503, 'Transfer service temporarily unavailable', 'PAYSTACK_TRANSFER_UNAVAILABLE', {
-            retry_after: retryAfter,
+          const transferId = randomUUID();
+          const result = await paymentService.transferPeerInternal({
+            transferId,
+            userId: request.userId,
+            recipientUserId,
+            amount,
+            description,
+            senderName: senderUser.firstName && senderUser.lastName
+              ? `${senderUser.firstName} ${senderUser.lastName}`
+              : senderUser.firstName || 'Zanari User',
+            recipientName: recipientUser.firstName && recipientUser.lastName
+              ? `${recipientUser.firstName} ${recipientUser.lastName}`
+              : recipientUser.firstName || 'Zanari User',
+          });
+
+          await authService.invalidatePinToken(pinToken);
+
+          logger.info('Internal peer transfer completed', {
+            userId: request.userId,
+            recipientUserId,
+            amount,
+            roundUpAmount: result.roundUpAmount,
+          });
+
+          return ok({
+            status: 'completed',
+            transfer_transaction_id: result.senderTransaction.id,
+            recipient_transaction_id: result.recipientTransaction.id,
+            round_up_transaction_id: result.roundUpTransaction?.id ?? null,
+            total_charged: result.totalCharged,
+            round_up_amount: result.roundUpAmount,
+            fee: result.fee,
+            payment_method: 'wallet',
+            transfer_type: 'internal',
+          });
+        } else {
+          // EXTERNAL TRANSFER (M-Pesa/Card, WITH FEE, Pending)
+          const customerEmail = senderUser.email ?? `${request.userId}@zanari.app`;
+          let customerPhone: string | null = null;
+          if (senderUser.phone) {
+            try {
+              customerPhone = normalizeKenyanPhone(senderUser.phone);
+            } catch {
+              customerPhone = null;
+            }
+          }
+
+          const transferId = randomUUID();
+          const result = await paymentService.initializeDepositToRecipient({
+            transferId,
+            userId: request.userId,
+            recipientUserId,
+            amount,
+            fee,
+            description,
+            customerEmail,
+            customerPhone,
+            channels: paymentMethod === 'mpesa' ? ['mobile_money'] : ['card'],
+            currency: 'KES',
+            callbackUrl: process.env.PAYSTACK_CALLBACK_URL ?? undefined,
+            senderName: senderUser.firstName && senderUser.lastName
+              ? `${senderUser.firstName} ${senderUser.lastName}`
+              : senderUser.firstName || 'Zanari User',
+            recipientName: recipientUser.firstName && recipientUser.lastName
+              ? `${recipientUser.firstName} ${recipientUser.lastName}`
+              : recipientUser.firstName || 'Zanari User',
+          });
+
+          // Invalidate PIN after successful Paystack initialization
+          await authService.invalidatePinToken(pinToken);
+
+          logger.info('External peer transfer initialized', {
+            userId: request.userId,
+            recipientUserId,
+            amount,
+            fee,
+            roundUpAmount: result.roundUpAmount,
+            totalCharged: result.totalCharged,
+            paymentMethod,
+          });
+
+          return ok({
+            status: 'pending',
+            transfer_transaction_id: result.senderTransaction.id,
+            paystack_reference: result.checkoutSession.reference,
+            paystack_access_code: result.checkoutSession.accessCode,
+            paystack_authorization_url: result.checkoutSession.authorizationUrl,
+            paystack_status: result.checkoutSession.status,
+            paystack_checkout_expires_at: result.checkoutSession.expiresAt?.toISOString() ?? null,
+            total_charged: result.totalCharged,
+            fee: result.fee,
+            round_up_amount: result.roundUpAmount,
+            payment_method: paymentMethod,
+            transfer_type: 'external',
           });
         }
-
-        const roundUpSkipped = determineRoundUpSkipped({
-          roundUpAmount: result.roundUpAmount,
-          roundUpTransactionId: result.roundUpTransaction?.id ?? null,
-          originalAmount: amount,
-          initialAvailable: availableBefore,
-        });
-
-        const body = {
-          transfer_transaction_id: result.transferTransaction.id,
-          round_up_transaction_id: result.roundUpTransaction?.id ?? null,
-          total_charged: result.totalCharged,
-          round_up_amount: result.roundUpAmount,
-          paystack_transfer_reference: result.paystackTransferReference ?? `ps_transfer_ref_${result.transferTransaction.id}`,
-          paystack_recipient_code: result.paystackRecipientCode ?? `rcp_ps_${randomSuffix(result.transferTransaction.id)}`,
-          estimated_completion: result.estimatedCompletion?.toISOString() ?? null,
-          round_up_skipped: roundUpSkipped.skipped,
-          round_up_skip_reason: roundUpSkipped.reason,
-          recipient_created: recipient.isNewRecipient,
-        } as Record<string, unknown>;
-
-        if (result.status === 'pending' && result.scheduledRetry) {
-          body.status = 'pending';
-          body.retry_after = computeRetryAfterSeconds(result.scheduledRetry.runAt, clock.now());
-        }
-
-        logger.info('Peer transfer initiated', {
-          userId: request.userId,
-          amount,
-          roundUpAmount: result.roundUpAmount,
-          status: result.status,
-        });
-
-        return ok(body);
       } catch (error) {
         if (error instanceof HttpError) {
           throw error;
@@ -358,15 +552,18 @@ export function createPaymentRoutes({
           throw fromValidationError(error);
         }
         if (error instanceof Error) {
-          if (error.message === 'Cannot transfer money to yourself') {
-            throw badRequest('Cannot transfer money to yourself', 'SELF_TRANSFER_NOT_ALLOWED');
-          }
           if (error.message === 'Insufficient funds') {
+            const mainWallet = await requireMainWallet(walletService, request.userId);
             throw new HttpError(402, 'Insufficient funds', 'INSUFFICIENT_FUNDS', {
-              available_balance: availableBefore,
-              round_up_skipped: false,
+              available_balance: mainWallet.availableBalance,
+              required_amount: amount + fee,
             });
           }
+          logger.error('Transfer failed', {
+            userId: request.userId,
+            error: error.message,
+          });
+          throw new HttpError(503, 'Transfer service temporarily unavailable', 'TRANSFER_UNAVAILABLE');
         }
         throw error;
       }
