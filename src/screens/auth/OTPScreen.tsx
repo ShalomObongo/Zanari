@@ -36,24 +36,33 @@ const OTPScreen: React.FC<OTPScreenProps> = () => {
   const [canResend, setCanResend] = useState(false);
 
   const inputRefs = useRef<(TextInput | null)[]>([]);
+  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const verifyOtp = useAuthStore((state) => state.verifyOtp);
   const sendLoginOtp = useAuthStore((state) => state.sendLoginOtp);
   const sessionId = useAuthStore((state) => state.sessionId);
   const isVerifyingOtp = useAuthStore((state) => state.isVerifyingOtp);
 
   useEffect(() => {
-    const countdown = setInterval(() => {
+    countdownRef.current = setInterval(() => {
       setTimer((prev) => {
         if (prev <= 1) {
           setCanResend(true);
-          clearInterval(countdown);
+          if (countdownRef.current) {
+            clearInterval(countdownRef.current);
+            countdownRef.current = null;
+          }
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
 
-    return () => clearInterval(countdown);
+    return () => {
+      if (countdownRef.current) {
+        clearInterval(countdownRef.current);
+        countdownRef.current = null;
+      }
+    };
   }, []);
 
   const formatTimer = (seconds: number) => {
@@ -147,12 +156,21 @@ const OTPScreen: React.FC<OTPScreenProps> = () => {
     try {
       await sendLoginOtp(payload);
       Alert.alert('Code Sent', `A new verification code has been sent to your ${contactLabel}`);
+
+      // Clear existing countdown if any
+      if (countdownRef.current) {
+        clearInterval(countdownRef.current);
+      }
+
       // Restart timer
-      const countdown = setInterval(() => {
+      countdownRef.current = setInterval(() => {
         setTimer((prev) => {
           if (prev <= 1) {
             setCanResend(true);
-            clearInterval(countdown);
+            if (countdownRef.current) {
+              clearInterval(countdownRef.current);
+              countdownRef.current = null;
+            }
             return 0;
           }
           return prev - 1;
@@ -213,16 +231,24 @@ const OTPScreen: React.FC<OTPScreenProps> = () => {
                     onChangeText={(text) => handleOtpChange(text, index)}
                     onKeyPress={({ nativeEvent }) => handleKeyPress(nativeEvent.key, index)}
                     keyboardType="numeric"
-                    maxLength={1}
+                    maxLength={index === 0 ? 6 : 1}
                     selectTextOnFocus={true}
                     autoFocus={index === 0}
+                    textContentType={index === 0 ? 'oneTimeCode' : 'none'}
+                    autoComplete={index === 0 ? 'sms-otp' : 'off'}
                   />
                 ))}
               </View>
 
-              {/* Timer Section */}
+              {/* Timer / Resend Section */}
               <View style={styles.timerSection}>
-                <Text style={styles.timerText}>Resend code in {formatTimer(timer)}</Text>
+                {canResend && timer === 0 ? (
+                  <TouchableOpacity onPress={handleResend} accessibilityRole="button" activeOpacity={0.8}>
+                    <Text style={styles.resendText}>Resend code</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <Text style={styles.timerText}>Resend code in {formatTimer(timer)}</Text>
+                )}
               </View>
             </View>
           </View>
@@ -242,15 +268,7 @@ const OTPScreen: React.FC<OTPScreenProps> = () => {
               )}
             </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={canResend ? handleResend : undefined}
-              style={styles.alternativeMethodButton}
-              disabled={!canResend}
-            >
-              <Text style={[styles.alternativeMethodText, !canResend && styles.alternativeMethodTextDisabled]}>
-                Use another method
-              </Text>
-            </TouchableOpacity>
+            {/* Removed alternative method button */}
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
@@ -349,10 +367,15 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.regular,
     color: theme.colors.textTertiary,
   },
+  resendText: {
+    fontSize: theme.fontSizes.sm,
+    fontFamily: theme.fonts.semiBold,
+    color: theme.colors.accentDarkest,
+  },
   footer: {
     paddingHorizontal: theme.spacing.base,
-    paddingBottom: theme.spacing.xl,
-    paddingTop: theme.spacing.base,
+    paddingBottom: theme.spacing.base,
+    paddingTop: theme.spacing.sm,
     gap: theme.spacing.base,
   },
   verifyButton: {
