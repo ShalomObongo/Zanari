@@ -92,7 +92,7 @@ const GoalWithdrawModal: React.FC<GoalWithdrawModalProps> = ({
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <SafeAreaView style={styles.content}>
+        <SafeAreaView style={styles.content}edges={['top']}>
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity style={styles.cancelButton} onPress={handleClose}>
