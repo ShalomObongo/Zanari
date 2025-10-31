@@ -301,6 +301,76 @@ export function createSavingsGoalRoutes({
         throw error;
       }
     },
+
+  async depositToGoal(request: HttpRequest<{ amount: number }, { goalId: string }>) {
+    try {
+      ensureAuthenticated(request);
+
+      const goalId = requireString(request.params.goalId, 'Goal ID is required', 'INVALID_GOAL_ID');
+
+      if (!request.body) {
+        return {
+          status: 400 as const,
+          body: { error: 'Request body is required', code: 'BAD_REQUEST' },
+        };
+      }
+
+      const { amount } = request.body;
+
+      if (!amount || typeof amount !== 'number' || !Number.isInteger(amount) || amount <= 0) {
+        return {
+          status: 400 as const,
+          body: {
+            error: 'Amount must be a positive integer (cents)',
+            code: 'INVALID_AMOUNT',
+          },
+        };
+      }
+
+      // Verify goal exists and belongs to user
+      let goal: SavingsGoal;
+      try {
+        goal = await savingsGoalService.getGoal(goalId);
+      } catch (error) {
+        if (error instanceof Error && error.message === 'Savings goal not found') {
+          throw notFound('Savings goal not found', 'GOAL_NOT_FOUND');
+        }
+        throw error;
+      }
+
+      if (goal.userId !== request.userId) {
+        throw new HttpError(403, 'Not authorized to deposit to this goal', 'UNAUTHORIZED_GOAL_ACCESS');
+      }
+
+      const result = await savingsGoalService.recordContribution(goalId, amount);
+      const now = clock.now();
+
+      logger.info('Deposit to savings goal completed', {
+        goalId,
+        amount,
+        userId: request.userId,
+        milestonesReached: result.milestonesReached.length,
+        completed: result.completed,
+      });
+
+      return {
+        status: 200 as const,
+        body: {
+          goal: buildGoalResponse(result.goal, now),
+          milestonesReached: result.milestonesReached.map((m) => buildMilestoneResponse(result.goal, m, now)),
+          completed: result.completed,
+        },
+      };
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Failed to deposit to savings goal';
+      logger.error('Failed to deposit to savings goal', { error: message });
+      return {
+        status: 500 as const,
+        body: { error: message, code: 'DEPOSIT_FAILED' },
+      };
+    }
+  },
   };
 }
 

@@ -850,6 +850,14 @@ export class PaymentService {
       return { roundUpAmount: 0, incrementUsed: 'disabled' };
     }
 
+    // Handle percentage-based round-up
+    if (rule.incrementType === 'percentage') {
+      const percentage = rule.percentageValue ?? 5; // Default to 5% if not set
+      const roundUpAmount = Math.round(amount * (percentage / 100));
+      return { roundUpAmount, incrementUsed: `${percentage}%` };
+    }
+
+    // Handle fixed increment round-up (10, 50, 100, auto)
     let increment = parseInt(rule.incrementType, 10);
     if (Number.isNaN(increment) || rule.incrementType === 'auto') {
       increment = rule.autoSettings?.maxIncrement ?? rule.autoSettings?.minIncrement ?? 10;

@@ -166,6 +166,7 @@ app.get('/savings-goals', adaptRoute(container.routes.savings.listGoals));
 app.post('/savings-goals', adaptRoute(container.routes.savings.createGoal));
 app.put('/savings-goals/:goalId', adaptRoute(container.routes.savings.updateGoal));
 app.patch('/savings-goals/:goalId', adaptRoute(container.routes.savings.updateGoal));
+app.post('/savings-goals/:goalId/deposit', adaptRoute(container.routes.savings.depositToGoal));
 app.post('/savings-goals/:goalId/cancel', adaptRoute(container.routes.savings.cancelGoal));
 
 // Round-up rules

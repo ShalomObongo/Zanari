@@ -263,6 +263,125 @@ class ApiClient {
   public delete<TResponse>(path: string, options?: RequestOptions) {
     return this.request<TResponse>('DELETE', path, options);
   }
+
+
+  // Savings Goals Methods
+  async listSavingsGoals(params?: {
+    page?: number;
+    per_page?: number;
+    status?: string;
+    category?: string;
+    archived?: string;
+    sort?: string;
+  }): Promise<{
+    goals: any[];
+    pagination: {
+      page: number;
+      per_page: number;
+      total_items: number;
+      total_pages: number;
+    };
+  }> {
+    return this.get('/savings-goals', { searchParams: params });
+  }
+
+  async createSavingsGoal(goal: {
+    name: string;
+    targetAmount: number;
+    category?: string;
+    description?: string;
+    targetDate?: string;
+    roundUpEnabled?: boolean;
+  }): Promise<any> {
+    return this.post('/savings-goals', goal);
+  }
+
+  async updateSavingsGoal(goalId: string, updates: {
+    name?: string;
+    targetAmount?: number;
+    category?: string;
+    description?: string;
+    targetDate?: string;
+    status?: string;
+  }): Promise<any> {
+    return this.put(`/savings-goals/${goalId}`, updates);
+  }
+
+  async depositToSavingsGoal(goalId: string, amount: number): Promise<{
+    goal: any;
+    milestonesReached: any[];
+    completed: boolean;
+  }> {
+    return this.post(`/savings-goals/${goalId}/deposit`, { amount });
+  }
+
+  async cancelSavingsGoal(goalId: string): Promise<any> {
+    return this.post(`/savings-goals/${goalId}/cancel`, {});
+  }
+
+  // Round-Up Rules Methods
+  async getRoundUpRule(): Promise<{
+    rule: {
+      rule_id: string | null;
+      is_enabled: boolean;
+      increment_type: string;
+      percentage_value?: number | null;
+      target_amount: number | null;
+      fixed_amount: number | null;
+      auto_settings: any;
+      allocation: { main_wallet_percentage: number; savings_goals_percentage: number };
+    };
+    usage_statistics: {
+      total_round_ups_count: number;
+      total_amount_saved: number;
+      period_start: string;
+      period_end: string;
+    };
+    weekly_breakdown: any[] | null;
+    last_updated_at: string | null;
+    is_default: boolean;
+  }> {
+    return this.get('/round-up-rules');
+  }
+
+  async updateRoundUpRule(updates: {
+    increment_type?: '10' | '50' | '100' | 'auto' | 'percentage';
+    is_enabled?: boolean;
+    percentage_value?: number | null;
+    auto_settings?: {
+      min_increment?: number;
+      max_increment?: number;
+      analysis_period_days?: number;
+    } | null;
+    allocation?: { main: number; savings: number };
+  }): Promise<{
+    user_id: string;
+    rules: {
+      enabled: boolean;
+      rule_type: string | null;
+      target_amount: number | null;
+      fixed_amount: number | null;
+      allocation: { main_wallet_percentage: number; savings_goals_percentage: number } | null;
+    };
+    updated_at: string;
+    auto_analysis: any;
+  }> {
+    return this.put('/round-up-rules', updates);
+  }
+
+  async analyzeRoundUp(params?: {
+    analysis_period_days?: number;
+    include_projections?: boolean;
+    include_category_breakdown?: boolean;
+  }): Promise<{
+    user_id: string;
+    analysis: any;
+    recommendations: any;
+    projections?: any;
+    generated_at: string;
+  }> {
+    return this.get('/round-up-rules/auto-analysis', { searchParams: params });
+  }
 }
 
 export const apiClient = new ApiClient();

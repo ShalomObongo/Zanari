@@ -4,7 +4,7 @@
 
 import { UUID, TimestampedEntity, assert } from './base';
 
-export type RoundUpIncrementType = '10' | '50' | '100' | 'auto';
+export type RoundUpIncrementType = '10' | '50' | '100' | 'auto' | 'percentage';
 
 export interface AutoAnalyzeSettings {
   minIncrement: number;
@@ -18,6 +18,7 @@ export interface RoundUpRule extends TimestampedEntity {
   userId: UUID;
   incrementType: RoundUpIncrementType;
   isEnabled: boolean;
+  percentageValue?: number | null; // For percentage-based round-ups (e.g., 5 for 5%)
   autoSettings?: AutoAnalyzeSettings | null;
   totalRoundUpsCount: number;
   totalAmountSaved: number;
@@ -29,6 +30,7 @@ export interface RoundUpRuleRow {
   user_id: string;
   increment_type: RoundUpIncrementType;
   is_enabled: boolean;
+  percentage_value?: number | null;
   auto_settings?: {
     min_increment: number;
     max_increment: number;
@@ -66,6 +68,10 @@ export function validateRoundUpRule(rule: RoundUpRule): void {
   if (rule.incrementType === 'auto') {
     assert(rule.autoSettings != null, 'autoSettings required when incrementType is auto');
   }
+  if (rule.incrementType === 'percentage') {
+    assert(rule.percentageValue != null, 'percentageValue required when incrementType is percentage');
+    assert(rule.percentageValue > 0 && rule.percentageValue <= 100, 'percentageValue must be between 0 and 100');
+  }
 }
 
 export function createRoundUpRule(input: CreateRoundUpRuleInput): RoundUpRule {
@@ -93,6 +99,7 @@ export function fromRow(row: RoundUpRuleRow): RoundUpRule {
     userId: row.user_id,
     incrementType: row.increment_type,
     isEnabled: row.is_enabled,
+    percentageValue: row.percentage_value ?? null,
     autoSettings: row.auto_settings
       ? {
           minIncrement: row.auto_settings.min_increment,
@@ -120,6 +127,7 @@ export function toRow(rule: RoundUpRule): RoundUpRuleRow {
     user_id: rule.userId,
     increment_type: rule.incrementType,
     is_enabled: rule.isEnabled,
+    percentage_value: rule.percentageValue ?? null,
     auto_settings: rule.autoSettings
       ? {
           min_increment: rule.autoSettings.minIncrement,

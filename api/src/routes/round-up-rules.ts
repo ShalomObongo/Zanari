@@ -28,7 +28,8 @@ interface GetRulesQuery extends Record<string, string | undefined> {
 interface UpdateRoundUpRuleBody {
   is_enabled?: boolean;
   enabled?: boolean;
-  increment_type?: '10' | '50' | '100' | 'auto';
+  increment_type?: '10' | '50' | '100' | 'auto' | 'percentage';
+  percentage_value?: number | null;
   rule_type?: 'target' | 'fixed' | 'auto';
   auto_settings?: {
     min_increment?: number;
@@ -245,6 +246,7 @@ export function createRoundUpRuleRoutes({
         ...baseRule,
         incrementType,
         isEnabled: finalIsEnabled,
+        percentageValue: updates.percentageValue !== undefined ? updates.percentageValue : baseRule.percentageValue,
         autoSettings: deriveAutoSettings(baseRule, updates),
         updatedAt: now,
       };
@@ -443,6 +445,7 @@ function buildConfiguredRule(
     rule_id: rule.id,
     is_enabled: rule.isEnabled,
     increment_type: rule.incrementType,
+    percentage_value: rule.percentageValue ?? null,
     target_amount: targets.targetAmount,
     fixed_amount: targets.fixedAmount,
     auto_settings: autoSettings
@@ -469,6 +472,7 @@ function buildDefaultRule(
     rule_id: null,
     is_enabled: false,
     increment_type: '10',
+    percentage_value: null,
     target_amount: targets.targetAmount ?? 1_000,
     fixed_amount: targets.fixedAmount,
     auto_settings: null,
@@ -535,6 +539,7 @@ function parseUpdateBody(body: UpdateRoundUpRuleBody) {
   const updates: {
     incrementType?: RoundUpRule['incrementType'];
     isEnabled?: boolean;
+    percentageValue?: number | null;
     autoSettings?: { minIncrement: number; maxIncrement: number; analysisPeriodDays: number } | null;
     allocation?: { main: number; savings: number };
     targetAmount?: number | null;
@@ -544,6 +549,13 @@ function parseUpdateBody(body: UpdateRoundUpRuleBody) {
 
   if (body.increment_type !== undefined) {
     updates.incrementType = parseIncrementType(body.increment_type);
+  }
+
+  if (body.percentage_value !== undefined) {
+    updates.percentageValue = body.percentage_value === null ? null : parseFloat(String(body.percentage_value));
+    if (updates.percentageValue !== null && (updates.percentageValue <= 0 || updates.percentageValue > 100)) {
+      throw badRequest('percentage_value must be between 0 and 100', 'INVALID_PERCENTAGE_VALUE');
+    }
   }
 
   if (body.rule_type !== undefined) {
@@ -605,8 +617,8 @@ function deriveAutoSettings(
 }
 
 function parseIncrementType(value: string): RoundUpRule['incrementType'] {
-  if (!['10', '50', '100', 'auto'].includes(value)) {
-    throw badRequest('increment_type must be one of 10, 50, 100, or auto', 'INVALID_INCREMENT_TYPE');
+  if (!['10', '50', '100', 'auto', 'percentage'].includes(value)) {
+    throw badRequest('increment_type must be one of 10, 50, 100, auto, or percentage', 'INVALID_INCREMENT_TYPE');
   }
   return value as RoundUpRule['incrementType'];
 }

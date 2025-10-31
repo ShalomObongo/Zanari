@@ -13,6 +13,7 @@ import {
   RefreshControl,
   ActivityIndicator,
   StatusBar,
+  Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -20,6 +21,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useSavingsStore } from '@/store/savingsStore';
 import { useWalletStore } from '@/store/walletStore';
 import { formatCurrency, parseCentsFromInput } from '@/utils/formatters';
+import { apiClient } from '@/services/api';
 import theme from '@/theme';
 
 // Category colors for goal cards (left bar indicator)
@@ -199,11 +201,21 @@ const SavingsGoalsScreen: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      // TODO: Implement deposit to savings goal API endpoint
-      Alert.alert(
-        'Coming Soon',
-        'Adding funds to savings goals will be available soon. This feature requires backend API integration.'
-      );
+      const result = await apiClient.depositToSavingsGoal(selectedGoal.goal_id, amountCents);
+
+      // Show milestone achievements
+      if (result.milestonesReached && result.milestonesReached.length > 0) {
+        const milestones = result.milestonesReached.map((m: any) => `${m.percentage}%`).join(', ');
+        Alert.alert('Milestone Achieved!', `You hit ${milestones} on your savings goal!`);
+      }
+
+      // Show completion
+      if (result.completed) {
+        Alert.alert('Goal Completed!', `Congratulations! You've reached your savings goal.`);
+      }
+
+      // Refresh goals to show updated balance
+      await refreshGoals();
 
       setAddAmount('');
       setShowAddFundsModal(false);
@@ -492,14 +504,15 @@ const SavingsGoalsScreen: React.FC = () => {
                 </View>
 
                 <View style={styles.formGroup}>
-                  <Text style={styles.formLabel}>Target Date *</Text>
+                  <Text style={styles.formLabel}>Target Date (Optional)</Text>
                   <TextInput
                     style={styles.formInput}
                     value={newGoal.targetDate}
                     onChangeText={(text) => setNewGoal(prev => ({ ...prev, targetDate: text }))}
-                    placeholder="YYYY-MM-DD"
-                    placeholderTextColor="#999"
+                    placeholder="YYYY-MM-DD (e.g., 2025-12-31)"
+                    placeholderTextColor={theme.colors.textTertiary}
                   />
+                  <Text style={styles.helpText}>Leave empty if you don't have a specific deadline</Text>
                 </View>
 
                 <View style={styles.formGroup}>
@@ -522,18 +535,21 @@ const SavingsGoalsScreen: React.FC = () => {
                 </View>
 
                 <View style={styles.formGroup}>
-                  <TouchableOpacity
-                    style={styles.switchRow}
-                    onPress={() => setNewGoal(prev => ({ ...prev, roundUpEnabled: !prev.roundUpEnabled }))}
-                  >
+                  <View style={styles.switchRow}>
                     <View style={styles.switchInfo}>
-                      <Text style={styles.switchLabel}>Enable Round-up</Text>
-                      <Text style={styles.switchDescription}>Automatically round up purchases to the nearest KES 10</Text>
+                      <Text style={styles.switchLabel}>Enable Round-up Savings</Text>
+                      <Text style={styles.switchDescription}>
+                        Automatically save spare change from transactions
+                      </Text>
                     </View>
-                    <View style={[styles.switch, newGoal.roundUpEnabled && styles.switchActive]}>
-                      <View style={[styles.switchThumb, newGoal.roundUpEnabled && styles.switchThumbActive]} />
-                    </View>
-                  </TouchableOpacity>
+                    <Switch
+                      value={newGoal.roundUpEnabled}
+                      onValueChange={(value) => setNewGoal(prev => ({ ...prev, roundUpEnabled: value }))}
+                      trackColor={{ false: theme.colors.gray200, true: theme.colors.accent }}
+                      thumbColor={theme.colors.surface}
+                      ios_backgroundColor={theme.colors.gray200}
+                    />
+                  </View>
                 </View>
               </ScrollView>
             </SafeAreaView>
@@ -574,46 +590,87 @@ const SavingsGoalsScreen: React.FC = () => {
                 </TouchableOpacity>
               </View>
 
-              <View style={styles.addFundsContent}>
+              <ScrollView style={styles.addFundsContent} showsVerticalScrollIndicator={false}>
                 {selectedGoal && (
-                  <View style={styles.selectedGoalInfo}>
-                    <Text style={styles.selectedGoalTitle}>{selectedGoal.name}</Text>
-                    <Text style={styles.selectedGoalProgress}>
-                      {formatCurrency(selectedGoal.current_amount)} of {formatCurrency(selectedGoal.target_amount)}
-                    </Text>
-                  </View>
+                  <>
+                    <View style={styles.selectedGoalCard}>
+                      <View style={styles.goalIconContainer}>
+                        <Icon name="savings" size={32} color={theme.colors.accent} />
+                      </View>
+                      <Text style={styles.selectedGoalTitle}>{selectedGoal.name}</Text>
+                      <View style={styles.goalProgressInfo}>
+                        <Text style={styles.goalProgressLabel}>Current Progress</Text>
+                        <Text style={styles.goalProgressAmount}>
+                          {formatCurrency(selectedGoal.current_amount)}
+                        </Text>
+                        <View style={styles.progressBarContainer}>
+                          <View
+                            style={[
+                              styles.progressBarFill,
+                              { width: `${Math.min(selectedGoal.progress_percentage, 100)}%` }
+                            ]}
+                          />
+                        </View>
+                        <Text style={styles.goalTargetText}>
+                          Target: {formatCurrency(selectedGoal.target_amount)} ({Math.round(selectedGoal.progress_percentage)}%)
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.balanceCard}>
+                      <Icon name="account-balance-wallet" size={20} color={theme.colors.success} />
+                      <View style={styles.balanceInfo}>
+                        <Text style={styles.balanceLabel}>Available Balance</Text>
+                        <Text style={styles.balanceAmount}>{formatCurrency(availableBalance)}</Text>
+                      </View>
+                    </View>
+                  </>
                 )}
 
                 <View style={styles.formGroup}>
-                  <Text style={styles.formLabel}>Amount to Add (KES)</Text>
-                  <TextInput
-                    style={[styles.formInput, styles.amountInput]}
-                    value={addAmount}
-                    onChangeText={(text) => setAddAmount(text.replace(/[^0-9]/g, ''))}
-                    placeholder="10000"
-                    placeholderTextColor="#999"
-                    keyboardType="numeric"
-                    autoFocus
-                  />
+                  <Text style={styles.formLabel}>Amount to Add</Text>
+                  <View style={styles.amountInputContainer}>
+                    <Text style={styles.currencyPrefix}>KES</Text>
+                    <TextInput
+                      style={styles.amountInputField}
+                      value={addAmount}
+                      onChangeText={(text) => setAddAmount(text.replace(/[^0-9]/g, ''))}
+                      placeholder="0"
+                      placeholderTextColor={theme.colors.textTertiary}
+                      keyboardType="numeric"
+                      autoFocus
+                    />
+                  </View>
+                  {addAmount && parseInt(addAmount) > 0 && (
+                    <Text style={styles.amountPreview}>
+                      {formatCurrency(parseCentsFromInput(addAmount))}
+                    </Text>
+                  )}
                 </View>
 
-                <View style={styles.quickAmountContainer}>
-                  <Text style={styles.quickAmountLabel}>Quick amounts:</Text>
-                  <View style={styles.quickAmountButtons}>
-                    {[5000, 10000, 25000, 50000].map(amount => (
+                <View style={styles.quickAmountSection}>
+                  <Text style={styles.quickAmountLabel}>Quick Amount</Text>
+                  <View style={styles.quickAmountGrid}>
+                    {[1000, 5000, 10000, 25000].map(amount => (
                       <TouchableOpacity
                         key={amount}
-                        style={styles.quickAmountButton}
+                        style={[
+                          styles.quickAmountChip,
+                          addAmount === amount.toString() && styles.quickAmountChipSelected
+                        ]}
                         onPress={() => setAddAmount(amount.toString())}
                       >
-                        <Text style={styles.quickAmountButtonText}>
-                          {formatCurrency(amount).replace('KES', 'KES ')}
+                        <Text style={[
+                          styles.quickAmountChipText,
+                          addAmount === amount.toString() && styles.quickAmountChipTextSelected
+                        ]}>
+                          {formatCurrency(amount * 100)}
                         </Text>
                       </TouchableOpacity>
                     ))}
                   </View>
                 </View>
-              </View>
+              </ScrollView>
             </SafeAreaView>
           </KeyboardAvoidingView>
         </Modal>
@@ -1009,30 +1066,117 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.lg,
     paddingTop: theme.spacing.lg,
   },
-  selectedGoalInfo: {
+  selectedGoalCard: {
     backgroundColor: theme.colors.surface,
-    padding: theme.spacing.base,
+    padding: theme.spacing.xl,
     borderRadius: theme.borderRadius.xl,
-    marginBottom: theme.spacing.xl,
+    marginBottom: theme.spacing.base,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  goalIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: theme.borderRadius.full,
+    backgroundColor: `${theme.colors.accent}1A`,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: theme.spacing.base,
   },
   selectedGoalTitle: {
-    fontSize: theme.fontSizes.lg,
-    fontFamily: theme.fonts.semiBold,
+    fontSize: theme.fontSizes.xl,
+    fontFamily: theme.fonts.bold,
     color: theme.colors.textPrimary,
+    marginBottom: theme.spacing.base,
+    textAlign: 'center',
+  },
+  goalProgressInfo: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  goalProgressLabel: {
+    fontSize: theme.fontSizes.sm,
+    fontFamily: theme.fonts.medium,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.xs,
+  },
+  goalProgressAmount: {
+    fontSize: theme.fontSizes['2xl'],
+    fontFamily: theme.fonts.bold,
+    color: theme.colors.textPrimary,
+    marginBottom: theme.spacing.md,
+    letterSpacing: -0.5,
+  },
+  progressBarContainer: {
+    width: '100%',
+    height: 8,
+    backgroundColor: theme.colors.gray200,
+    borderRadius: theme.borderRadius.full,
     marginBottom: theme.spacing.sm,
   },
-  selectedGoalProgress: {
+  goalTargetText: {
     fontSize: theme.fontSizes.sm,
     fontFamily: theme.fonts.regular,
     color: theme.colors.textSecondary,
   },
-  amountInput: {
+  balanceCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: `${theme.colors.success}10`,
+    padding: theme.spacing.base,
+    borderRadius: theme.borderRadius.xl,
+    marginBottom: theme.spacing.xl,
+    borderWidth: 1,
+    borderColor: `${theme.colors.success}30`,
+    gap: theme.spacing.md,
+  },
+  balanceInfo: {
+    flex: 1,
+  },
+  balanceLabel: {
+    fontSize: theme.fontSizes.sm,
+    fontFamily: theme.fonts.medium,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.xs / 2,
+  },
+  balanceAmount: {
+    fontSize: theme.fontSizes.lg,
+    fontFamily: theme.fonts.bold,
+    color: theme.colors.textPrimary,
+    letterSpacing: -0.5,
+  },
+  amountInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.surface,
+    borderWidth: 2,
+    borderColor: theme.colors.accent,
+    borderRadius: theme.borderRadius.xl,
+    paddingHorizontal: theme.spacing.base,
+    paddingVertical: theme.spacing.xs,
+  },
+  currencyPrefix: {
+    fontSize: theme.fontSizes['2xl'],
+    fontFamily: theme.fonts.semiBold,
+    color: theme.colors.textSecondary,
+    marginRight: theme.spacing.sm,
+  },
+  amountInputField: {
+    flex: 1,
     fontSize: theme.fontSizes['2xl'],
     fontFamily: theme.fonts.bold,
+    color: theme.colors.textPrimary,
+    padding: theme.spacing.sm,
+  },
+  amountPreview: {
+    fontSize: theme.fontSizes.base,
+    fontFamily: theme.fonts.medium,
+    color: theme.colors.accent,
+    marginTop: theme.spacing.sm,
     textAlign: 'center',
   },
-  quickAmountContainer: {
+  quickAmountSection: {
     marginTop: theme.spacing.xl,
   },
   quickAmountLabel: {
@@ -1041,23 +1185,40 @@ const styles = StyleSheet.create({
     color: theme.colors.textPrimary,
     marginBottom: theme.spacing.md,
   },
-  quickAmountButtons: {
+  quickAmountGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: theme.spacing.md,
   },
-  quickAmountButton: {
+  quickAmountChip: {
+    flex: 1,
+    minWidth: '45%',
     backgroundColor: theme.colors.surface,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    borderRadius: theme.borderRadius.lg,
+    borderRadius: theme.borderRadius.xl,
     paddingHorizontal: theme.spacing.base,
-    paddingVertical: theme.spacing.sm,
+    paddingVertical: theme.spacing.md,
+    alignItems: 'center',
   },
-  quickAmountButtonText: {
-    fontSize: theme.fontSizes.sm,
-    fontFamily: theme.fonts.medium,
+  quickAmountChipSelected: {
+    backgroundColor: `${theme.colors.accent}15`,
+    borderColor: theme.colors.accent,
+    borderWidth: 2,
+  },
+  quickAmountChipText: {
+    fontSize: theme.fontSizes.base,
+    fontFamily: theme.fonts.semiBold,
     color: theme.colors.textPrimary,
+  },
+  quickAmountChipTextSelected: {
+    color: theme.colors.accent,
+  },
+  helpText: {
+    fontSize: theme.fontSizes.sm,
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.textSecondary,
+    marginTop: theme.spacing.xs,
   },
 });
 

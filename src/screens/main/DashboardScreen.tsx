@@ -16,6 +16,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useWalletStore } from '@/store/walletStore';
 import { useTransactionStore } from '@/store/transactionStore';
 import { useSavingsStore } from '@/store/savingsStore';
+import { useRoundUpStore } from '@/store/roundUpStore';
 import { formatCurrency, formatRelativeDate, mapTransactionType, getTimeBasedGreeting } from '@/utils/formatters';
 import theme from '@/theme';
 
@@ -42,7 +43,10 @@ const DashboardScreen: React.FC<DashboardScreenProps> = () => {
   const fetchGoals = useSavingsStore((state) => state.fetchGoals);
   const refreshGoals = useSavingsStore((state) => state.refreshGoals);
   const isRefreshingGoals = useSavingsStore((state) => state.isRefreshing);
-  
+
+  const roundUpRule = useRoundUpStore((state) => state.rule);
+  const fetchRoundUpRule = useRoundUpStore((state) => state.fetchRule);
+
   const isRefreshing = isRefreshingWallets || isRefreshingTransactions || isRefreshingGoals;
   
   // Initial data fetch on mount
@@ -53,6 +57,10 @@ const DashboardScreen: React.FC<DashboardScreenProps> = () => {
           fetchWallets(),
           fetchTransactions(),
           fetchGoals({ page: 1 }),
+          fetchRoundUpRule().catch(() => {
+            // Silently fail if round-up rule doesn't exist yet
+            console.log('Round-up rule not found - user may not have set it up yet');
+          }),
         ]);
       } catch (error) {
         console.error('Error loading dashboard data:', error);
@@ -60,7 +68,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = () => {
         setIsInitialLoading(false);
       }
     };
-    
+
     loadInitialData();
   }, []);
 
@@ -297,6 +305,66 @@ const DashboardScreen: React.FC<DashboardScreenProps> = () => {
     );
   };
 
+  const renderRoundUpInsights = () => {
+    // Don't show if no round-up rule or if it's disabled
+    if (!roundUpRule || !roundUpRule.is_enabled) {
+      return null;
+    }
+
+    const totalSaved = roundUpRule.total_amount_saved;
+    const totalRoundUps = roundUpRule.total_round_ups_count;
+    const averageRoundUp = totalRoundUps > 0 ? Math.round(totalSaved / totalRoundUps) : 0;
+
+    return (
+      <View style={styles.roundUpSection}>
+        <View style={styles.roundUpHeader}>
+          <Text style={styles.sectionTitle}>Round-Up Savings</Text>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('RoundUpSettings')}
+            style={styles.roundUpSettingsButton}
+            activeOpacity={0.7}
+          >
+            <Icon name="settings" size={20} color={theme.colors.accent} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.roundUpCard}>
+          <View style={styles.roundUpStats}>
+            <View style={styles.roundUpStat}>
+              <Icon name="savings" size={32} color={theme.colors.accent} />
+              <Text style={styles.roundUpStatValue}>{formatCurrency(totalSaved)}</Text>
+              <Text style={styles.roundUpStatLabel}>Total Saved</Text>
+            </View>
+
+            <View style={styles.roundUpStatDivider} />
+
+            <View style={styles.roundUpStat}>
+              <Icon name="trending-up" size={32} color={theme.colors.success} />
+              <Text style={styles.roundUpStatValue}>{totalRoundUps}</Text>
+              <Text style={styles.roundUpStatLabel}>Round-Ups</Text>
+            </View>
+
+            <View style={styles.roundUpStatDivider} />
+
+            <View style={styles.roundUpStat}>
+              <Icon name="analytics" size={32} color={theme.colors.info} />
+              <Text style={styles.roundUpStatValue}>{formatCurrency(averageRoundUp)}</Text>
+              <Text style={styles.roundUpStatLabel}>Avg Amount</Text>
+            </View>
+          </View>
+
+          <Text style={styles.roundUpDescription}>
+            {roundUpRule.increment_type === 'auto'
+              ? 'Auto-saving with smart AI-powered amounts'
+              : roundUpRule.increment_type === 'percentage'
+              ? `Saving ${roundUpRule.percentage_value || 5}% of each transaction`
+              : `Auto-saving to nearest KES ${roundUpRule.increment_type}`}
+          </Text>
+        </View>
+      </View>
+    );
+  };
+
   // Show loading skeleton on initial load
   if (isInitialLoading) {
     return (
@@ -383,6 +451,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = () => {
 
           {/* Quick Actions */}
           {renderQuickActions()}
+
+          {/* Round-Up Insights */}
+          {renderRoundUpInsights()}
 
           {/* Recent Transactions */}
           {renderRecentTransactions()}
@@ -650,6 +721,72 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.regular,
     color: theme.colors.textTertiary,
     textAlign: 'center',
+  },
+  roundUpSection: {
+    backgroundColor: theme.colors.surface,
+    marginTop: theme.spacing.xl,
+    borderTopLeftRadius: theme.borderRadius.xl,
+    borderTopRightRadius: theme.borderRadius.xl,
+    paddingBottom: theme.spacing.base,
+  },
+  roundUpHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.base,
+    paddingTop: theme.spacing.lg,
+    paddingBottom: theme.spacing.md,
+  },
+  roundUpSettingsButton: {
+    width: 36,
+    height: 36,
+    borderRadius: theme.borderRadius.full,
+    backgroundColor: theme.colors.gray50,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  roundUpCard: {
+    marginHorizontal: theme.spacing.base,
+    padding: theme.spacing.base,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.gray200,
+    gap: theme.spacing.md,
+  },
+  roundUpStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    paddingVertical: theme.spacing.sm,
+  },
+  roundUpStat: {
+    flex: 1,
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+  },
+  roundUpStatValue: {
+    fontSize: theme.fontSizes.lg,
+    fontFamily: theme.fonts.bold,
+    color: theme.colors.textPrimary,
+  },
+  roundUpStatLabel: {
+    fontSize: theme.fontSizes.xs,
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+  },
+  roundUpStatDivider: {
+    width: 1,
+    height: 48,
+    backgroundColor: theme.colors.gray200,
+  },
+  roundUpDescription: {
+    fontSize: theme.fontSizes.sm,
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+    paddingTop: theme.spacing.xs,
   },
   bottomSpacer: {
     height: theme.spacing['2xl'],

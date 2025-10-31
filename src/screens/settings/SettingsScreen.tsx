@@ -221,6 +221,19 @@ const SettingsScreen: React.FC = () => {
             )}
           </View>
 
+          {/* Savings Section */}
+          {renderSectionHeader('Savings')}
+          <View style={styles.section}>
+            {renderSettingRow(
+              'savings',
+              'Round-Up Savings',
+              'Auto-save spare change on transactions',
+              'arrow',
+              undefined,
+              () => navigation.navigate('RoundUpSettings')
+            )}
+          </View>
+
           {/* Privacy Section */}
           {renderSectionHeader('Privacy')}
           <View style={styles.section}>

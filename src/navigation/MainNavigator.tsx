@@ -13,6 +13,7 @@ import SavingsGoalsScreen from '@/screens/savings/SavingsGoalsScreen';
 import SettingsScreen from '@/screens/settings/SettingsScreen';
 import ChangePINScreen from '@/screens/settings/ChangePINScreen';
 import EditProfileScreen from '@/screens/settings/EditProfileScreen';
+import RoundUpSettingsScreen from '@/screens/settings/RoundUpSettingsScreen';
 import KYCUploadScreen from '@/screens/kyc/KYCUploadScreen';
 
 const Tab = createBottomTabNavigator();
@@ -34,6 +35,7 @@ export type MainStackParamList = {
   KYCUpload: undefined;
   ChangePIN: undefined;
   EditProfile: undefined;
+  RoundUpSettings: undefined;
 } & MainTabParamList;
 
 const MainTabs: React.FC = () => {
@@ -177,6 +179,14 @@ export const MainNavigator: React.FC = () => {
       <Stack.Screen
         name="EditProfile"
         component={EditProfileScreen}
+        options={{
+          headerShown: false,
+          presentation: 'modal',
+        }}
+      />
+      <Stack.Screen
+        name="RoundUpSettings"
+        component={RoundUpSettingsScreen}
         options={{
           headerShown: false,
           presentation: 'modal',
