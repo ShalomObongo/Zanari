@@ -2,8 +2,8 @@ import { Platform } from 'react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
 
-const preferenceKey = (userId: string) => `biometric:preference:${userId}`;
-const lastSuccessKey = (userId: string) => `biometric:last-success:${userId}`;
+const preferenceKey = (userId: string) => `biometric_preference_${userId}`;
+const lastSuccessKey = (userId: string) => `biometric_last_success_${userId}`;
 
 const secureStoreOptions: SecureStore.SecureStoreOptions =
   Platform.select<SecureStore.SecureStoreOptions>({
@@ -62,6 +62,30 @@ class BiometricAuthService {
       this.cachedSupportedTypes = await LocalAuthentication.supportedAuthenticationTypesAsync();
     }
     return this.cachedSupportedTypes ?? [];
+  }
+
+  /**
+   * Get a user-friendly name for the biometric authentication type
+   */
+  async getBiometricType(): Promise<string | null> {
+    const types = await this.getSupportedTypes();
+    
+    if (types.length === 0) {
+      return null;
+    }
+
+    // Check for Face ID first (most preferred on iOS)
+    if (types.includes(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION)) {
+      return Platform.OS === 'ios' ? 'Face ID' : 'Face Unlock';
+    }
+
+    // Then check for fingerprint
+    if (types.includes(LocalAuthentication.AuthenticationType.FINGERPRINT)) {
+      return Platform.OS === 'ios' ? 'Touch ID' : 'Fingerprint';
+    }
+
+    // Fallback to generic
+    return 'Biometric';
   }
 
   async isEnrolled(): Promise<boolean> {

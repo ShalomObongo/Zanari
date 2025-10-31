@@ -17,7 +17,7 @@
       "bundleIdentifier": "com.zanari.zanari2",
       "infoPlist": {
         "NSCameraUsageDescription": "This app uses camera to capture KYC documents and selfies for identity verification.",
-        "NSFaceIDUsageDescription": "Use Face ID for secure app authentication."
+        "NSFaceIDUsageDescription": "Zanari uses Face ID to securely authenticate you and authorize payments without entering your PIN."
       }
     },
     "android": {

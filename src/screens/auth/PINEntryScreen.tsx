@@ -15,6 +15,8 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 
 import PINInput from '@/components/PINInput';
 import { useAuthStore } from '@/store/authStore';
+import { useSettingsStore } from '@/store/settingsStore';
+import { biometricAuthService } from '@/services/biometricAuth';
 import { PinLockError } from '@/utils/pinSecurity';
 import theme from '@/theme';
 
@@ -23,6 +25,8 @@ const LOCK_REFRESH_INTERVAL = 1000;
 const PINEntryScreen: React.FC = () => {
   const navigation = useNavigation<any>();
 
+  // Auth store
+  const user = useAuthStore((state) => state.user);
   const verifyPin = useAuthStore((state) => state.verifyPin);
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const isVerifyingPin = useAuthStore((state) => state.isVerifyingPin);
@@ -31,11 +35,20 @@ const PINEntryScreen: React.FC = () => {
   const getIsPinLocked = useAuthStore((state) => state.getIsPinLocked);
   const getRemainingLockTime = useAuthStore((state) => state.getRemainingLockTime);
 
+  // Settings store
+  const isBiometricEnabled = useSettingsStore((state) => state.isBiometricEnabled);
+
   const [pinValue, setPinValue] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showError, setShowError] = useState(false);
   const [remainingLockSeconds, setRemainingLockSeconds] = useState<number>(0);
   const [isLocked, setIsLocked] = useState(false);
+
+  // Biometric state
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [biometricType, setBiometricType] = useState<string>('');
+  const [isAuthenticatingBiometric, setIsAuthenticatingBiometric] = useState(false);
+  const hasAttemptedBiometric = useRef(false);
 
   // Track previous lock state to detect transitions
   const prevLockedRef = useRef(false);
@@ -79,6 +92,89 @@ const PINEntryScreen: React.FC = () => {
       setPinValue('');
     }
   }, [isVerifyingPin]);
+
+  // Check biometric availability and auto-prompt
+  useEffect(() => {
+    const checkAndPromptBiometric = async () => {
+      if (!user?.id) return;
+
+      // Check if biometric is enabled for this user
+      const enabled = isBiometricEnabled(user.id);
+      if (!enabled) {
+        setBiometricAvailable(false);
+        return;
+      }
+
+      // Check if device supports biometric and should prompt
+      try {
+        const canUse = await biometricAuthService.canUseBiometrics();
+        if (!canUse) {
+          setBiometricAvailable(false);
+          return;
+        }
+
+        setBiometricAvailable(true);
+
+        // Get biometric type for display
+        const type = await biometricAuthService.getBiometricType();
+        setBiometricType(type || 'Biometric');
+
+        // Auto-prompt biometric if not locked and haven't attempted yet
+        if (!isLocked && !hasAttemptedBiometric.current) {
+          const shouldPrompt = await biometricAuthService.shouldPrompt(user.id);
+          if (shouldPrompt) {
+            hasAttemptedBiometric.current = true;
+            // Small delay to let UI settle
+            setTimeout(() => {
+              handleBiometricAuth();
+            }, 500);
+          }
+        }
+      } catch (error) {
+        setBiometricAvailable(false);
+      }
+    };
+
+    checkAndPromptBiometric();
+  }, [user?.id, isLocked]);
+
+  // Handle biometric authentication
+  const handleBiometricAuth = async () => {
+    if (!user?.id || isLocked || isVerifyingPin || isAuthenticatingBiometric) {
+      return;
+    }
+
+    setIsAuthenticatingBiometric(true);
+    setShowError(false);
+    setErrorMessage(null);
+
+    try {
+      const success = await biometricAuthService.authenticate(user.id, {
+        promptMessage: 'Verify your identity to unlock Zanari',
+        cancelLabel: 'Use PIN',
+        fallbackLabel: 'Use PIN Instead',
+      });
+
+      if (success) {
+        // Biometric authentication successful
+        // Set PIN as verified to grant access
+        // Note: In production, you might want to call a backend endpoint
+        // that issues a PIN verification token based on biometric auth
+        useAuthStore.getState().setPinStatus(true, true);
+      } else {
+        // Biometric failed or cancelled - user can use PIN
+        setErrorMessage('Biometric authentication cancelled. Please use your PIN.');
+        setShowError(true);
+      }
+    } catch (error) {
+      // Error during biometric auth
+      const message = error instanceof Error ? error.message : 'Biometric authentication failed';
+      setErrorMessage(message + '. Please use your PIN.');
+      setShowError(true);
+    } finally {
+      setIsAuthenticatingBiometric(false);
+    }
+  };
 
   const formatRemaining = (seconds: number) => {
     if (seconds <= 0) {
@@ -221,6 +317,22 @@ const PINEntryScreen: React.FC = () => {
             </View>
 
             <View style={styles.footerSection}>
+              {biometricAvailable && !isLocked && (
+                <TouchableOpacity
+                  style={styles.biometricButton}
+                  onPress={handleBiometricAuth}
+                  disabled={isVerifyingPin || isAuthenticatingBiometric}
+                >
+                  <Icon
+                    name="fingerprint"
+                    size={24}
+                    color={theme.colors.primary}
+                  />
+                  <Text style={styles.biometricButtonText}>
+                    {isAuthenticatingBiometric ? 'Authenticating...' : `Use ${biometricType}`}
+                  </Text>
+                </TouchableOpacity>
+              )}
               <TouchableOpacity
                 style={styles.footerButton}
                 onPress={handleForgotPin}
@@ -331,6 +443,21 @@ const styles = StyleSheet.create({
   },
   footerSection: {
     alignItems: 'center',
+    gap: theme.spacing.md,
+  },
+  biometricButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.base,
+    backgroundColor: theme.colors.gray100,
+    borderRadius: theme.borderRadius.lg,
+  },
+  biometricButtonText: {
+    fontSize: theme.fontSizes.sm,
+    fontFamily: theme.fonts.semiBold,
+    color: theme.colors.primary,
   },
   footerButton: {
     paddingVertical: theme.spacing.sm,

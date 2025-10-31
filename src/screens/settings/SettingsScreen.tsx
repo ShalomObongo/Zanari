@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -12,10 +12,14 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useNavigation } from '@react-navigation/native';
+import * as LocalAuthentication from 'expo-local-authentication';
 import { useAuthStore } from '@/store/authStore';
 import { useWalletStore } from '@/store/walletStore';
 import { useTransactionStore } from '@/store/transactionStore';
 import { useSavingsStore } from '@/store/savingsStore';
+import { useSettingsStore } from '@/store/settingsStore';
+import { biometricAuthService } from '@/services/biometricAuth';
+import PinVerificationModal from '@/components/PinVerificationModal';
 import theme from '@/theme';
 
 const SettingsScreen: React.FC = () => {
@@ -24,10 +28,17 @@ const SettingsScreen: React.FC = () => {
   const logout = useAuthStore((state) => state.logout);
   const navigation = useNavigation<any>();
 
+  // Settings store
+  const isBiometricEnabled = useSettingsStore((state) => state.isBiometricEnabled);
+  const enableBiometric = useSettingsStore((state) => state.enableBiometric);
+  const disableBiometric = useSettingsStore((state) => state.disableBiometric);
+  const checkBiometricCapability = useSettingsStore((state) => state.checkBiometricCapability);
+  const isEnablingBiometric = useSettingsStore((state) => state.isEnablingBiometric);
+  const isDisablingBiometric = useSettingsStore((state) => state.isDisablingBiometric);
+
   // Preferences state
   const [preferences, setPreferences] = useState({
     twoFactorAuth: true,
-    biometricAuth: false,
     dataSharing: true,
     emailNotifications: true,
     smsNotifications: false,
@@ -36,6 +47,15 @@ const SettingsScreen: React.FC = () => {
     securityAlerts: true,
     hideBalance: false,
   });
+
+  // Biometric state
+  const [biometricCapable, setBiometricCapable] = useState(false);
+  const [biometricType, setBiometricType] = useState<string>('');
+  const [pinModalVisible, setPinModalVisible] = useState(false);
+  const pinRequestRef = useRef<{
+    resolve: (token: string) => void;
+    reject: () => void;
+  } | null>(null);
 
   // Get user initials
   const getUserInitials = () => {
@@ -54,6 +74,26 @@ const SettingsScreen: React.FC = () => {
     return user?.email || 'john.doe@email.com';
   };
 
+  // Check biometric capability on mount
+  useEffect(() => {
+    const checkCapability = async () => {
+      try {
+        const capable = await checkBiometricCapability();
+        setBiometricCapable(capable);
+
+        if (capable) {
+          // Get biometric type for display
+          const type = await biometricAuthService.getBiometricType();
+          setBiometricType(type || 'Biometric');
+        }
+      } catch (error) {
+        setBiometricCapable(false);
+      }
+    };
+
+    checkCapability();
+  }, [checkBiometricCapability]);
+
   const handleLogout = () => {
     Alert.alert(
       'Sign Out',
@@ -69,6 +109,9 @@ const SettingsScreen: React.FC = () => {
               useWalletStore.getState().reset();
               useTransactionStore.getState().resetTransactions();
               useSavingsStore.getState().resetGoals();
+              if (user?.id) {
+                useSettingsStore.getState().clearUserSettings(user.id);
+              }
             } catch (error) {
               Alert.alert('Error', 'Failed to sign out');
             }
@@ -83,6 +126,80 @@ const SettingsScreen: React.FC = () => {
       ...prev,
       [key]: !prev[key],
     }));
+  };
+
+  // Request PIN for enabling biometric
+  const requestPinToken = () =>
+    new Promise<string>((resolve, reject) => {
+      pinRequestRef.current = { resolve, reject };
+      setPinModalVisible(true);
+    });
+
+  // Handle biometric toggle
+  const handleBiometricToggle = async (newValue: boolean) => {
+    if (!user?.id) {
+      Alert.alert('Error', 'User not found');
+      return;
+    }
+
+    // Check if device supports biometric
+    if (!biometricCapable) {
+      Alert.alert(
+        'Biometric Not Available',
+        'Your device does not support biometric authentication or it is not set up.'
+      );
+      return;
+    }
+
+    if (newValue) {
+      // Enabling biometric - require PIN verification first, then verify biometric works
+      try {
+        // Step 1: Verify PIN
+        await requestPinToken();
+
+        // Step 2: Test biometric authentication to ensure it's set up and working
+        // Note: We call LocalAuthentication directly here because the service's authenticate()
+        // method requires biometric to already be enabled
+        const result = await LocalAuthentication.authenticateAsync({
+          promptMessage: `Verify your ${biometricType} to complete setup`,
+          cancelLabel: 'Cancel',
+          disableDeviceFallback: true,
+        });
+
+        if (!result.success) {
+          // Biometric failed or was cancelled
+          const errorMessage = result.error === 'not_enrolled'
+            ? `${biometricType} is not set up on this device. Please set it up in your device settings first.`
+            : `${biometricType} verification was cancelled. Biometric authentication has not been enabled.`;
+
+          Alert.alert('Setup Cancelled', errorMessage);
+          return;
+        }
+
+        // Step 3: Enable biometric in settings
+        await enableBiometric(user.id);
+
+        Alert.alert(
+          'Success',
+          `${biometricType} authentication has been enabled. You can now use it to unlock the app and authorize payments.`
+        );
+      } catch (error) {
+        // PIN verification cancelled or biometric failed
+        if (error instanceof Error) {
+          Alert.alert('Error', error.message || 'Failed to enable biometric authentication');
+        }
+      }
+    } else {
+      // Disabling biometric - just disable
+      try {
+        await disableBiometric(user.id);
+        Alert.alert('Success', 'Biometric authentication has been disabled.');
+      } catch (error) {
+        if (error instanceof Error) {
+          Alert.alert('Error', error.message || 'Failed to disable biometric authentication');
+        }
+      }
+    }
   };
 
   const renderSectionHeader = (title: string) => (
@@ -213,11 +330,11 @@ const SettingsScreen: React.FC = () => {
             {renderSettingRow(
               'fingerprint',
               'Biometric Authentication',
-              undefined,
+              biometricCapable ? biometricType : 'Not available on this device',
               'switch',
-              preferences.biometricAuth,
+              user?.id ? isBiometricEnabled(user.id) : false,
               undefined,
-              () => togglePreference('biometricAuth')
+              handleBiometricToggle
             )}
           </View>
 
@@ -351,6 +468,26 @@ const SettingsScreen: React.FC = () => {
             <Text style={styles.versionText}>App Version 1.2.3</Text>
           </View>
         </ScrollView>
+
+        {/* PIN Verification Modal for enabling biometric */}
+        <PinVerificationModal
+          visible={pinModalVisible}
+          onSuccess={(token) => {
+            setPinModalVisible(false);
+            if (pinRequestRef.current) {
+              pinRequestRef.current.resolve(token);
+              pinRequestRef.current = null;
+            }
+          }}
+          onCancel={() => {
+            setPinModalVisible(false);
+            if (pinRequestRef.current) {
+              pinRequestRef.current.reject();
+              pinRequestRef.current = null;
+            }
+          }}
+          message="Verify your PIN to enable biometric authentication"
+        />
       </SafeAreaView>
     </>
   );
