@@ -145,6 +145,10 @@ export class SavingsGoalService {
     return saved;
   }
 
+  async deleteGoal(goalId: UUID): Promise<void> {
+    await this.repository.delete(goalId);
+  }
+
   private async requireGoal(goalId: UUID): Promise<SavingsGoal> {
     const goal = await this.repository.findById(goalId);
     if (!goal) {

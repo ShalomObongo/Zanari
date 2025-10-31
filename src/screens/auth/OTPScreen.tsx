@@ -194,7 +194,7 @@ const OTPScreen: React.FC<OTPScreenProps> = () => {
   return (
     <>
       <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top']}>
         <KeyboardAvoidingView
           style={styles.keyboardContainer}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}

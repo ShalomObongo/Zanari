@@ -20,6 +20,7 @@ import {
 } from './types';
 import { TransactionService } from './TransactionService';
 import { WalletService } from './WalletService';
+import { calculateRoundUp as calculateRoundUpFromService } from './RoundUpService';
 
 export interface MerchantPaymentRequest {
   paymentId: UUID;
@@ -846,29 +847,12 @@ export class PaymentService {
   }
 
   private calculateRoundUp(amount: number, rule: RoundUpRule | null): { roundUpAmount: number; incrementUsed: string } {
-    if (!rule || !rule.isEnabled) {
-      return { roundUpAmount: 0, incrementUsed: 'disabled' };
-    }
+    const result = calculateRoundUpFromService(amount, rule);
 
-    // Handle percentage-based round-up
-    if (rule.incrementType === 'percentage') {
-      const percentage = rule.percentageValue ?? 5; // Default to 5% if not set
-      const roundUpAmount = Math.round(amount * (percentage / 100));
-      return { roundUpAmount, incrementUsed: `${percentage}%` };
-    }
-
-    // Handle fixed increment round-up (10, 50, 100, auto)
-    let increment = parseInt(rule.incrementType, 10);
-    if (Number.isNaN(increment) || rule.incrementType === 'auto') {
-      increment = rule.autoSettings?.maxIncrement ?? rule.autoSettings?.minIncrement ?? 10;
-    }
-
-    const roundUpAmount = Math.ceil(amount / increment) * increment - amount;
-    if (roundUpAmount === 0) {
-      return { roundUpAmount: 0, incrementUsed: increment.toString() };
-    }
-
-    return { roundUpAmount, incrementUsed: increment.toString() };
+    return {
+      roundUpAmount: result.roundUpAmount,
+      incrementUsed: result.roundUpRule.incrementType,
+    };
   }
 
   private async requireMainWallet(userId: UUID): Promise<Wallet> {

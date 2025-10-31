@@ -307,16 +307,85 @@ class ApiClient {
     return this.put(`/savings-goals/${goalId}`, updates);
   }
 
-  async depositToSavingsGoal(goalId: string, amount: number): Promise<{
+  async depositToSavingsGoal(
+    goalId: string,
+    amount: number,
+    sourceWallet?: 'main' | 'savings'
+  ): Promise<{
     goal: any;
     milestonesReached: any[];
     completed: boolean;
   }> {
-    return this.post(`/savings-goals/${goalId}/deposit`, { amount });
+    return this.post(`/savings-goals/${goalId}/deposit`, {
+      amount,
+      source_wallet: sourceWallet || 'main'
+    });
+  }
+
+  async deleteSavingsGoal(goalId: string): Promise<{ goal_id: string; deleted: boolean }> {
+    return this.delete(`/savings-goals/${goalId}`);
+  }
+
+  async withdrawFromSavingsGoal(
+    goalId: string,
+    destinationWallet: 'main' | 'savings'
+  ): Promise<{
+    goal: any;
+    amount_withdrawn: number;
+    destination_wallet: string;
+  }> {
+    return this.post(`/savings-goals/${goalId}/withdraw`, {
+      destination_wallet: destinationWallet,
+    });
   }
 
   async cancelSavingsGoal(goalId: string): Promise<any> {
     return this.post(`/savings-goals/${goalId}/cancel`, {});
+  }
+
+  // Wallet Transfer Methods
+  async transferToSavings(amount: number, pinToken: string): Promise<{
+    transaction_id: string;
+    amount: number;
+    from_wallet: string;
+    to_wallet: string;
+    status: string;
+  }> {
+    return this.post('/wallets/transfer-to-savings', { amount, pin_token: pinToken });
+  }
+
+  async transferFromSavings(amount: number, pinToken: string): Promise<{
+    transaction_id: string;
+    amount: number;
+    from_wallet: string;
+    to_wallet: string;
+    status: string;
+  }> {
+    return this.post('/wallets/transfer-from-savings', { amount, pin_token: pinToken });
+  }
+
+  // Payment Preview Method
+  async previewTransfer(
+    amount: number,
+    paymentMethod: 'wallet' | 'mpesa' | 'card',
+    recipientUserId: string
+  ): Promise<{
+    amount: number;
+    fee: number;
+    round_up_amount: number;
+    round_up_description: string;
+    total: number;
+    payment_method: string;
+    recipient: {
+      user_id: string;
+      name: string;
+    };
+  }> {
+    return this.post('/payments/preview', {
+      amount,
+      payment_method: paymentMethod,
+      recipient_user_id: recipientUserId,
+    });
   }
 
   // Round-Up Rules Methods

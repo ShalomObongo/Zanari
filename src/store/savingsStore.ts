@@ -106,7 +106,19 @@ interface SavingsStoreState {
   getGoalById: (goalId: string) => SavingsGoal | undefined;
   createGoal: (payload: CreateSavingsGoalPayload) => Promise<SavingsGoal>;
   updateGoal: (goalId: string, payload: UpdateSavingsGoalPayload) => Promise<SavingsGoal>;
+  deleteGoal: (goalId: string) => Promise<void>;
+  depositToGoal: (goalId: string, amount: number, sourceWallet?: 'main' | 'savings') => Promise<{
+    goal: SavingsGoal;
+    milestonesReached: any[];
+    completed: boolean;
+  }>;
+  withdrawFromGoal: (goalId: string, destinationWallet?: 'main' | 'savings') => Promise<{
+    goal: SavingsGoal;
+    amount_withdrawn: number;
+    destination_wallet: string;
+  }>;
   getTotalSavedAmount: () => number;
+  getTotalAllocatedToGoals: () => number;
   getActiveGoals: () => SavingsGoal[];
 }
 
@@ -264,7 +276,91 @@ export const useSavingsStore = create<SavingsStoreState>()(
 
       getTotalSavedAmount: () => get().goals.reduce((acc, goal) => acc + goal.current_amount, 0),
 
+      getTotalAllocatedToGoals: () => {
+        // Calculate total amount currently in all goals (active, paused, or completed but not withdrawn)
+        return get().goals
+          .filter((goal) => goal.status !== 'cancelled')
+          .reduce((acc, goal) => acc + goal.current_amount, 0);
+      },
+
       getActiveGoals: () => get().goals.filter((goal) => goal.status === 'active'),
+
+      deleteGoal: async (goalId) => {
+        set({ isLoading: true, error: null });
+
+        try {
+          await apiClient.deleteSavingsGoal(goalId);
+
+          // Remove goal from local state
+          set((state) => ({
+            goals: state.goals.filter((goal) => goal.goal_id !== goalId),
+            lastSyncedAt: new Date().toISOString(),
+          }));
+        } catch (error) {
+          const message =
+            error instanceof ApiError
+              ? error.message
+              : (error as Error).message ?? 'Failed to delete savings goal';
+          set({ error: message });
+          throw error;
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      depositToGoal: async (goalId, amount, sourceWallet = 'main') => {
+        set({ isLoading: true, error: null });
+
+        try {
+          const response = await apiClient.depositToSavingsGoal(goalId, amount, sourceWallet);
+
+          // Update goal in local state
+          set((state) => ({
+            goals: state.goals.map((goal) =>
+              goal.goal_id === goalId ? response.goal : goal
+            ),
+            lastSyncedAt: new Date().toISOString(),
+          }));
+
+          return response;
+        } catch (error) {
+          const message =
+            error instanceof ApiError
+              ? error.message
+              : (error as Error).message ?? 'Failed to deposit to savings goal';
+          set({ error: message });
+          throw error;
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      withdrawFromGoal: async (goalId, destinationWallet = 'main') => {
+        set({ isLoading: true, error: null });
+
+        try {
+          const response = await apiClient.withdrawFromSavingsGoal(goalId, destinationWallet);
+
+          // Update goal in local state
+          set((state) => ({
+            goals: state.goals.map((goal) =>
+              goal.goal_id === goalId ? response.goal : goal
+            ),
+            lastSyncedAt: new Date().toISOString(),
+          }));
+
+          return response;
+        } catch (error) {
+          const message =
+            error instanceof ApiError
+              ? error.message
+              : (error as Error).message ?? 'Failed to withdraw from savings goal';
+          set({ error: message });
+          throw error;
+        } finally {
+          set({ isLoading: false });
+        }
+      },
     }),
     {
       name: 'savings-storage',

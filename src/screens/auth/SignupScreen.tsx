@@ -141,7 +141,7 @@ const SignupScreen: React.FC = () => {
   return (
     <>
       <StatusBar barStyle="dark-content" backgroundColor={theme.colors.backgroundLight} />
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top']}>
         <KeyboardAvoidingView
           style={styles.keyboardContainer}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}

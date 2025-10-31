@@ -58,12 +58,19 @@ interface TopUpBody {
   pin_token?: string;
 }
 
+interface TransferPreviewBody {
+  amount?: number;
+  payment_method?: 'wallet' | 'mpesa' | 'card';
+  recipient_user_id?: string;
+}
+
 export interface PaymentRouteDependencies {
   paymentService: PaymentService;
   authService: AuthService;
   walletService: WalletService;
   userRepository: UserRepository;
   transactionRepository: TransactionRepository;
+  roundUpRuleRepository: any; // RoundUpRuleRepository
   clock?: Clock;
   logger?: Logger;
 }
@@ -81,10 +88,76 @@ export function createPaymentRoutes({
   walletService,
   userRepository,
   transactionRepository,
+  roundUpRuleRepository,
   clock = new SystemClock(),
   logger = NullLogger,
 }: PaymentRouteDependencies) {
   return {
+    previewTransfer: async (request: HttpRequest<TransferPreviewBody>) => {
+      ensureAuthenticated(request);
+
+      const amount = parseAmount(request.body?.amount, 'Minimum transfer amount is KES 1.00');
+      const paymentMethod = request.body?.payment_method ?? 'wallet';
+      const recipientUserId = request.body?.recipient_user_id;
+
+      // Validate payment method
+      if (paymentMethod !== 'wallet' && paymentMethod !== 'mpesa' && paymentMethod !== 'card') {
+        throw badRequest('Invalid payment method. Must be wallet, mpesa, or card', 'INVALID_PAYMENT_METHOD');
+      }
+
+      // Validate recipient
+      if (!recipientUserId) {
+        throw badRequest('Recipient user ID is required', 'MISSING_RECIPIENT_USER_ID');
+      }
+
+      // Verify recipient exists
+      const recipientUser = await userRepository.findById(recipientUserId);
+      if (!recipientUser) {
+        throw badRequest('Recipient user not found', 'RECIPIENT_NOT_FOUND');
+      }
+
+      if (recipientUserId === request.userId) {
+        throw badRequest('Cannot transfer money to yourself', 'SELF_TRANSFER_NOT_ALLOWED');
+      }
+
+      // Calculate fee based on payment method
+      const fee = paymentMethod === 'wallet' ? WALLET_TRANSFER_FEE : EXTERNAL_TRANSFER_FEE;
+
+      // Get user's round-up rule
+      const roundUpRule = await roundUpRuleRepository.findByUserId(request.userId);
+
+      // Import and use the calculateRoundUp function
+      const { calculateRoundUp } = await import('../services/RoundUpService');
+      const roundUpCalc = calculateRoundUp(amount, roundUpRule);
+
+      const total = amount + fee + roundUpCalc.roundUpAmount;
+
+      logger.info('Transfer preview calculated', {
+        userId: request.userId,
+        recipientUserId,
+        amount,
+        fee,
+        roundUpAmount: roundUpCalc.roundUpAmount,
+        total,
+        paymentMethod,
+      });
+
+      return ok({
+        amount,
+        fee,
+        round_up_amount: roundUpCalc.roundUpAmount,
+        round_up_description: roundUpCalc.roundUpRule.incrementType,
+        total,
+        payment_method: paymentMethod,
+        recipient: {
+          user_id: recipientUserId,
+          name: recipientUser.firstName && recipientUser.lastName
+            ? `${recipientUser.firstName} ${recipientUser.lastName}`
+            : recipientUser.firstName || 'Zanari User',
+        },
+      });
+    },
+
     verifyPayment: async (request: HttpRequest<{ reference?: string }>) => {
       ensureAuthenticated(request);
 

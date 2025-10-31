@@ -42,6 +42,7 @@ interface ListSavingsGoalsQuery {
 
 export interface SavingsGoalRouteDependencies {
   savingsGoalService: SavingsGoalService;
+  walletService: any; // WalletService
   clock?: Clock;
   logger?: Logger;
 }
@@ -62,6 +63,7 @@ const goalCategoryStore = new Map<string, string>();
 
 export function createSavingsGoalRoutes({
   savingsGoalService,
+  walletService,
   clock = new SystemClock(),
   logger = NullLogger,
 }: SavingsGoalRouteDependencies) {
@@ -302,7 +304,56 @@ export function createSavingsGoalRoutes({
       }
     },
 
-  async depositToGoal(request: HttpRequest<{ amount: number }, { goalId: string }>) {
+  deleteGoal: async (request: HttpRequest<unknown, { goalId: string }>) => {
+      ensureAuthenticated(request);
+
+      const goalId = requireString(request.params.goalId, 'Goal ID is required', 'INVALID_GOAL_ID');
+
+      let goal: SavingsGoal;
+      try {
+        goal = await savingsGoalService.getGoal(goalId);
+      } catch (error) {
+        if (error instanceof Error && error.message === 'Savings goal not found') {
+          throw notFound('Savings goal not found', 'GOAL_NOT_FOUND');
+        }
+        throw error;
+      }
+
+      if (goal.userId !== request.userId) {
+        throw new HttpError(403, 'Not authorized to delete this goal', 'UNAUTHORIZED_GOAL_ACCESS');
+      }
+
+      // Only allow deletion of completed or cancelled goals
+      if (goal.status !== 'completed' && goal.status !== 'cancelled') {
+        throw badRequest('Can only delete completed or cancelled goals', 'GOAL_NOT_DELETABLE', {
+          status: goal.status,
+          message: 'Cancel the goal first before deleting, or wait until it is completed',
+        });
+      }
+
+      try {
+        await savingsGoalService.deleteGoal(goalId);
+
+        logger.info('Savings goal deleted via API', {
+          userId: request.userId,
+          goalId,
+          status: goal.status,
+          amount: goal.currentAmount,
+        });
+
+        return ok({
+          goal_id: goalId,
+          deleted: true,
+        });
+      } catch (error) {
+        if (error instanceof ValidationError) {
+          throw fromValidationError(error);
+        }
+        throw error;
+      }
+    },
+
+  async depositToGoal(request: HttpRequest<{ amount: number; source_wallet?: 'main' | 'savings' }, { goalId: string }>) {
     try {
       ensureAuthenticated(request);
 
@@ -315,7 +366,7 @@ export function createSavingsGoalRoutes({
         };
       }
 
-      const { amount } = request.body;
+      const { amount, source_wallet = 'main' } = request.body;
 
       if (!amount || typeof amount !== 'number' || !Number.isInteger(amount) || amount <= 0) {
         return {
@@ -323,6 +374,17 @@ export function createSavingsGoalRoutes({
           body: {
             error: 'Amount must be a positive integer (cents)',
             code: 'INVALID_AMOUNT',
+          },
+        };
+      }
+
+      // Validate source_wallet
+      if (source_wallet !== 'main' && source_wallet !== 'savings') {
+        return {
+          status: 400 as const,
+          body: {
+            error: 'source_wallet must be either "main" or "savings"',
+            code: 'INVALID_SOURCE_WALLET',
           },
         };
       }
@@ -342,6 +404,38 @@ export function createSavingsGoalRoutes({
         throw new HttpError(403, 'Not authorized to deposit to this goal', 'UNAUTHORIZED_GOAL_ACCESS');
       }
 
+      // Check if source wallet has sufficient balance
+      const sourceWalletObj = await walletService.getWallet(request.userId, source_wallet);
+      if (!sourceWalletObj) {
+        return {
+          status: 404 as const,
+          body: {
+            error: `${source_wallet === 'main' ? 'Main' : 'Savings'} wallet not found`,
+            code: 'WALLET_NOT_FOUND',
+          },
+        };
+      }
+
+      if (sourceWalletObj.availableBalance < amount) {
+        return {
+          status: 402 as const,
+          body: {
+            error: `Insufficient funds in ${source_wallet} wallet`,
+            code: 'INSUFFICIENT_FUNDS',
+            available_balance: sourceWalletObj.availableBalance,
+            required_amount: amount,
+          },
+        };
+      }
+
+      // Debit the source wallet
+      await walletService.debit({
+        userId: request.userId,
+        walletType: source_wallet,
+        amount,
+      });
+
+      // Record the contribution to the goal
       const result = await savingsGoalService.recordContribution(goalId, amount);
       const now = clock.now();
 
@@ -349,6 +443,7 @@ export function createSavingsGoalRoutes({
         goalId,
         amount,
         userId: request.userId,
+        sourceWallet: source_wallet,
         milestonesReached: result.milestonesReached.length,
         completed: result.completed,
       });
@@ -368,6 +463,114 @@ export function createSavingsGoalRoutes({
       return {
         status: 500 as const,
         body: { error: message, code: 'DEPOSIT_FAILED' },
+      };
+    }
+  },
+
+  async withdrawFromGoal(request: HttpRequest<{ destination_wallet: 'main' | 'savings' }, { goalId: string }>) {
+    try {
+      ensureAuthenticated(request);
+
+      const goalId = requireString(request.params.goalId, 'Goal ID is required', 'INVALID_GOAL_ID');
+
+      if (!request.body) {
+        return {
+          status: 400 as const,
+          body: { error: 'Request body is required', code: 'BAD_REQUEST' },
+        };
+      }
+
+      const { destination_wallet } = request.body;
+
+      // Validate destination_wallet
+      if (destination_wallet !== 'main' && destination_wallet !== 'savings') {
+        return {
+          status: 400 as const,
+          body: {
+            error: 'destination_wallet must be either "main" or "savings"',
+            code: 'INVALID_DESTINATION_WALLET',
+          },
+        };
+      }
+
+      // Verify goal exists and belongs to user
+      let goal: SavingsGoal;
+      try {
+        goal = await savingsGoalService.getGoal(goalId);
+      } catch (error) {
+        if (error instanceof Error && error.message === 'Savings goal not found') {
+          throw notFound('Savings goal not found', 'GOAL_NOT_FOUND');
+        }
+        throw error;
+      }
+
+      if (goal.userId !== request.userId) {
+        throw new HttpError(403, 'Not authorized to withdraw from this goal', 'UNAUTHORIZED_GOAL_ACCESS');
+      }
+
+      // Only allow withdrawal from completed goals
+      if (goal.status !== 'completed') {
+        return {
+          status: 400 as const,
+          body: {
+            error: 'Can only withdraw from completed goals',
+            code: 'GOAL_NOT_COMPLETED',
+            status: goal.status,
+          },
+        };
+      }
+
+      // Check if there's money to withdraw
+      if (goal.currentAmount <= 0) {
+        return {
+          status: 400 as const,
+          body: {
+            error: 'No funds available to withdraw',
+            code: 'NO_FUNDS_AVAILABLE',
+            current_amount: goal.currentAmount,
+          },
+        };
+      }
+
+      const amountToWithdraw = goal.currentAmount;
+
+      // Credit the destination wallet
+      await walletService.credit({
+        userId: request.userId,
+        walletType: destination_wallet,
+        amount: amountToWithdraw,
+      });
+
+      // Update goal to zero balance
+      const updatedGoal = await savingsGoalService.updateGoal({
+        ...goal,
+        currentAmount: 0,
+      });
+
+      const now = clock.now();
+
+      logger.info('Withdrawal from savings goal completed', {
+        goalId,
+        amount: amountToWithdraw,
+        userId: request.userId,
+        destinationWallet: destination_wallet,
+      });
+
+      return {
+        status: 200 as const,
+        body: {
+          goal: buildGoalResponse(updatedGoal, now),
+          amount_withdrawn: amountToWithdraw,
+          destination_wallet,
+        },
+      };
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Failed to withdraw from savings goal';
+      logger.error('Failed to withdraw from savings goal', { error: message });
+      return {
+        status: 500 as const,
+        body: { error: message, code: 'WITHDRAWAL_FAILED' },
       };
     }
   },

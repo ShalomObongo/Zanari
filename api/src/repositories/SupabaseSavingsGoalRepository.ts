@@ -64,4 +64,15 @@ export class SupabaseSavingsGoalRepository implements SavingsGoalRepository {
 
     return data ? fromRow(data as SavingsGoalRow) : null;
   }
+
+  async delete(goalId: UUID): Promise<void> {
+    const { error } = await this.client
+      .from('savings_goals')
+      .delete()
+      .eq('id', goalId);
+
+    if (error) {
+      throw new Error(`Failed to delete savings goal: ${error.message}`);
+    }
+  }
 }

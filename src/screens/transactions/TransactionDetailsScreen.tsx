@@ -36,7 +36,7 @@ const TransactionDetailsScreen: React.FC = () => {
 
   if (!transaction) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>Transaction not found</Text>
         </View>

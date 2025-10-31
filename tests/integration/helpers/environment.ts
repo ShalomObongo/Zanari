@@ -299,6 +299,10 @@ class InMemorySavingsGoalRepository implements SavingsGoalRepository {
     const goal = this.goals.get(goalId);
     return goal ? cloneGoal(goal) : null;
   }
+
+  async delete(goalId: UUID): Promise<void> {
+    this.goals.delete(goalId);
+  }
 }
 
 class InMemoryRoundUpRuleRepository implements RoundUpRuleRepository {

@@ -78,9 +78,11 @@ export async function createContractTestEnvironment(): Promise<ContractTestEnvir
       walletService: integration.services.walletService,
       userRepository: integration.repositories.userRepository,
       transactionRepository: integration.repositories.transactionRepository,
+      roundUpRuleRepository: integration.repositories.roundUpRuleRepository,
     }),
     savings: createSavingsGoalRoutes({
       savingsGoalService: integration.services.savingsGoalService,
+      walletService: integration.services.walletService,
     }),
     roundUp: createRoundUpRuleRoutes({
       roundUpRuleRepository: integration.repositories.roundUpRuleRepository,

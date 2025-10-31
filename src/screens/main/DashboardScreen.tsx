@@ -369,8 +369,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = () => {
   if (isInitialLoading) {
     return (
       <>
-        <StatusBar barStyle="dark-content" backgroundColor={theme.colors.backgroundLight} />
-        <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
+        <SafeAreaView style={styles.container} edges={['top']}>
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={theme.colors.accent} />
             <Text style={styles.loadingText}>Loading your dashboard...</Text>
@@ -385,7 +385,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = () => {
   return (
     <>
       <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top']}>
         <ScrollView
           style={styles.scrollContainer}
           refreshControl={

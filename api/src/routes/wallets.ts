@@ -23,6 +23,11 @@ interface WithdrawBody {
   mpesa_phone?: string;
 }
 
+interface TransferBetweenWalletsBody {
+  amount?: number;
+  pin_token?: string;
+}
+
 export interface WalletRouteDependencies {
   walletService: WalletService;
   transactionService: TransactionService;
@@ -140,6 +145,176 @@ export function createWalletRoutes({
           transaction_id: transaction.id,
           settlement_delay_minutes: settlementDelay,
           estimated_completion: estimatedCompletion.toISOString(),
+        });
+      } catch (error) {
+        if (error instanceof ValidationError) {
+          throw fromValidationError(error);
+        }
+        throw error;
+      }
+    },
+
+    transferToSavings: async (request: HttpRequest<TransferBetweenWalletsBody>) => {
+      ensureAuthenticated(request);
+
+      const rawAmount = requireNumber(
+        request.body?.amount,
+        'Amount must be a positive integer in cents',
+        'INVALID_AMOUNT_FORMAT',
+      );
+      if (!Number.isInteger(rawAmount) || rawAmount <= 0) {
+        throw badRequest('Amount must be a positive integer in cents', 'INVALID_AMOUNT_FORMAT');
+      }
+      if (rawAmount < MIN_WITHDRAWAL_AMOUNT) {
+        throw badRequest('Minimum transfer amount is KES 1.00', 'AMOUNT_TOO_LOW');
+      }
+
+      const pinToken = request.body?.pin_token;
+      if (!pinToken) {
+        throw badRequest('PIN token is required', 'MISSING_PIN_TOKEN');
+      }
+      if (!/^txn_[a-zA-Z0-9]+$/.test(pinToken)) {
+        throw badRequest('Invalid PIN token format', 'INVALID_PIN_TOKEN_FORMAT');
+      }
+      const tokenValid = await authService.validatePinToken(request.userId, pinToken);
+      if (!tokenValid) {
+        throw new HttpError(401, 'PIN token expired', 'PIN_TOKEN_EXPIRED');
+      }
+
+      try {
+        // Get main wallet and check balance
+        const mainWallet = await walletService.getWallet(request.userId, 'main');
+        if (!mainWallet) {
+          throw notFound('Main wallet not found', 'WALLET_NOT_FOUND');
+        }
+
+        if (mainWallet.availableBalance < rawAmount) {
+          throw new HttpError(402, 'Insufficient funds in main wallet', 'INSUFFICIENT_FUNDS', {
+            available_balance: mainWallet.availableBalance,
+          });
+        }
+
+        // Debit main wallet
+        await walletService.debit({ userId: request.userId, walletType: 'main', amount: rawAmount });
+
+        // Credit savings wallet
+        await walletService.credit({ userId: request.userId, walletType: 'savings', amount: rawAmount });
+
+        // Create transfer transaction
+        const transactionId = randomUUID();
+        const transaction = await transactionService.create({
+          id: transactionId,
+          userId: request.userId,
+          type: 'deposit',
+          amount: rawAmount,
+          category: 'savings',
+          autoCategorized: true,
+          metadata: {
+            fromWalletType: 'main',
+            toWalletType: 'savings',
+            description: 'Transfer to savings wallet',
+          } as Partial<Transaction>,
+        });
+
+        await authService.invalidatePinToken(pinToken);
+
+        logger.info('Wallet transfer to savings completed', {
+          userId: request.userId,
+          amount: rawAmount,
+          transactionId: transaction.id,
+        });
+
+        return ok({
+          transaction_id: transaction.id,
+          amount: rawAmount,
+          from_wallet: 'main',
+          to_wallet: 'savings',
+          status: 'completed',
+        });
+      } catch (error) {
+        if (error instanceof ValidationError) {
+          throw fromValidationError(error);
+        }
+        throw error;
+      }
+    },
+
+    transferFromSavings: async (request: HttpRequest<TransferBetweenWalletsBody>) => {
+      ensureAuthenticated(request);
+
+      const rawAmount = requireNumber(
+        request.body?.amount,
+        'Amount must be a positive integer in cents',
+        'INVALID_AMOUNT_FORMAT',
+      );
+      if (!Number.isInteger(rawAmount) || rawAmount <= 0) {
+        throw badRequest('Amount must be a positive integer in cents', 'INVALID_AMOUNT_FORMAT');
+      }
+      if (rawAmount < MIN_WITHDRAWAL_AMOUNT) {
+        throw badRequest('Minimum transfer amount is KES 1.00', 'AMOUNT_TOO_LOW');
+      }
+
+      const pinToken = request.body?.pin_token;
+      if (!pinToken) {
+        throw badRequest('PIN token is required', 'MISSING_PIN_TOKEN');
+      }
+      if (!/^txn_[a-zA-Z0-9]+$/.test(pinToken)) {
+        throw badRequest('Invalid PIN token format', 'INVALID_PIN_TOKEN_FORMAT');
+      }
+      const tokenValid = await authService.validatePinToken(request.userId, pinToken);
+      if (!tokenValid) {
+        throw new HttpError(401, 'PIN token expired', 'PIN_TOKEN_EXPIRED');
+      }
+
+      try {
+        // Get savings wallet and check balance
+        const savingsWallet = await walletService.getWallet(request.userId, 'savings');
+        if (!savingsWallet) {
+          throw notFound('Savings wallet not found', 'WALLET_NOT_FOUND');
+        }
+
+        if (savingsWallet.availableBalance < rawAmount) {
+          throw new HttpError(402, 'Insufficient funds in savings wallet', 'INSUFFICIENT_FUNDS', {
+            available_balance: savingsWallet.availableBalance,
+          });
+        }
+
+        // Debit savings wallet
+        await walletService.debit({ userId: request.userId, walletType: 'savings', amount: rawAmount });
+
+        // Credit main wallet
+        await walletService.credit({ userId: request.userId, walletType: 'main', amount: rawAmount });
+
+        // Create transfer transaction
+        const transactionId = randomUUID();
+        const transaction = await transactionService.create({
+          id: transactionId,
+          userId: request.userId,
+          type: 'withdrawal',
+          amount: rawAmount,
+          category: 'transfer',
+          autoCategorized: true,
+          metadata: {
+            fromWalletType: 'savings',
+            toWalletType: 'main',
+            description: 'Transfer from savings wallet',
+          } as Partial<Transaction>,
+        });
+
+        await authService.invalidatePinToken(pinToken);
+
+        logger.info('Wallet transfer from savings completed', {
+          userId: request.userId,
+          amount: rawAmount,
+          transactionId: transaction.id,
+        });
+
+        return ok({
+          transaction_id: transaction.id,
+          amount: rawAmount,
+          from_wallet: 'savings',
+          to_wallet: 'main',
+          status: 'completed',
         });
       } catch (error) {
         if (error instanceof ValidationError) {

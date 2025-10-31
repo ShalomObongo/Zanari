@@ -154,8 +154,11 @@ app.get('/users/lookup', adaptRoute(container.routes.users.lookupUser));
 // Wallets
 app.get('/wallets', adaptRoute(container.routes.wallets.listWallets));
 app.post('/wallets/:walletId/withdraw', adaptRoute(container.routes.wallets.withdraw));
+app.post('/wallets/transfer-to-savings', adaptRoute(container.routes.wallets.transferToSavings));
+app.post('/wallets/transfer-from-savings', adaptRoute(container.routes.wallets.transferFromSavings));
 
 // Payments
+app.post('/payments/preview', adaptRoute(container.routes.payments.previewTransfer));
 app.post('/payments/verify', adaptRoute(container.routes.payments.verifyPayment));
 app.post('/payments/merchant', adaptRoute(container.routes.payments.payMerchant));
 app.post('/payments/transfer', adaptRoute(container.routes.payments.transferPeer));
@@ -166,7 +169,9 @@ app.get('/savings-goals', adaptRoute(container.routes.savings.listGoals));
 app.post('/savings-goals', adaptRoute(container.routes.savings.createGoal));
 app.put('/savings-goals/:goalId', adaptRoute(container.routes.savings.updateGoal));
 app.patch('/savings-goals/:goalId', adaptRoute(container.routes.savings.updateGoal));
+app.delete('/savings-goals/:goalId', adaptRoute(container.routes.savings.deleteGoal));
 app.post('/savings-goals/:goalId/deposit', adaptRoute(container.routes.savings.depositToGoal));
+app.post('/savings-goals/:goalId/withdraw', adaptRoute(container.routes.savings.withdrawFromGoal));
 app.post('/savings-goals/:goalId/cancel', adaptRoute(container.routes.savings.cancelGoal));
 
 // Round-up rules

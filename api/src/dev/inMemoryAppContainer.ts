@@ -679,9 +679,10 @@ export function createInMemoryAppContainer({ logger }: InMemoryContainerOptions)
     walletService,
     userRepository,
     transactionRepository,
+    roundUpRuleRepository,
     logger,
   });
-  const savingsRoutes = createSavingsGoalRoutes({ savingsGoalService, logger });
+  const savingsRoutes = createSavingsGoalRoutes({ savingsGoalService, walletService, logger });
   const roundUpRoutes = createRoundUpRuleRoutes({
     roundUpRuleRepository,
     transactionRepository,

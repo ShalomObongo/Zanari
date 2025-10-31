@@ -179,6 +179,7 @@ export function createAppContainer() {
     walletService,
     userRepository,
     transactionRepository,
+    roundUpRuleRepository,
     logger,
   });
   const walletRoutes = createWalletRoutes({ walletService, transactionService, authService, logger });
@@ -194,7 +195,7 @@ export function createAppContainer() {
     autoAnalyzeService,
     logger,
   });
-  const savingsRoutes = createSavingsGoalRoutes({ savingsGoalService, logger });
+  const savingsRoutes = createSavingsGoalRoutes({ savingsGoalService, walletService, logger });
   const kycRoutes = createKYCRoutes({ kycService, logger });
   const webhookRoutes = createWebhookRoutes({ logger });
 

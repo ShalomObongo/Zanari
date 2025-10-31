@@ -21,7 +21,9 @@ import PinVerificationModal from '@/components/PinVerificationModal';
 import { useAuthStore } from '@/store/authStore';
 import { useWalletStore } from '@/store/walletStore';
 import { useTransactionStore } from '@/store/transactionStore';
+import { useRoundUpStore } from '@/store/roundUpStore';
 import { formatCurrency, parseCentsFromInput } from '@/utils/formatters';
+import { calculateRoundUp, getRoundUpDescription } from '@/utils/roundUpCalculator';
 import api, { ApiError } from '@/services/api';
 import theme from '@/theme';
 
@@ -53,12 +55,21 @@ const TransferScreen: React.FC<TransferScreenProps> = () => {
   const user = useAuthStore((state) => state.user);
   const isPinSet = useAuthStore((state) => state.isPinSet);
   const consumePinToken = useAuthStore((state) => state.consumePinToken);
+  const roundUpRule = useRoundUpStore((state) => state.rule);
 
   const mainWallet = wallets.find(w => w.wallet_type === 'main');
   const savingsWallet = wallets.find(w => w.wallet_type === 'savings');
   const availableBalance = paymentMethod === 'savings'
     ? (savingsWallet?.available_balance ?? 0)
     : (mainWallet?.available_balance ?? 0);
+
+  // Calculate round-up for preview
+  const amountCents = parseCentsFromInput(amount.replace(/,/g, ''));
+  const roundUpCalculation = roundUpRule?.is_enabled && amountCents > 0
+    ? calculateRoundUp(amountCents, roundUpRule)
+    : null;
+  const roundUpAmount = roundUpCalculation?.roundUpAmount ?? 0;
+  const totalWithRoundUp = amountCents + fee + roundUpAmount;
 
   const formatAmount = (text: string) => {
     const cleaned = text.replace(/\D/g, '');
@@ -285,9 +296,13 @@ const TransferScreen: React.FC<TransferScreenProps> = () => {
 
         setIsLoading(false);
 
+        // Calculate total charge including round-up
+        const responseRoundUp = response.round_up_amount ?? 0;
+        const totalCharge = amountCents + fee + responseRoundUp;
+
         popup.newTransaction({
           email: user?.email || 'user@zanari.app',
-          amount: (amountCents + fee) / 100, // Convert back to currency units
+          amount: totalCharge / 100, // Convert back to currency units (includes amount + fee + round-up)
           reference: paystackReference,
           onSuccess: async (res: any) => {
             console.log('Payment successful:', res);
@@ -480,7 +495,7 @@ const TransferScreen: React.FC<TransferScreenProps> = () => {
   return (
     <>
       <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top']}>
         <KeyboardAvoidingView
           style={styles.keyboardContainer}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -577,6 +592,55 @@ const TransferScreen: React.FC<TransferScreenProps> = () => {
                 textAlignVertical="top"
               />
             </View>
+
+            {/* Transfer Preview */}
+            {amountCents > 0 && (
+              <View style={styles.previewCard}>
+                <Text style={styles.previewTitle}>Transfer Summary</Text>
+
+                <View style={styles.previewRow}>
+                  <Text style={styles.previewLabel}>Transfer Amount</Text>
+                  <Text style={styles.previewValue}>{formatCurrency(amountCents)}</Text>
+                </View>
+
+                {fee > 0 && (
+                  <View style={styles.previewRow}>
+                    <Text style={styles.previewLabel}>Transaction Fee</Text>
+                    <Text style={styles.previewValue}>{formatCurrency(fee)}</Text>
+                  </View>
+                )}
+
+                {roundUpAmount > 0 && roundUpRule?.is_enabled && (
+                  <View style={styles.previewRow}>
+                    <View style={styles.previewLabelWithIcon}>
+                      <Text style={styles.previewLabel}>Round-up to Savings</Text>
+                      <Icon name="info-outline" size={16} color={theme.colors.textSecondary} />
+                    </View>
+                    <Text style={styles.previewValueAccent}>
+                      +{formatCurrency(roundUpAmount)}
+                    </Text>
+                  </View>
+                )}
+
+                {roundUpRule?.is_enabled && roundUpCalculation && (
+                  <View style={styles.roundUpInfoBanner}>
+                    <Icon name="savings" size={16} color={theme.colors.accent} />
+                    <Text style={styles.roundUpInfoText}>
+                      {getRoundUpDescription(roundUpRule)}
+                    </Text>
+                  </View>
+                )}
+
+                <View style={styles.previewDivider} />
+
+                <View style={styles.previewRow}>
+                  <Text style={styles.previewLabelBold}>Total Charge</Text>
+                  <Text style={styles.previewValueBold}>
+                    {formatCurrency(totalWithRoundUp)}
+                  </Text>
+                </View>
+              </View>
+            )}
 
             <View style={styles.spacer} />
           </ScrollView>
@@ -941,6 +1005,78 @@ const styles = StyleSheet.create({
     gap: theme.spacing.base,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.divider,
+  },
+  previewCard: {
+    backgroundColor: theme.colors.backgroundLight,
+    borderRadius: theme.borderRadius.xl,
+    padding: theme.spacing.xl,
+    marginTop: theme.spacing.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  previewTitle: {
+    fontSize: theme.fontSizes.base,
+    fontFamily: theme.fonts.semiBold,
+    color: theme.colors.textPrimary,
+    marginBottom: theme.spacing.md,
+  },
+  previewRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing.sm,
+  },
+  previewLabel: {
+    fontSize: theme.fontSizes.sm,
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.textSecondary,
+  },
+  previewLabelWithIcon: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+  },
+  previewValue: {
+    fontSize: theme.fontSizes.base,
+    fontFamily: theme.fonts.medium,
+    color: theme.colors.textPrimary,
+  },
+  previewValueAccent: {
+    fontSize: theme.fontSizes.base,
+    fontFamily: theme.fonts.semiBold,
+    color: theme.colors.accent,
+  },
+  previewLabelBold: {
+    fontSize: theme.fontSizes.base,
+    fontFamily: theme.fonts.bold,
+    color: theme.colors.textPrimary,
+  },
+  previewValueBold: {
+    fontSize: theme.fontSizes.lg,
+    fontFamily: theme.fonts.bold,
+    color: theme.colors.textPrimary,
+  },
+  previewDivider: {
+    height: 1,
+    backgroundColor: theme.colors.border,
+    marginVertical: theme.spacing.md,
+  },
+  roundUpInfoBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    backgroundColor: `${theme.colors.accent}10`,
+    padding: theme.spacing.sm,
+    borderRadius: theme.borderRadius.lg,
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
+  },
+  roundUpInfoText: {
+    flex: 1,
+    fontSize: theme.fontSizes.xs,
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.textSecondary,
+    lineHeight: 16,
   },
 });
 

@@ -378,8 +378,8 @@ const TransactionHistoryScreen: React.FC<TransactionHistoryScreenProps> = () => 
   if (isInitialLoading) {
     return (
       <>
-        <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-        <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
+        <SafeAreaView style={styles.container} edges={['top']}>
           <View style={styles.header}>
             <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
               <Icon name="arrow-back" size={24} color="#333333" />
@@ -446,8 +446,8 @@ const TransactionHistoryScreen: React.FC<TransactionHistoryScreenProps> = () => 
 
   return (
     <>
-      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-      <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
+      <SafeAreaView style={styles.container} edges={['top']}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>

@@ -67,6 +67,7 @@ export interface SavingsGoalRepository {
   findActiveByUser(userId: UUID): Promise<SavingsGoal[]>;
   findById(goalId: UUID): Promise<SavingsGoal | null>;
   save(goal: SavingsGoal): Promise<SavingsGoal>;
+  delete(goalId: UUID): Promise<void>;
 }
 
 export interface RoundUpRuleRepository {

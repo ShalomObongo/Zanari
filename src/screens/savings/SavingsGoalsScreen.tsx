@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  SectionList,
   TouchableOpacity,
   Modal,
   TextInput,
@@ -22,6 +23,9 @@ import { useSavingsStore } from '@/store/savingsStore';
 import { useWalletStore } from '@/store/walletStore';
 import { formatCurrency, parseCentsFromInput } from '@/utils/formatters';
 import { apiClient } from '@/services/api';
+import TransferToSavingsWalletModal from '@/components/TransferToSavingsWalletModal';
+import EditGoalModal from '@/components/EditGoalModal';
+import GoalWithdrawModal from '@/components/GoalWithdrawModal';
 import theme from '@/theme';
 
 // Category colors for goal cards (left bar indicator)
@@ -41,7 +45,14 @@ const SavingsGoalsScreen: React.FC = () => {
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showAddFundsModal, setShowAddFundsModal] = useState(false);
+  const [showMenuModal, setShowMenuModal] = useState(false);
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
+  const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
+  const [withdrawingGoalId, setWithdrawingGoalId] = useState<string | null>(null);
+  const [selectedSourceWallet, setSelectedSourceWallet] = useState<'main' | 'savings'>('main');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Zustand stores
@@ -50,15 +61,25 @@ const SavingsGoalsScreen: React.FC = () => {
   const refreshGoals = useSavingsStore((state) => state.refreshGoals);
   const createGoal = useSavingsStore((state) => state.createGoal);
   const updateGoal = useSavingsStore((state) => state.updateGoal);
+  const deleteGoal = useSavingsStore((state) => state.deleteGoal);
+  const depositToGoal = useSavingsStore((state) => state.depositToGoal);
   const getTotalSavedAmount = useSavingsStore((state) => state.getTotalSavedAmount);
-  const getActiveGoals = useSavingsStore((state) => state.getActiveGoals);
+  const getTotalAllocatedToGoals = useSavingsStore((state) => state.getTotalAllocatedToGoals);
+  // const getActiveGoals = useSavingsStore((state) => state.getActiveGoals);
   const isRefreshing = useSavingsStore((state) => state.isRefreshing);
 
   const wallets = useWalletStore((state) => state.wallets);
   const refreshWallets = useWalletStore((state) => state.refreshWallets);
+  const getSavingsWalletSummary = useWalletStore((state) => state.getSavingsWalletSummary);
 
   const mainWallet = wallets.find(w => w.wallet_type === 'main');
-  const availableBalance = mainWallet?.available_balance ?? 0;
+  const savingsWallet = wallets.find(w => w.wallet_type === 'savings');
+
+  const totalAllocated = getTotalAllocatedToGoals();
+  const savingsSummary = getSavingsWalletSummary(totalAllocated);
+
+  const selectedWallet = selectedSourceWallet === 'main' ? mainWallet : savingsWallet;
+  const selectedBalance = selectedWallet?.available_balance ?? 0;
 
   // Initial data fetch
   useEffect(() => {
@@ -90,7 +111,7 @@ const SavingsGoalsScreen: React.FC = () => {
   const [addAmount, setAddAmount] = useState('');
 
   // Refs
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<ScrollView>(null); // kept for minimal diff; no longer used by SectionList
 
   // Helper functions
   const selectedGoal = selectedGoalId ? goals.find(g => g.goal_id === selectedGoalId) : null;
@@ -188,8 +209,9 @@ const SavingsGoalsScreen: React.FC = () => {
     }
 
     // Check available balance
-    if (amountCents > availableBalance) {
-      Alert.alert('Error', `Insufficient balance. Available: ${formatCurrency(availableBalance)}`);
+    if (amountCents > selectedBalance) {
+      const walletName = selectedSourceWallet === 'main' ? 'Main wallet' : 'Savings wallet';
+      Alert.alert('Error', `Insufficient balance in ${walletName}. Available: ${formatCurrency(selectedBalance)}`);
       return;
     }
 
@@ -201,7 +223,7 @@ const SavingsGoalsScreen: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      const result = await apiClient.depositToSavingsGoal(selectedGoal.goal_id, amountCents);
+      const result = await depositToGoal(selectedGoal.goal_id, amountCents, selectedSourceWallet);
 
       // Show milestone achievements
       if (result.milestonesReached && result.milestonesReached.length > 0) {
@@ -214,12 +236,13 @@ const SavingsGoalsScreen: React.FC = () => {
         Alert.alert('Goal Completed!', `Congratulations! You've reached your savings goal.`);
       }
 
-      // Refresh goals to show updated balance
-      await refreshGoals();
+      // Refresh wallets to show updated balance
+      await refreshWallets();
 
       setAddAmount('');
       setShowAddFundsModal(false);
       setSelectedGoalId(null);
+      setSelectedSourceWallet('main'); // Reset to main
     } catch (error) {
       Alert.alert('Error', 'Failed to add funds. Please try again.');
       console.error('Add funds error:', error);
@@ -286,12 +309,25 @@ const SavingsGoalsScreen: React.FC = () => {
               <View style={[styles.colorBar, { backgroundColor: barColor }]} />
               <Text style={styles.goalTitle}>{goal.name}</Text>
             </View>
-            {goal.lock_in_enabled && (
-              <View style={styles.roundUpBadge}>
-                <Icon name="all-inclusive" size={14} color={theme.colors.primary} />
-                <Text style={styles.roundUpBadgeText}>Round-up</Text>
-              </View>
-            )}
+            <View style={styles.goalHeaderRight}>
+              {goal.lock_in_enabled && (
+                <View style={styles.roundUpBadge}>
+                  <Icon name="all-inclusive" size={14} color={theme.colors.primary} />
+                  <Text style={styles.roundUpBadgeText}>Round-up</Text>
+                </View>
+              )}
+              {(isActive || goal.status === 'paused') && (
+                <TouchableOpacity
+                  style={styles.editButton}
+                  onPress={() => {
+                    setEditingGoalId(goal.goal_id);
+                    setShowEditModal(true);
+                  }}
+                >
+                  <Icon name="edit" size={20} color={theme.colors.textSecondary} />
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
 
           <View style={styles.progressSection}>
@@ -315,16 +351,27 @@ const SavingsGoalsScreen: React.FC = () => {
                 'Ongoing'
               )}
             </Text>
+            {isCompleted ? (
+            <TouchableOpacity
+              style={[styles.addFundsButton, styles.withdrawButton]}
+              onPress={() => {
+                setWithdrawingGoalId(goal.goal_id);
+                setShowWithdrawModal(true);
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.withdrawButtonText}>Withdraw</Text>
+            </TouchableOpacity>
+          ) : (
             <TouchableOpacity
               style={styles.addFundsButton}
               onPress={() => openAddFundsModal(goal.goal_id)}
-              disabled={!isActive || isCompleted}
+              disabled={!isActive}
               activeOpacity={0.8}
             >
-              <Text style={styles.addFundsButtonText}>
-                {isCompleted ? '✓ Complete' : 'Add Funds'}
-              </Text>
+              <Text style={styles.addFundsButtonText}>Add Funds</Text>
             </TouchableOpacity>
+          )}
           </View>
         </View>
       </View>
@@ -338,7 +385,7 @@ const SavingsGoalsScreen: React.FC = () => {
     return (
       <>
         <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={styles.container} edges={['top']}>
           <View style={styles.header}>
             <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
               <Icon name="arrow-back" size={24} color={theme.colors.textPrimary} />
@@ -357,72 +404,146 @@ const SavingsGoalsScreen: React.FC = () => {
     );
   }
 
-  const activeGoals = getActiveGoals();
   const totalSaved = getTotalSavedAmount();
+
+  // Sorting helpers
+  const toTime = (s: string | null) => (s ? new Date(s).getTime() : Infinity);
+  const toTimeDesc = (s: string | null) => (s ? new Date(s).getTime() : -Infinity);
+
+  const activeGoalsSorted = goals
+    .filter((g) => g.status === 'active')
+    .sort((a, b) => {
+      const aDate = toTime(a.target_date);
+      const bDate = toTime(b.target_date);
+      if (aDate !== bDate) return aDate - bDate; // earliest target date first
+      if (a.progress_percentage !== b.progress_percentage) return b.progress_percentage - a.progress_percentage; // higher progress next
+      return toTimeDesc(b.updated_at) - toTimeDesc(a.updated_at); // most recently updated last tie-break
+    });
+
+  const completedNotCashed = goals
+    .filter((g) => g.status === 'completed' && (g.current_amount ?? 0) > 0)
+    .sort((a, b) => {
+      const aCompleted = toTimeDesc(a.completed_at);
+      const bCompleted = toTimeDesc(b.completed_at);
+      if (aCompleted !== bCompleted) return bCompleted - aCompleted; // most recently completed first
+      return toTimeDesc(b.updated_at) - toTimeDesc(a.updated_at);
+    });
+
+  const cashedOutGoals = goals
+    .filter((g) => g.status === 'completed' && (g.current_amount ?? 0) <= 0)
+    .sort((a, b) => toTimeDesc(b.updated_at) - toTimeDesc(a.updated_at));
+
+  const sections = [
+    { key: 'active', title: `Active Goals (${activeGoalsSorted.length})`, data: activeGoalsSorted },
+    { key: 'completed', title: `Completed (Ready to Cash Out) (${completedNotCashed.length})`, data: completedNotCashed },
+    { key: 'cashedOut', title: `Cashed Out (${cashedOutGoals.length})`, data: cashedOutGoals },
+  ];
 
   return (
     <>
       <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top']}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
             <Icon name="arrow-back" size={24} color={theme.colors.textPrimary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Savings</Text>
-          <TouchableOpacity style={styles.menuButton}>
-            <Icon name="more-horiz" size={24} color={theme.colors.textPrimary} />
+          <TouchableOpacity
+            style={styles.menuButton}
+            onPress={() => setShowMenuModal(true)}
+          >
+            <Icon name="more-vert" size={24} color={theme.colors.textPrimary} />
           </TouchableOpacity>
         </View>
 
         {/* Main Content */}
-        <ScrollView
-          ref={scrollViewRef}
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefreshing}
-              onRefresh={handleRefresh}
-              tintColor={theme.colors.accent}
-            />
-          }
-        >
-          {/* Summary Cards Row */}
-          <View style={styles.summaryCardsRow}>
-            <View style={styles.summaryCard}>
-              <Text style={styles.summaryLabel}>Total Saved</Text>
-              <Text style={styles.summaryAmount}>{formatCurrency(totalSaved)}</Text>
-            </View>
-            <View style={styles.summaryCard}>
-              <Text style={styles.summaryLabel}>Active Goals</Text>
-              <Text style={styles.summaryAmount}>{activeGoals.length}</Text>
-            </View>
-          </View>
-
-          {/* Section Header */}
-          <Text style={styles.sectionTitle}>Active Goals</Text>
-
-          {/* Goals List */}
-          {activeGoals.length > 0 ? (
-            activeGoals.map((goal, index) => renderGoalCard(goal, index))
-          ) : (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyIcon}>🎯</Text>
-              <Text style={styles.emptyTitle}>No Savings Goals Yet</Text>
-              <Text style={styles.emptyDescription}>
-                Create your first savings goal to start building your financial future
-              </Text>
-              <TouchableOpacity
-                style={styles.emptyActionButton}
-                onPress={() => setShowCreateModal(true)}
-              >
-                <Text style={styles.emptyActionButtonText}>Create Your First Goal</Text>
-              </TouchableOpacity>
-            </View>
+        <SectionList
+          sections={sections}
+          keyExtractor={(item) => item.goal_id}
+          renderItem={({ item, index }) => renderGoalCard(item, index)}
+          renderSectionHeader={({ section }) => (
+            <Text style={styles.sectionTitle}>{section.title}</Text>
           )}
-        </ScrollView>
+          renderSectionFooter={({ section }) => {
+            if (section.data.length > 0) return null;
+            if (section.key === 'active') {
+              return (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyIcon}>🎯</Text>
+                  <Text style={styles.emptyTitle}>No Savings Goals Yet</Text>
+                  <Text style={styles.emptyDescription}>
+                    Create your first savings goal to start building your financial future
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.emptyActionButton}
+                    onPress={() => setShowCreateModal(true)}
+                  >
+                    <Text style={styles.emptyActionButtonText}>Create Your First Goal</Text>
+                  </TouchableOpacity>
+                </View>
+              );
+            }
+            if (section.key === 'completed') {
+              return (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyIcon}>🏁</Text>
+                  <Text style={styles.emptyTitle}>No Completed Goals Yet</Text>
+                  <Text style={styles.emptyDescription}>
+                    Once you complete a goal, it will appear here and you can withdraw to your preferred wallet.
+                  </Text>
+                </View>
+              );
+            }
+            if (section.key === 'cashedOut') {
+              return (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyIcon}>📈</Text>
+                  <Text style={styles.emptyTitle}>No Cashed Out Goals Yet</Text>
+                  <Text style={styles.emptyDescription}>Withdraw your completed goals to see them here.</Text>
+                </View>
+              );
+            }
+            return null;
+          }}
+          contentContainerStyle={styles.scrollContent}
+          refreshControl={
+            <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor={theme.colors.accent} />
+          }
+          ListHeaderComponent={
+            savingsSummary ? (
+              <View style={styles.savingsWalletCard}>
+                <View style={styles.walletHeader}>
+                  <Icon name="account-balance-wallet" size={24} color={theme.colors.accent} />
+                  <Text style={styles.walletTitle}>Savings Wallet</Text>
+                </View>
+
+                <View style={styles.walletBalanceRow}>
+                  <Text style={styles.walletMainBalance}>{formatCurrency(savingsSummary.totalBalance)}</Text>
+                </View>
+
+                <View style={styles.walletBreakdown}>
+                  <View style={styles.breakdownRow}>
+                    <Text style={styles.breakdownLabel}>Allocated to Goals</Text>
+                    <Text style={styles.breakdownAmount}>{formatCurrency(savingsSummary.allocatedToGoals)}</Text>
+                  </View>
+                  <View style={styles.breakdownRow}>
+                    <Text style={styles.breakdownLabel}>Available</Text>
+                    <Text style={[styles.breakdownAmount, styles.availableAmount]}>{formatCurrency(savingsSummary.availableBalance)}</Text>
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.transferToSavingsButton}
+                  onPress={() => setShowTransferModal(true)}
+                >
+                  <Icon name="add-circle-outline" size={20} color={theme.colors.surface} />
+                  <Text style={styles.transferButtonText}>Transfer to Savings</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null
+          }
+        />
 
         {/* Floating Action Button */}
         <TouchableOpacity
@@ -617,11 +738,65 @@ const SavingsGoalsScreen: React.FC = () => {
                       </View>
                     </View>
 
-                    <View style={styles.balanceCard}>
-                      <Icon name="account-balance-wallet" size={20} color={theme.colors.success} />
-                      <View style={styles.balanceInfo}>
-                        <Text style={styles.balanceLabel}>Available Balance</Text>
-                        <Text style={styles.balanceAmount}>{formatCurrency(availableBalance)}</Text>
+                    {/* Source Wallet Selector */}
+                    <View style={styles.formGroup}>
+                      <Text style={styles.formLabel}>Transfer From</Text>
+                      <View style={styles.walletSelectorRow}>
+                        <TouchableOpacity
+                          style={[
+                            styles.walletSelectorOption,
+                            selectedSourceWallet === 'main' && styles.walletSelectorOptionSelected
+                          ]}
+                          onPress={() => setSelectedSourceWallet('main')}
+                        >
+                          <Icon
+                            name="account-balance-wallet"
+                            size={20}
+                            color={selectedSourceWallet === 'main' ? theme.colors.accent : theme.colors.textSecondary}
+                          />
+                          <View style={styles.walletSelectorInfo}>
+                            <Text style={[
+                              styles.walletSelectorLabel,
+                              selectedSourceWallet === 'main' && styles.walletSelectorLabelSelected
+                            ]}>
+                              Main Wallet
+                            </Text>
+                            <Text style={styles.walletSelectorBalance}>
+                              {formatCurrency(mainWallet?.available_balance ?? 0)}
+                            </Text>
+                          </View>
+                          {selectedSourceWallet === 'main' && (
+                            <Icon name="check-circle" size={20} color={theme.colors.accent} />
+                          )}
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={[
+                            styles.walletSelectorOption,
+                            selectedSourceWallet === 'savings' && styles.walletSelectorOptionSelected
+                          ]}
+                          onPress={() => setSelectedSourceWallet('savings')}
+                        >
+                          <Icon
+                            name="savings"
+                            size={20}
+                            color={selectedSourceWallet === 'savings' ? theme.colors.accent : theme.colors.textSecondary}
+                          />
+                          <View style={styles.walletSelectorInfo}>
+                            <Text style={[
+                              styles.walletSelectorLabel,
+                              selectedSourceWallet === 'savings' && styles.walletSelectorLabelSelected
+                            ]}>
+                              Savings Wallet
+                            </Text>
+                            <Text style={styles.walletSelectorBalance}>
+                              {formatCurrency(savingsWallet?.available_balance ?? 0)}
+                            </Text>
+                          </View>
+                          {selectedSourceWallet === 'savings' && (
+                            <Icon name="check-circle" size={20} color={theme.colors.accent} />
+                          )}
+                        </TouchableOpacity>
                       </View>
                     </View>
                   </>
@@ -674,6 +849,89 @@ const SavingsGoalsScreen: React.FC = () => {
             </SafeAreaView>
           </KeyboardAvoidingView>
         </Modal>
+
+        {/* Menu Modal */}
+        <Modal
+          visible={showMenuModal}
+          animationType="fade"
+          transparent={true}
+          onRequestClose={() => setShowMenuModal(false)}
+        >
+          <TouchableOpacity
+            style={styles.menuModalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowMenuModal(false)}
+          >
+            <View style={styles.menuModalContent}>
+              <TouchableOpacity
+                style={styles.menuOption}
+                onPress={() => {
+                  setShowMenuModal(false);
+                  navigation.navigate('SavingsInsights');
+                }}
+              >
+                <Icon name="pie-chart" size={24} color={theme.colors.textPrimary} />
+                <Text style={styles.menuOptionText}>View Total Saved</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.menuOption}
+                onPress={() => {
+                  setShowMenuModal(false);
+                  setShowTransferModal(true);
+                }}
+              >
+                <Icon name="arrow-forward" size={24} color={theme.colors.textPrimary} />
+                <Text style={styles.menuOptionText}>Transfer to Savings</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.menuOption, styles.menuOptionLast]}
+                onPress={() => {
+                  setShowMenuModal(false);
+                  navigation.navigate('RoundUpSettings');
+                }}
+              >
+                <Icon name="settings" size={24} color={theme.colors.textPrimary} />
+                <Text style={styles.menuOptionText}>Round-up Settings</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </Modal>
+
+        {/* Transfer to Savings Modal */}
+        <TransferToSavingsWalletModal
+          visible={showTransferModal}
+          onClose={() => setShowTransferModal(false)}
+          onSuccess={async () => {
+            await handleRefresh();
+          }}
+        />
+
+        {/* Edit Goal Modal */}
+        <EditGoalModal
+          visible={showEditModal}
+          goalId={editingGoalId}
+          onClose={() => {
+            setShowEditModal(false);
+            setEditingGoalId(null);
+          }}
+          onSuccess={async () => {
+            await handleRefresh();
+          }}
+        />
+
+        <GoalWithdrawModal
+          visible={showWithdrawModal}
+          goalId={withdrawingGoalId}
+          onClose={() => {
+            setShowWithdrawModal(false);
+            setWithdrawingGoalId(null);
+          }}
+          onSuccess={async () => {
+            await handleRefresh();
+          }}
+        />
       </SafeAreaView>
     </>
   );
@@ -718,7 +976,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 100, // Space for FAB
+    paddingBottom: 10, // Space for FAB
   },
   summaryCardsRow: {
     flexDirection: 'row',
@@ -809,6 +1067,19 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.medium,
     color: theme.colors.primary,
   },
+  goalHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  editButton: {
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: theme.borderRadius.full,
+    backgroundColor: theme.colors.gray100,
+  },
   progressSection: {
     gap: theme.spacing.sm,
   },
@@ -865,6 +1136,14 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.lg,
   },
   addFundsButtonText: {
+    fontSize: theme.fontSizes.sm,
+    fontFamily: theme.fonts.bold,
+    color: theme.colors.surface,
+  },
+  withdrawButton: {
+    backgroundColor: theme.colors.success,
+  },
+  withdrawButtonText: {
     fontSize: theme.fontSizes.sm,
     fontFamily: theme.fonts.bold,
     color: theme.colors.surface,
@@ -1219,6 +1498,142 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.regular,
     color: theme.colors.textSecondary,
     marginTop: theme.spacing.xs,
+  },
+  // Savings Wallet Summary Card
+  savingsWalletCard: {
+    marginHorizontal: theme.spacing.base,
+    marginVertical: theme.spacing.base,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.xl,
+    padding: theme.spacing.xl,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  walletHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
+  },
+  walletTitle: {
+    fontSize: theme.fontSizes.lg,
+    fontFamily: theme.fonts.bold,
+    color: theme.colors.textPrimary,
+    letterSpacing: -0.5,
+  },
+  walletBalanceRow: {
+    marginBottom: theme.spacing.base,
+  },
+  walletMainBalance: {
+    fontSize: 32,
+    fontFamily: theme.fonts.bold,
+    color: theme.colors.textPrimary,
+    letterSpacing: -1,
+  },
+  walletBreakdown: {
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.base,
+  },
+  breakdownRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  breakdownLabel: {
+    fontSize: theme.fontSizes.sm,
+    fontFamily: theme.fonts.medium,
+    color: theme.colors.textSecondary,
+  },
+  breakdownAmount: {
+    fontSize: theme.fontSizes.base,
+    fontFamily: theme.fonts.semiBold,
+    color: theme.colors.textPrimary,
+  },
+  availableAmount: {
+    color: theme.colors.success,
+  },
+  transferToSavingsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.accentDarker,
+    paddingVertical: theme.spacing.md,
+    borderRadius: theme.borderRadius.lg,
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.sm,
+  },
+  transferButtonText: {
+    fontSize: theme.fontSizes.base,
+    fontFamily: theme.fonts.bold,
+    color: theme.colors.surface,
+  },
+  // Wallet Selector
+  walletSelectorRow: {
+    gap: theme.spacing.md,
+  },
+  walletSelectorOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.surface,
+    borderWidth: 2,
+    borderColor: theme.colors.border,
+    borderRadius: theme.borderRadius.xl,
+    padding: theme.spacing.base,
+    gap: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+  },
+  walletSelectorOptionSelected: {
+    borderColor: theme.colors.accent,
+    backgroundColor: `${theme.colors.accent}08`,
+  },
+  walletSelectorInfo: {
+    flex: 1,
+  },
+  walletSelectorLabel: {
+    fontSize: theme.fontSizes.base,
+    fontFamily: theme.fonts.semiBold,
+    color: theme.colors.textPrimary,
+    marginBottom: theme.spacing.xs / 2,
+  },
+  walletSelectorLabelSelected: {
+    color: theme.colors.accent,
+  },
+  walletSelectorBalance: {
+    fontSize: theme.fontSizes.sm,
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.textSecondary,
+  },
+  // Menu Modal
+  menuModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-start',
+    alignItems: 'flex-end',
+    paddingTop: StatusBar.currentHeight ? StatusBar.currentHeight + 60 : 60,
+    paddingRight: theme.spacing.base,
+  },
+  menuModalContent: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.xl,
+    minWidth: 240,
+    ...theme.shadows.lg,
+    overflow: 'hidden',
+  },
+  menuOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: theme.spacing.base,
+    gap: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  menuOptionLast: {
+    borderBottomWidth: 0,
+  },
+  menuOptionText: {
+    fontSize: theme.fontSizes.base,
+    fontFamily: theme.fonts.medium,
+    color: theme.colors.textPrimary,
   },
 });
 

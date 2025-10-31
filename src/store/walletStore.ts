@@ -60,6 +60,19 @@ interface WalletState {
     estimatedCompletion: Date;
   }>;
   markWithdrawalAsCompleted: (transactionId: string) => void;
+  transferToSavings: (amount: number, pinToken: string) => Promise<{
+    transactionId: string;
+    amount: number;
+  }>;
+  transferFromSavings: (amount: number, pinToken: string) => Promise<{
+    transactionId: string;
+    amount: number;
+  }>;
+  getSavingsWalletSummary: (allocatedToGoals: number) => {
+    totalBalance: number;
+    allocatedToGoals: number;
+    availableBalance: number;
+  } | null;
 }
 
 const toDate = (value: string | null) => (value ? new Date(value) : null);
@@ -193,6 +206,122 @@ export const useWalletStore = create<WalletState>()(
         set((state) => ({
           pendingWithdrawals: state.pendingWithdrawals.filter((pending) => pending.transactionId !== transactionId),
         }));
+      },
+
+      transferToSavings: async (amount, pinToken) => {
+        console.log('walletStore: transferToSavings called', { amount });
+        set({ isLoading: true, error: null });
+
+        try {
+          console.log('walletStore: Making API call to transferToSavings');
+          const response = await apiClient.transferToSavings(amount, pinToken);
+          console.log('walletStore: API response received', response);
+
+          // Optimistically update wallet balances
+          set((state) => {
+            console.log('walletStore: Current wallets before update', state.wallets);
+            return {
+              wallets: state.wallets.map((wallet) => {
+                if (wallet.wallet_type === 'main') {
+                  console.log('walletStore: Updating main wallet', { oldBalance: wallet.balance, newBalance: wallet.balance - amount });
+                  return {
+                    ...wallet,
+                    balance: wallet.balance - amount,
+                    available_balance: wallet.available_balance - amount,
+                    updated_at: new Date().toISOString(),
+                  };
+                }
+                if (wallet.wallet_type === 'savings') {
+                  console.log('walletStore: Updating savings wallet', { oldBalance: wallet.balance, newBalance: wallet.balance + amount });
+                  return {
+                    ...wallet,
+                    balance: wallet.balance + amount,
+                    available_balance: wallet.available_balance + amount,
+                    updated_at: new Date().toISOString(),
+                  };
+                }
+                return wallet;
+              }),
+            };
+          });
+
+          console.log('walletStore: Wallet balances updated successfully');
+          return {
+            transactionId: response.transaction_id,
+            amount: response.amount,
+          };
+        } catch (error) {
+          console.error('walletStore: Transfer failed', error);
+          if (error instanceof ApiError) {
+            set({ error: error.message });
+          } else {
+            set({ error: (error as Error).message });
+          }
+          throw error;
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      transferFromSavings: async (amount, pinToken) => {
+        set({ isLoading: true, error: null });
+
+        try {
+          const response = await apiClient.transferFromSavings(amount, pinToken);
+
+          // Optimistically update wallet balances
+          set((state) => ({
+            wallets: state.wallets.map((wallet) => {
+              if (wallet.wallet_type === 'savings') {
+                return {
+                  ...wallet,
+                  balance: wallet.balance - amount,
+                  available_balance: wallet.available_balance - amount,
+                  updated_at: new Date().toISOString(),
+                };
+              }
+              if (wallet.wallet_type === 'main') {
+                return {
+                  ...wallet,
+                  balance: wallet.balance + amount,
+                  available_balance: wallet.available_balance + amount,
+                  updated_at: new Date().toISOString(),
+                };
+              }
+              return wallet;
+            }),
+          }));
+
+          return {
+            transactionId: response.transaction_id,
+            amount: response.amount,
+          };
+        } catch (error) {
+          if (error instanceof ApiError) {
+            set({ error: error.message });
+          } else {
+            set({ error: (error as Error).message });
+          }
+          throw error;
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      getSavingsWalletSummary: (allocatedToGoals) => {
+        const savingsWallet = get().wallets.find((wallet) => wallet.wallet_type === 'savings');
+        if (!savingsWallet) {
+          return null;
+        }
+
+        const totalBalance = savingsWallet.balance;
+        const availableBalance = Math.max(0, totalBalance - allocatedToGoals);
+
+        return {
+          totalBalance,
+          allocatedToGoals,
+          availableBalance,
+        };
       },
     }),
     {
