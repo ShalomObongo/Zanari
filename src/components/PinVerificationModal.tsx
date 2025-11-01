@@ -23,6 +23,7 @@ interface PinVerificationModalProps {
   message?: string; // Optional message for biometric prompt
   onSuccess: (token: string) => void;
   onCancel: () => void;
+  onPinEntered?: (pin: string) => void; // Callback to capture PIN before verification
 }
 
 const LOCK_REFRESH_INTERVAL = 1000;
@@ -34,6 +35,7 @@ const PinVerificationModal: React.FC<PinVerificationModalProps> = ({
   message,
   onSuccess,
   onCancel,
+  onPinEntered,
 }) => {
   // Auth store
   const user = useAuthStore((state) => state.user);
@@ -144,21 +146,33 @@ const PinVerificationModal: React.FC<PinVerificationModalProps> = ({
 
       if (success) {
         // Biometric authentication successful
-        // Verify PIN to get token (using cached hash if available)
-        // For now, we'll call verifyPin with a special marker
-        // In production, you'd want a backend endpoint for biometric → PIN token
+        // Retrieve the stored PIN and verify it to get a real token
+        try {
+          const storedPin = await biometricAuthService.getStoredPin(user.id);
 
-        // Since we can't get the actual PIN from biometric,
-        // we'll need to handle this differently
-        // Option 1: Call a special endpoint that issues token based on biometric
-        // Option 2: Generate a temporary token client-side (less secure)
-        // Option 3: Store encrypted PIN with biometric (requires setup)
+          if (!storedPin) {
+            // No PIN stored - this shouldn't happen if biometric was set up correctly
+            setErrorMessage('Biometric setup incomplete. Please disable and re-enable biometric authentication in Settings.');
+            setShowError(true);
+            return;
+          }
 
-        // For MVP: We'll use the setPinVerificationToken approach
-        // Generate a dummy token (in production, this should come from backend)
-        const biometricToken = `biometric-${user.id}-${Date.now()}`;
-        useAuthStore.getState().setPinVerificationToken(biometricToken);
-        onSuccess(biometricToken);
+          // Verify PIN with backend to get a real token
+          const token = await verifyPin({ pin: storedPin });
+          onSuccess(token);
+        } catch (pinError) {
+          // PIN verification failed or retrieval failed
+          // This can happen if old PIN was stored with different security settings
+          const errorMsg = pinError instanceof Error ? pinError.message : '';
+
+          if (errorMsg.includes('User canceled') || errorMsg.includes('Authentication')) {
+            // User cancelled the second Face ID prompt (from old Keychain settings)
+            setErrorMessage('Please disable and re-enable biometric authentication in Settings to update security settings.');
+          } else {
+            setErrorMessage('Biometric authentication failed. Please use your PIN or update biometric settings.');
+          }
+          setShowError(true);
+        }
       } else {
         // Biometric failed or cancelled
         setErrorMessage('Biometric authentication cancelled. Please use your PIN.');
@@ -197,6 +211,12 @@ const PinVerificationModal: React.FC<PinVerificationModalProps> = ({
     try {
       setShowError(false);
       setErrorMessage(null);
+
+      // Capture PIN if callback provided (for biometric setup)
+      if (onPinEntered) {
+        onPinEntered(enteredPin);
+      }
+
       const token = await verifyPin({ pin: enteredPin });
       onSuccess(token);
     } catch (error) {

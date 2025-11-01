@@ -129,6 +129,8 @@ const SettingsScreen: React.FC = () => {
   };
 
   // Request PIN for enabling biometric
+  const [capturedPin, setCapturedPin] = useState<string | null>(null);
+
   const requestPinToken = () =>
     new Promise<string>((resolve, reject) => {
       pinRequestRef.current = { resolve, reject };
@@ -154,8 +156,15 @@ const SettingsScreen: React.FC = () => {
     if (newValue) {
       // Enabling biometric - require PIN verification first, then verify biometric works
       try {
-        // Step 1: Verify PIN
+        // Step 1: Verify PIN and capture it
+        setCapturedPin(null); // Reset
         await requestPinToken();
+
+        // Wait for PIN to be captured
+        if (!capturedPin) {
+          Alert.alert('Error', 'Failed to capture PIN. Please try again.');
+          return;
+        }
 
         // Step 2: Test biometric authentication to ensure it's set up and working
         // Note: We call LocalAuthentication directly here because the service's authenticate()
@@ -168,6 +177,7 @@ const SettingsScreen: React.FC = () => {
 
         if (!result.success) {
           // Biometric failed or was cancelled
+          setCapturedPin(null); // Clear PIN for security
           const errorMessage = result.error === 'not_enrolled'
             ? `${biometricType} is not set up on this device. Please set it up in your device settings first.`
             : `${biometricType} verification was cancelled. Biometric authentication has not been enabled.`;
@@ -176,8 +186,14 @@ const SettingsScreen: React.FC = () => {
           return;
         }
 
-        // Step 3: Enable biometric in settings
+        // Step 3: Store PIN with biometric protection
+        await biometricAuthService.storePinForBiometric(user.id, capturedPin);
+
+        // Step 4: Enable biometric in settings
         await enableBiometric(user.id);
+
+        // Clear captured PIN from memory
+        setCapturedPin(null);
 
         Alert.alert(
           'Success',
@@ -185,6 +201,7 @@ const SettingsScreen: React.FC = () => {
         );
       } catch (error) {
         // PIN verification cancelled or biometric failed
+        setCapturedPin(null); // Clear PIN for security
         if (error instanceof Error) {
           Alert.alert('Error', error.message || 'Failed to enable biometric authentication');
         }
@@ -481,10 +498,15 @@ const SettingsScreen: React.FC = () => {
           }}
           onCancel={() => {
             setPinModalVisible(false);
+            setCapturedPin(null);
             if (pinRequestRef.current) {
               pinRequestRef.current.reject();
               pinRequestRef.current = null;
             }
+          }}
+          onPinEntered={(pin) => {
+            // Capture PIN for biometric storage
+            setCapturedPin(pin);
           }}
           message="Verify your PIN to enable biometric authentication"
         />

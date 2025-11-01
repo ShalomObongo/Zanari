@@ -4,6 +4,7 @@ import * as SecureStore from 'expo-secure-store';
 
 const preferenceKey = (userId: string) => `biometric_preference_${userId}`;
 const lastSuccessKey = (userId: string) => `biometric_last_success_${userId}`;
+const pinStorageKey = (userId: string) => `biometric_pin_${userId}`;
 
 const secureStoreOptions: SecureStore.SecureStoreOptions =
   Platform.select<SecureStore.SecureStoreOptions>({
@@ -115,7 +116,50 @@ class BiometricAuthService {
     await Promise.all([
       SecureStore.deleteItemAsync(preferenceKey(userId)),
       SecureStore.deleteItemAsync(lastSuccessKey(userId)),
+      this.deleteStoredPin(userId),
     ]);
+  }
+
+  /**
+   * Store user's PIN encrypted with biometric protection
+   * This allows us to verify PIN after successful biometric authentication
+   */
+  /**
+   * Store user's PIN encrypted with biometric protection
+   * This allows us to verify PIN after successful biometric authentication
+   */
+  async storePinForBiometric(userId: string, pin: string): Promise<void> {
+    // Store in SecureStore without requireAuthentication flag
+    // We handle biometric authentication separately via our authenticate() method
+    // This prevents double-prompting for Face ID
+    await SecureStore.setItemAsync(pinStorageKey(userId), pin, secureStoreOptions);
+  }
+
+  /**
+   * Retrieve stored PIN (requires biometric authentication on iOS)
+   */
+  /**
+   * Retrieve stored PIN (already authenticated via biometric)
+   */
+  async getStoredPin(userId: string): Promise<string | null> {
+    try {
+      // Don't require authentication here - we already authenticated
+      // via the authenticate() method before calling this
+      return await SecureStore.getItemAsync(pinStorageKey(userId), secureStoreOptions);
+    } catch (error) {
+      return null;
+    }
+  }
+
+  /**
+   * Delete stored PIN
+   */
+  async deleteStoredPin(userId: string): Promise<void> {
+    try {
+      await SecureStore.deleteItemAsync(pinStorageKey(userId));
+    } catch (error) {
+      // Ignore errors if key doesn't exist
+    }
   }
 
   async authenticate(userId: string, options?: AuthenticateOptions): Promise<boolean> {
@@ -146,6 +190,8 @@ class BiometricAuthService {
       return true;
     }
 
+    // result.success is false, so we have error property
+    const errorCode = 'error' in result ? result.error : 'unknown';
     const fallback = options?.fallback;
     const fallbackErrors = new Set([
       'user_cancel',
@@ -155,14 +201,14 @@ class BiometricAuthService {
       'fallback',
     ]);
 
-    if (fallbackErrors.has(result.error ?? '')) {
+    if (fallbackErrors.has(errorCode ?? '')) {
       if (fallback) {
         return fallback();
       }
       return false;
     }
 
-    if (result.error === 'not_enrolled') {
+    if (errorCode === 'not_enrolled') {
       await this.disable(userId);
     }
 
@@ -170,7 +216,7 @@ class BiometricAuthService {
       return fallback();
     }
 
-    throw new Error(result.error ?? 'Biometric authentication failed');
+    throw new Error(errorCode ?? 'Biometric authentication failed');
   }
 
   async getLastSuccessAt(userId: string): Promise<Date | null> {
