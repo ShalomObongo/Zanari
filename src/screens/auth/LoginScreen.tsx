@@ -34,6 +34,7 @@ const LoginScreen: React.FC<LoginScreenProps> = () => {
   const [validationError, setValidationError] = useState('');
   const [isValid, setIsValid] = useState(false);
   const inputRef = useRef<TextInput>(null);
+  const shakeAnimation = useRef(new Animated.Value(0)).current;
   const sendLoginOtp = useAuthStore((state) => state.sendLoginOtp);
   const isLoggingIn = useAuthStore((state) => state.isLoggingIn);
 
@@ -127,6 +128,7 @@ const LoginScreen: React.FC<LoginScreenProps> = () => {
 
     if (!trimmedValue) {
       Alert.alert('Required', `Please enter your ${method === 'email' ? 'email address' : 'phone number'}`);
+      triggerShakeAnimation();
       return;
     }
 
@@ -137,6 +139,7 @@ const LoginScreen: React.FC<LoginScreenProps> = () => {
       const normalizedEmail = trimmedValue.toLowerCase();
       if (!EMAIL_REGEX.test(normalizedEmail)) {
         Alert.alert('Invalid Email', 'Please enter a valid email address');
+        triggerShakeAnimation();
         return;
       }
 
@@ -146,6 +149,7 @@ const LoginScreen: React.FC<LoginScreenProps> = () => {
       const formattedPhone = formatPhoneNumber(trimmedValue);
       if (!isValidKenyanNumber(formattedPhone)) {
         Alert.alert('Invalid Number', 'Please enter a valid Kenyan mobile number (07XX XXX XXX)');
+        triggerShakeAnimation();
         return;
       }
 
@@ -161,7 +165,17 @@ const LoginScreen: React.FC<LoginScreenProps> = () => {
         ? error.message
         : (error as Error).message ?? 'Unable to send OTP. Please try again.';
       Alert.alert('Error', message);
+      triggerShakeAnimation();
     }
+  };
+
+  const triggerShakeAnimation = () => {
+    Animated.sequence([
+      Animated.timing(shakeAnimation, { toValue: 10, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnimation, { toValue: -10, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnimation, { toValue: 10, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnimation, { toValue: 0, duration: 50, useNativeDriver: true }),
+    ]).start();
   };
 
   const handleSignup = () => {
@@ -233,7 +247,12 @@ const LoginScreen: React.FC<LoginScreenProps> = () => {
                 <Text style={styles.inputLabel}>
                   {authMethod === 'email' ? 'Email address' : 'Phone number'}
                 </Text>
-                <View style={styles.inputWrapper}>
+                <Animated.View 
+                  style={[
+                    styles.inputWrapper,
+                    { transform: [{ translateX: shakeAnimation }] }
+                  ]}
+                >
                   <TextInput
                     ref={inputRef}
                     style={[
@@ -252,6 +271,8 @@ const LoginScreen: React.FC<LoginScreenProps> = () => {
                     autoCapitalize="none"
                     returnKeyType="done"
                     onSubmitEditing={handleContinue}
+                    accessibilityLabel={authMethod === 'email' ? 'Email address input' : 'Phone number input'}
+                    accessibilityHint={authMethod === 'email' ? 'Enter your email to receive a verification code' : 'Enter your phone number to receive a verification code'}
                   />
                   {emailOrPhone.trim().length > 0 && (
                     <>
@@ -263,7 +284,7 @@ const LoginScreen: React.FC<LoginScreenProps> = () => {
                       )}
                     </>
                   )}
-                </View>
+                </Animated.View>
                 {validationError && emailOrPhone.trim() && (
                   <Text style={styles.helperTextError}>{validationError}</Text>
                 )}
@@ -285,6 +306,9 @@ const LoginScreen: React.FC<LoginScreenProps> = () => {
               onPress={handleContinue}
               disabled={isLoggingIn}
               activeOpacity={0.8}
+              accessibilityLabel="Continue"
+              accessibilityHint="Send verification code"
+              accessibilityRole="button"
             >
               {isLoggingIn ? (
                 <ActivityIndicator color={theme.colors.onPrimaryText} />
@@ -293,7 +317,13 @@ const LoginScreen: React.FC<LoginScreenProps> = () => {
               )}
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={handleSignup} style={styles.signupPrompt}>
+            <TouchableOpacity 
+              onPress={handleSignup} 
+              style={styles.signupPrompt}
+              accessibilityLabel="Create new account"
+              accessibilityHint="Navigate to signup screen"
+              accessibilityRole="button"
+            >
               <Text style={styles.footerText}>
                 Don't have an account? <Text style={styles.footerLink}>Create one</Text>
               </Text>
@@ -319,8 +349,8 @@ const styles = StyleSheet.create({
     paddingBottom: theme.spacing.xs,
   },
   backButton: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     justifyContent: 'center',
     alignItems: 'flex-start',
   },
