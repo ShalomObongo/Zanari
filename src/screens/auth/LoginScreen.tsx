@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   ScrollView,
   Animated,
+  AccessibilityInfo,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -38,8 +39,19 @@ const LoginScreen: React.FC<LoginScreenProps> = () => {
   const shakeAnimation = useRef(new Animated.Value(0)).current;
   const sendLoginOtp = useAuthStore((state) => state.sendLoginOtp);
   const isLoggingIn = useAuthStore((state) => state.isLoggingIn);
+  const [reduceMotion, setReduceMotion] = useState(false);
+
+  // Check for reduced motion preference
+  useEffect(() => {
+    const checkReducedMotion = async () => {
+      const isReduceMotionEnabled = await AccessibilityInfo.isReduceMotionEnabled();
+      setReduceMotion(isReduceMotionEnabled);
+    };
+    checkReducedMotion();
+  }, []);
 
   // Memoize phone display format to avoid recalculation on every render
+  // This is beneficial when users are typing rapidly or the component re-renders frequently
   const displayValue = useMemo(() => {
     if (authMethod === 'phone' && emailOrPhone) {
       return formatPhoneForDisplay(emailOrPhone);
@@ -137,6 +149,11 @@ const LoginScreen: React.FC<LoginScreenProps> = () => {
   };
 
   const triggerShakeAnimation = () => {
+    // Skip animation if user has reduced motion enabled
+    if (reduceMotion) {
+      return;
+    }
+
     Animated.sequence([
       Animated.timing(shakeAnimation, { toValue: 10, duration: 50, useNativeDriver: true }),
       Animated.timing(shakeAnimation, { toValue: -10, duration: 50, useNativeDriver: true }),

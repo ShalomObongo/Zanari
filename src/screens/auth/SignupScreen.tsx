@@ -49,6 +49,7 @@ const SignupScreen: React.FC = () => {
   const phoneRef = useRef<TextInput>(null);
 
   // Memoize phone display format to avoid recalculation on every render
+  // This is beneficial when users are typing rapidly or the component re-renders frequently
   const displayPhoneNumber = useMemo(() => {
     return phoneNumber ? formatPhoneForDisplay(phoneNumber) : phoneNumber;
   }, [phoneNumber]);
