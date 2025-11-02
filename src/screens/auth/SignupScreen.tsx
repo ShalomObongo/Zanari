@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useAuthStore } from '@/store/authStore';
 import { ApiError } from '@/services/api';
 import theme from '@/theme';
+import { formatPhoneNumber, formatPhoneForDisplay, isValidKenyanNumber } from '@/utils/phoneFormatting';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -32,34 +33,50 @@ const SignupScreen: React.FC = () => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [emailError, setEmailError] = useState('');
+  
+  // Focus states for inputs
+  const [focusedField, setFocusedField] = useState<string | null>(null);
+  
+  // Validation states
+  const [firstNameValid, setFirstNameValid] = useState(false);
+  const [lastNameValid, setLastNameValid] = useState(false);
+  const [emailValid, setEmailValid] = useState(false);
+  const [phoneValid, setPhoneValid] = useState(false);
+  
+  // Refs for auto-focus
+  const lastNameRef = useRef<TextInput>(null);
+  const emailRef = useRef<TextInput>(null);
+  const phoneRef = useRef<TextInput>(null);
 
-  const formatPhoneNumber = (text: string) => {
-    const cleaned = text.replace(/\D/g, '');
+  // Format phone display value directly; memoization is unnecessary for this simple operation
+  const displayPhoneNumber = phoneNumber ? formatPhoneForDisplay(phoneNumber) : phoneNumber;
 
-    if (cleaned.startsWith('254')) {
-      return cleaned;
-    }
-    if (cleaned.startsWith('0')) {
-      return `254${cleaned.substring(1)}`;
-    }
-    if (cleaned.startsWith('7') || cleaned.startsWith('1')) {
-      return `254${cleaned}`;
-    }
-    return cleaned;
+  const handleFirstNameChange = (value: string) => {
+    setFirstName(value);
+    setFirstNameValid(value.trim().length >= 2);
   };
 
-  const isValidKenyanNumber = (value: string) => /^254(7[0-9]{8}|1[0-9]{8})$/.test(value);
+  const handleLastNameChange = (value: string) => {
+    setLastName(value);
+    setLastNameValid(value.trim().length >= 2);
+  };
 
   const handlePhoneChange = (value: string) => {
-    const formatted = formatPhoneNumber(value);
-    if (formatted.length <= 12) {
-      setPhoneNumber(formatted);
+    // Store the user input (which may contain spaces) for display formatting
+    const cleaned = value.replace(/\D/g, '');
+    if (cleaned.length <= 10 || (cleaned.startsWith('254') && cleaned.length <= 12)) {
+      setPhoneNumber(value);
+      // Validate using the formatted version
+      const formatted = formatPhoneNumber(value);
+      setPhoneValid(isValidKenyanNumber(formatted));
     }
   };
 
   const handleEmailChange = (value: string) => {
     setEmail(value);
-    if (emailError && EMAIL_REGEX.test(value.trim())) {
+    const valid = EMAIL_REGEX.test(value.trim());
+    setEmailValid(valid);
+    if (emailError && valid) {
       setEmailError('');
     }
   };
@@ -68,6 +85,7 @@ const SignupScreen: React.FC = () => {
     const trimmedEmail = email.trim();
     if (trimmedEmail && !EMAIL_REGEX.test(trimmedEmail)) {
       setEmailError('Please enter a valid email address');
+      setEmailValid(false);
     }
   };
 
@@ -135,7 +153,7 @@ const SignupScreen: React.FC = () => {
     firstName.trim().length >= 2 &&
     lastName.trim().length >= 2 &&
     EMAIL_REGEX.test(email.trim().toLowerCase()) &&
-    isValidKenyanNumber(phoneNumber) &&
+    isValidKenyanNumber(formatPhoneNumber(phoneNumber)) &&
     acceptedTerms;
 
   return (
@@ -170,29 +188,60 @@ const SignupScreen: React.FC = () => {
               {/* First Name */}
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>First Name</Text>
-                <TextInput
-                  style={styles.textInput}
-                  value={firstName}
-                  onChangeText={setFirstName}
-                  placeholder="Enter your first name"
-                  placeholderTextColor={theme.colors.textTertiary}
-                  autoCapitalize="words"
-                  returnKeyType="next"
-                />
+                <View style={styles.inputWrapper}>
+                  <TextInput
+                    style={[
+                      styles.textInput,
+                      focusedField === 'firstName' && styles.textInputFocused,
+                      firstNameValid && styles.textInputValid,
+                    ]}
+                    value={firstName}
+                    onChangeText={handleFirstNameChange}
+                    onFocus={() => setFocusedField('firstName')}
+                    onBlur={() => setFocusedField(null)}
+                    placeholder="Enter your first name"
+                    placeholderTextColor={theme.colors.textTertiary}
+                    autoCapitalize="words"
+                    returnKeyType="next"
+                    onSubmitEditing={() => lastNameRef.current?.focus()}
+                  />
+                  {firstName.trim().length > 0 && firstNameValid && (
+                    <Icon name="check-circle" size={20} color={theme.colors.success} style={styles.inputIcon} />
+                  )}
+                </View>
+                {!firstName.trim() && (
+                  <Text style={styles.helperText}>At least 2 characters</Text>
+                )}
               </View>
 
               {/* Last Name */}
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>Last Name</Text>
-                <TextInput
-                  style={styles.textInput}
-                  value={lastName}
-                  onChangeText={setLastName}
-                  placeholder="Enter your last name"
-                  placeholderTextColor={theme.colors.textTertiary}
-                  autoCapitalize="words"
-                  returnKeyType="next"
-                />
+                <View style={styles.inputWrapper}>
+                  <TextInput
+                    ref={lastNameRef}
+                    style={[
+                      styles.textInput,
+                      focusedField === 'lastName' && styles.textInputFocused,
+                      lastNameValid && styles.textInputValid,
+                    ]}
+                    value={lastName}
+                    onChangeText={handleLastNameChange}
+                    onFocus={() => setFocusedField('lastName')}
+                    onBlur={() => setFocusedField(null)}
+                    placeholder="Enter your last name"
+                    placeholderTextColor={theme.colors.textTertiary}
+                    autoCapitalize="words"
+                    returnKeyType="next"
+                    onSubmitEditing={() => emailRef.current?.focus()}
+                  />
+                  {lastName.trim().length > 0 && lastNameValid && (
+                    <Icon name="check-circle" size={20} color={theme.colors.success} style={styles.inputIcon} />
+                  )}
+                </View>
+                {!lastName.trim() && (
+                  <Text style={styles.helperText}>At least 2 characters</Text>
+                )}
               </View>
 
               {/* Email Address with error state */}
@@ -200,35 +249,72 @@ const SignupScreen: React.FC = () => {
                 <Text style={styles.inputLabel}>Email Address</Text>
                 <View style={styles.inputWrapper}>
                   <TextInput
-                    style={[styles.textInput, emailError && styles.textInputError]}
+                    ref={emailRef}
+                    style={[
+                      styles.textInput,
+                      focusedField === 'email' && styles.textInputFocused,
+                      emailError && styles.textInputError,
+                      emailValid && !emailError && styles.textInputValid,
+                    ]}
                     value={email}
                     onChangeText={handleEmailChange}
-                    onBlur={handleEmailBlur}
-                    placeholder="Enter your email"
+                    onFocus={() => setFocusedField('email')}
+                    onBlur={() => {
+                      setFocusedField(null);
+                      handleEmailBlur();
+                    }}
+                    placeholder="you@example.com"
                     placeholderTextColor={theme.colors.textTertiary}
                     keyboardType="email-address"
                     autoCapitalize="none"
                     returnKeyType="next"
+                    onSubmitEditing={() => phoneRef.current?.focus()}
                   />
-                  {emailError && (
-                    <Icon name="error" size={20} color={theme.colors.error} style={styles.errorIcon} />
+                  {email.trim().length > 0 && (
+                    <>
+                      {emailValid && !emailError && (
+                        <Icon name="check-circle" size={20} color={theme.colors.success} style={styles.inputIcon} />
+                      )}
+                      {emailError && (
+                        <Icon name="error" size={20} color={theme.colors.error} style={styles.inputIcon} />
+                      )}
+                    </>
                   )}
                 </View>
-                {emailError && <Text style={styles.errorText}>{emailError}</Text>}
+                {emailError ? (
+                  <Text style={styles.errorText}>{emailError}</Text>
+                ) : !email.trim() ? (
+                  <Text style={styles.helperText}>We'll send you a verification code</Text>
+                ) : null}
               </View>
 
               {/* Phone Number */}
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>Phone Number</Text>
-                <TextInput
-                  style={styles.textInput}
-                  value={phoneNumber}
-                  onChangeText={handlePhoneChange}
-                  placeholder="Enter your phone number"
-                  placeholderTextColor={theme.colors.textTertiary}
-                  keyboardType="phone-pad"
-                  returnKeyType="done"
-                />
+                <View style={styles.inputWrapper}>
+                  <TextInput
+                    ref={phoneRef}
+                    style={[
+                      styles.textInput,
+                      focusedField === 'phone' && styles.textInputFocused,
+                      phoneValid && styles.textInputValid,
+                    ]}
+                    value={displayPhoneNumber}
+                    onChangeText={handlePhoneChange}
+                    onFocus={() => setFocusedField('phone')}
+                    onBlur={() => setFocusedField(null)}
+                    placeholder="0712 345 678"
+                    placeholderTextColor={theme.colors.textTertiary}
+                    keyboardType="phone-pad"
+                    returnKeyType="done"
+                  />
+                  {phoneNumber.trim().length > 0 && phoneValid && (
+                    <Icon name="check-circle" size={20} color={theme.colors.success} style={styles.inputIcon} />
+                  )}
+                </View>
+                {!phoneNumber.trim() && (
+                  <Text style={styles.helperText}>Enter your Kenyan mobile number</Text>
+                )}
               </View>
 
               {/* Terms & Conditions */}
@@ -345,7 +431,7 @@ const styles = StyleSheet.create({
   textInput: {
     backgroundColor: theme.colors.surface,
     borderRadius: theme.borderRadius.xl,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: theme.colors.border,
     paddingHorizontal: theme.spacing.base,
     paddingVertical: theme.spacing.base,
@@ -353,15 +439,29 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.regular,
     color: theme.colors.textPrimary,
     height: 56,
+    paddingRight: 48,
+  },
+  textInputFocused: {
+    borderColor: theme.colors.primary,
+    ...theme.shadows.sm,
   },
   textInputError: {
     borderColor: theme.colors.error,
-    paddingRight: 48,
   },
-  errorIcon: {
+  textInputValid: {
+    borderColor: theme.colors.success,
+  },
+  inputIcon: {
     position: 'absolute',
     right: theme.spacing.base,
     top: 18,
+  },
+  helperText: {
+    fontSize: theme.fontSizes.xs,
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.textTertiary,
+    marginTop: 6,
+    marginLeft: 4,
   },
   errorText: {
     fontSize: theme.fontSizes.sm,
