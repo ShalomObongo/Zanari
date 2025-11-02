@@ -47,8 +47,8 @@ export const formatPhoneForDisplay = (text: string): string => {
     return `${withZero.slice(0, 4)} ${withZero.slice(4, 7)} ${withZero.slice(7, 10)}`;
   }
 
-  // For any other format, just remove non-digits and return cleaned version
-  return cleaned || text;
+  // For any other format, return cleaned digits
+  return cleaned;
 };
 
 /**

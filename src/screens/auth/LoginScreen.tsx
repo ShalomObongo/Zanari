@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -26,6 +26,9 @@ type AuthMethod = 'email' | 'phone';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// Delay before focusing input after method switch (allows component to re-render)
+const INPUT_FOCUS_DELAY_MS = 100;
+
 interface LoginScreenProps {}
 
 const LoginScreen: React.FC<LoginScreenProps> = () => {
@@ -50,14 +53,11 @@ const LoginScreen: React.FC<LoginScreenProps> = () => {
     checkReducedMotion();
   }, []);
 
-  // Memoize phone display format to avoid recalculation on every render
-  // This is beneficial when users are typing rapidly or the component re-renders frequently
-  const displayValue = useMemo(() => {
-    if (authMethod === 'phone' && emailOrPhone) {
-      return formatPhoneForDisplay(emailOrPhone);
-    }
-    return emailOrPhone;
-  }, [authMethod, emailOrPhone]);
+  // Compute phone display format directly; useMemo is unnecessary for lightweight formatting
+  const displayValue =
+    authMethod === 'phone' && emailOrPhone
+      ? formatPhoneForDisplay(emailOrPhone)
+      : emailOrPhone;
 
   const validateInput = (value: string, method: AuthMethod) => {
     if (!value.trim()) {
@@ -98,7 +98,7 @@ const LoginScreen: React.FC<LoginScreenProps> = () => {
     setEmailOrPhone('');
     setValidationError('');
     setIsValid(false);
-    setTimeout(() => inputRef.current?.focus(), 100);
+    setTimeout(() => inputRef.current?.focus(), INPUT_FOCUS_DELAY_MS);
   };
 
   const handleContinue = async () => {
@@ -275,7 +275,7 @@ const LoginScreen: React.FC<LoginScreenProps> = () => {
                 {!validationError && !emailOrPhone.trim() && (
                   <Text style={styles.helperText}>
                     {authMethod === 'email' 
-                      ? 'We\'ll send you a verification code' 
+                      ? "We'll send you a verification code" 
                       : 'Enter your Kenyan mobile number'}
                   </Text>
                 )}

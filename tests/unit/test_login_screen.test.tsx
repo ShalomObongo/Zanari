@@ -76,7 +76,7 @@ describe('LoginScreen', () => {
   });
 
   it('clears input and validation when switching between modes', () => {
-    const { getByText, getByPlaceholderText, queryByText } = render(<LoginScreen />);
+    const { getByText, getByPlaceholderText } = render(<LoginScreen />);
 
     // Enter email
     const emailInput = getByPlaceholderText('Enter your email');

@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -48,11 +48,8 @@ const SignupScreen: React.FC = () => {
   const emailRef = useRef<TextInput>(null);
   const phoneRef = useRef<TextInput>(null);
 
-  // Memoize phone display format to avoid recalculation on every render
-  // This is beneficial when users are typing rapidly or the component re-renders frequently
-  const displayPhoneNumber = useMemo(() => {
-    return phoneNumber ? formatPhoneForDisplay(phoneNumber) : phoneNumber;
-  }, [phoneNumber]);
+  // Format phone display value directly; memoization is unnecessary for this simple operation
+  const displayPhoneNumber = phoneNumber ? formatPhoneForDisplay(phoneNumber) : phoneNumber;
 
   const handleFirstNameChange = (value: string) => {
     setFirstName(value);
@@ -65,7 +62,7 @@ const SignupScreen: React.FC = () => {
   };
 
   const handlePhoneChange = (value: string) => {
-    // Store the raw input value for consistency
+    // Store the user input (which may contain spaces) for display formatting
     const cleaned = value.replace(/\D/g, '');
     if (cleaned.length <= 10 || (cleaned.startsWith('254') && cleaned.length <= 12)) {
       setPhoneNumber(value);
