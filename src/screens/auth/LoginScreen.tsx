@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   Alert,
   ActivityIndicator,
   ScrollView,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -29,6 +30,10 @@ const LoginScreen: React.FC<LoginScreenProps> = () => {
   const navigation = useNavigation<any>();
   const [authMethod, setAuthMethod] = useState<AuthMethod>('email');
   const [emailOrPhone, setEmailOrPhone] = useState('');
+  const [isFocused, setIsFocused] = useState(false);
+  const [validationError, setValidationError] = useState('');
+  const [isValid, setIsValid] = useState(false);
+  const inputRef = useRef<TextInput>(null);
   const sendLoginOtp = useAuthStore((state) => state.sendLoginOtp);
   const isLoggingIn = useAuthStore((state) => state.isLoggingIn);
 
@@ -46,9 +51,74 @@ const LoginScreen: React.FC<LoginScreenProps> = () => {
     return cleaned;
   };
 
+  const formatPhoneForDisplay = (text: string) => {
+    const cleaned = text.replace(/\D/g, '');
+    
+    // Format as: 0712 345 678
+    if (cleaned.startsWith('254')) {
+      const local = '0' + cleaned.substring(3);
+      if (local.length <= 4) return local;
+      if (local.length <= 7) return `${local.slice(0, 4)} ${local.slice(4)}`;
+      return `${local.slice(0, 4)} ${local.slice(4, 7)} ${local.slice(7, 10)}`;
+    } else if (cleaned.startsWith('0')) {
+      if (cleaned.length <= 4) return cleaned;
+      if (cleaned.length <= 7) return `${cleaned.slice(0, 4)} ${cleaned.slice(4)}`;
+      return `${cleaned.slice(0, 4)} ${cleaned.slice(4, 7)} ${cleaned.slice(7, 10)}`;
+    } else if (cleaned.startsWith('7') || cleaned.startsWith('1')) {
+      const withZero = '0' + cleaned;
+      if (withZero.length <= 4) return withZero;
+      if (withZero.length <= 7) return `${withZero.slice(0, 4)} ${withZero.slice(4)}`;
+      return `${withZero.slice(0, 4)} ${withZero.slice(4, 7)} ${withZero.slice(7, 10)}`;
+    }
+    
+    return text;
+  };
+
   const isValidKenyanNumber = (number: string) => {
     const kenyanRegex = /^254(7[0-9]{8}|1[0-9]{8})$/;
     return kenyanRegex.test(number);
+  };
+
+  const validateInput = (value: string, method: AuthMethod) => {
+    if (!value.trim()) {
+      setValidationError('');
+      setIsValid(false);
+      return false;
+    }
+
+    if (method === 'email') {
+      const valid = EMAIL_REGEX.test(value.trim().toLowerCase());
+      setIsValid(valid);
+      setValidationError(valid ? '' : 'Invalid email format');
+      return valid;
+    } else {
+      const formatted = formatPhoneNumber(value);
+      const valid = isValidKenyanNumber(formatted);
+      setIsValid(valid);
+      setValidationError(valid ? '' : 'Invalid phone number');
+      return valid;
+    }
+  };
+
+  const handleInputChange = (text: string) => {
+    if (authMethod === 'phone') {
+      const cleaned = text.replace(/\D/g, '');
+      if (cleaned.length <= 10 || (cleaned.startsWith('254') && cleaned.length <= 12)) {
+        setEmailOrPhone(text);
+        validateInput(text, authMethod);
+      }
+    } else {
+      setEmailOrPhone(text);
+      validateInput(text, authMethod);
+    }
+  };
+
+  const handleMethodChange = (method: AuthMethod) => {
+    setAuthMethod(method);
+    setEmailOrPhone('');
+    setValidationError('');
+    setIsValid(false);
+    setTimeout(() => inputRef.current?.focus(), 100);
   };
 
   const handleContinue = async () => {
@@ -139,7 +209,7 @@ const LoginScreen: React.FC<LoginScreenProps> = () => {
             <View style={styles.switcherContainer}>
               <TouchableOpacity
                 style={[styles.switcherButton, authMethod === 'email' && styles.switcherButtonActive]}
-                onPress={() => setAuthMethod('email')}
+                onPress={() => handleMethodChange('email')}
                 activeOpacity={0.7}
               >
                 <Text style={[styles.switcherText, authMethod === 'email' && styles.switcherTextActive]}>
@@ -148,7 +218,7 @@ const LoginScreen: React.FC<LoginScreenProps> = () => {
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.switcherButton, authMethod === 'phone' && styles.switcherButtonActive]}
-                onPress={() => setAuthMethod('phone')}
+                onPress={() => handleMethodChange('phone')}
                 activeOpacity={0.7}
               >
                 <Text style={[styles.switcherText, authMethod === 'phone' && styles.switcherTextActive]}>
@@ -163,16 +233,47 @@ const LoginScreen: React.FC<LoginScreenProps> = () => {
                 <Text style={styles.inputLabel}>
                   {authMethod === 'email' ? 'Email address' : 'Phone number'}
                 </Text>
-                <TextInput
-                  style={styles.textInput}
-                  value={emailOrPhone}
-                  onChangeText={setEmailOrPhone}
-                  placeholder={authMethod === 'email' ? 'Enter your email' : 'Enter your phone'}
-                  placeholderTextColor={theme.colors.textTertiary}
-                  keyboardType={authMethod === 'email' ? 'email-address' : 'phone-pad'}
-                  autoCapitalize="none"
-                  returnKeyType="done"
-                />
+                <View style={styles.inputWrapper}>
+                  <TextInput
+                    ref={inputRef}
+                    style={[
+                      styles.textInput,
+                      isFocused && styles.textInputFocused,
+                      validationError && emailOrPhone.trim() && styles.textInputError,
+                      isValid && styles.textInputValid,
+                    ]}
+                    value={authMethod === 'phone' && emailOrPhone ? formatPhoneForDisplay(emailOrPhone) : emailOrPhone}
+                    onChangeText={handleInputChange}
+                    onFocus={() => setIsFocused(true)}
+                    onBlur={() => setIsFocused(false)}
+                    placeholder={authMethod === 'email' ? 'Enter your email' : '0712 345 678'}
+                    placeholderTextColor={theme.colors.textTertiary}
+                    keyboardType={authMethod === 'email' ? 'email-address' : 'phone-pad'}
+                    autoCapitalize="none"
+                    returnKeyType="done"
+                    onSubmitEditing={handleContinue}
+                  />
+                  {emailOrPhone.trim().length > 0 && (
+                    <>
+                      {isValid && (
+                        <Icon name="check-circle" size={20} color={theme.colors.success} style={styles.inputIcon} />
+                      )}
+                      {validationError && (
+                        <Icon name="error" size={20} color={theme.colors.error} style={styles.inputIcon} />
+                      )}
+                    </>
+                  )}
+                </View>
+                {validationError && emailOrPhone.trim() && (
+                  <Text style={styles.helperTextError}>{validationError}</Text>
+                )}
+                {!validationError && !emailOrPhone.trim() && (
+                  <Text style={styles.helperText}>
+                    {authMethod === 'email' 
+                      ? 'We\'ll send you a verification code' 
+                      : 'Enter your Kenyan mobile number'}
+                  </Text>
+                )}
               </View>
             </View>
           </ScrollView>
@@ -297,10 +398,13 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     marginBottom: theme.spacing.sm,
   },
+  inputWrapper: {
+    position: 'relative',
+  },
   textInput: {
     backgroundColor: theme.colors.surface,
     borderRadius: theme.borderRadius.xl,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: theme.colors.border,
     paddingHorizontal: theme.spacing.base,
     paddingVertical: theme.spacing.base,
@@ -308,6 +412,36 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.regular,
     color: theme.colors.textPrimary,
     height: 56,
+    paddingRight: 48,
+  },
+  textInputFocused: {
+    borderColor: theme.colors.primary,
+    ...theme.shadows.sm,
+  },
+  textInputError: {
+    borderColor: theme.colors.error,
+  },
+  textInputValid: {
+    borderColor: theme.colors.success,
+  },
+  inputIcon: {
+    position: 'absolute',
+    right: theme.spacing.base,
+    top: 18,
+  },
+  helperText: {
+    fontSize: theme.fontSizes.xs,
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.textTertiary,
+    marginTop: 6,
+    marginLeft: 4,
+  },
+  helperTextError: {
+    fontSize: theme.fontSizes.xs,
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.error,
+    marginTop: 6,
+    marginLeft: 4,
   },
   continueButton: {
     backgroundColor: theme.colors.primary,

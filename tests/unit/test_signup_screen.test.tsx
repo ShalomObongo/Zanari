@@ -46,12 +46,12 @@ describe('SignupScreen', () => {
 
     fireEvent.changeText(getByPlaceholderText('Enter your first name'), 'Alicia');
     fireEvent.changeText(getByPlaceholderText('Enter your last name'), 'Tester');
-    fireEvent.changeText(getByPlaceholderText('Enter your email'), 'tester@zanari.app');
+    fireEvent.changeText(getByPlaceholderText('you@example.com'), 'tester@zanari.app');
 
     const termsToggle = getByTestId('signup-terms-toggle');
     fireEvent.press(termsToggle);
 
-    const phoneField = getByPlaceholderText('Enter your phone number');
+    const phoneField = getByPlaceholderText('0712 345 678');
     fireEvent.changeText(phoneField, '07123');
     expect(submitButton).toBeDisabled();
 
