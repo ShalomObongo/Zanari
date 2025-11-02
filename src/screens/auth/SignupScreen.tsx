@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useAuthStore } from '@/store/authStore';
 import { ApiError } from '@/services/api';
 import theme from '@/theme';
+import { formatPhoneNumber, formatPhoneForDisplay, isValidKenyanNumber } from '@/utils/phoneFormatting';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -47,45 +48,10 @@ const SignupScreen: React.FC = () => {
   const emailRef = useRef<TextInput>(null);
   const phoneRef = useRef<TextInput>(null);
 
-  const formatPhoneNumber = (text: string) => {
-    const cleaned = text.replace(/\D/g, '');
-
-    if (cleaned.startsWith('254')) {
-      return cleaned;
-    }
-    if (cleaned.startsWith('0')) {
-      return `254${cleaned.substring(1)}`;
-    }
-    if (cleaned.startsWith('7') || cleaned.startsWith('1')) {
-      return `254${cleaned}`;
-    }
-    return cleaned;
-  };
-
-  const formatPhoneForDisplay = (text: string) => {
-    const cleaned = text.replace(/\D/g, '');
-    
-    // Format as: 0712 345 678
-    if (cleaned.startsWith('254')) {
-      const local = '0' + cleaned.substring(3);
-      if (local.length <= 4) return local;
-      if (local.length <= 7) return `${local.slice(0, 4)} ${local.slice(4)}`;
-      return `${local.slice(0, 4)} ${local.slice(4, 7)} ${local.slice(7, 10)}`;
-    } else if (cleaned.startsWith('0')) {
-      if (cleaned.length <= 4) return cleaned;
-      if (cleaned.length <= 7) return `${cleaned.slice(0, 4)} ${cleaned.slice(4)}`;
-      return `${cleaned.slice(0, 4)} ${cleaned.slice(4, 7)} ${cleaned.slice(7, 10)}`;
-    } else if (cleaned.startsWith('7') || cleaned.startsWith('1')) {
-      const withZero = '0' + cleaned;
-      if (withZero.length <= 4) return withZero;
-      if (withZero.length <= 7) return `${withZero.slice(0, 4)} ${withZero.slice(4)}`;
-      return `${withZero.slice(0, 4)} ${withZero.slice(4, 7)} ${withZero.slice(7, 10)}`;
-    }
-    
-    return text;
-  };
-
-  const isValidKenyanNumber = (value: string) => /^254(7[0-9]{8}|1[0-9]{8})$/.test(value);
+  // Memoize phone display format to avoid recalculation on every render
+  const displayPhoneNumber = useMemo(() => {
+    return phoneNumber ? formatPhoneForDisplay(phoneNumber) : phoneNumber;
+  }, [phoneNumber]);
 
   const handleFirstNameChange = (value: string) => {
     setFirstName(value);
@@ -98,9 +64,11 @@ const SignupScreen: React.FC = () => {
   };
 
   const handlePhoneChange = (value: string) => {
+    // Store the raw input value for consistency
     const cleaned = value.replace(/\D/g, '');
     if (cleaned.length <= 10 || (cleaned.startsWith('254') && cleaned.length <= 12)) {
       setPhoneNumber(value);
+      // Validate using the formatted version
       const formatted = formatPhoneNumber(value);
       setPhoneValid(isValidKenyanNumber(formatted));
     }
@@ -333,7 +301,7 @@ const SignupScreen: React.FC = () => {
                       focusedField === 'phone' && styles.textInputFocused,
                       phoneValid && styles.textInputValid,
                     ]}
-                    value={phoneNumber ? formatPhoneForDisplay(phoneNumber) : phoneNumber}
+                    value={displayPhoneNumber}
                     onChangeText={handlePhoneChange}
                     onFocus={() => setFocusedField('phone')}
                     onBlur={() => setFocusedField(null)}

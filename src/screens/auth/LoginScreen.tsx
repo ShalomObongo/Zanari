@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -19,6 +19,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useAuthStore } from '@/store/authStore';
 import { ApiError } from '@/services/api';
 import theme from '@/theme';
+import { formatPhoneNumber, formatPhoneForDisplay, isValidKenyanNumber } from '@/utils/phoneFormatting';
 
 type AuthMethod = 'email' | 'phone';
 
@@ -38,47 +39,13 @@ const LoginScreen: React.FC<LoginScreenProps> = () => {
   const sendLoginOtp = useAuthStore((state) => state.sendLoginOtp);
   const isLoggingIn = useAuthStore((state) => state.isLoggingIn);
 
-  const formatPhoneNumber = (text: string) => {
-    const cleaned = text.replace(/\D/g, '');
-
-    if (cleaned.startsWith('254')) {
-      return cleaned;
-    } else if (cleaned.startsWith('0')) {
-      return '254' + cleaned.substring(1);
-    } else if (cleaned.startsWith('7') || cleaned.startsWith('1')) {
-      return '254' + cleaned;
+  // Memoize phone display format to avoid recalculation on every render
+  const displayValue = useMemo(() => {
+    if (authMethod === 'phone' && emailOrPhone) {
+      return formatPhoneForDisplay(emailOrPhone);
     }
-
-    return cleaned;
-  };
-
-  const formatPhoneForDisplay = (text: string) => {
-    const cleaned = text.replace(/\D/g, '');
-    
-    // Format as: 0712 345 678
-    if (cleaned.startsWith('254')) {
-      const local = '0' + cleaned.substring(3);
-      if (local.length <= 4) return local;
-      if (local.length <= 7) return `${local.slice(0, 4)} ${local.slice(4)}`;
-      return `${local.slice(0, 4)} ${local.slice(4, 7)} ${local.slice(7, 10)}`;
-    } else if (cleaned.startsWith('0')) {
-      if (cleaned.length <= 4) return cleaned;
-      if (cleaned.length <= 7) return `${cleaned.slice(0, 4)} ${cleaned.slice(4)}`;
-      return `${cleaned.slice(0, 4)} ${cleaned.slice(4, 7)} ${cleaned.slice(7, 10)}`;
-    } else if (cleaned.startsWith('7') || cleaned.startsWith('1')) {
-      const withZero = '0' + cleaned;
-      if (withZero.length <= 4) return withZero;
-      if (withZero.length <= 7) return `${withZero.slice(0, 4)} ${withZero.slice(4)}`;
-      return `${withZero.slice(0, 4)} ${withZero.slice(4, 7)} ${withZero.slice(7, 10)}`;
-    }
-    
-    return text;
-  };
-
-  const isValidKenyanNumber = (number: string) => {
-    const kenyanRegex = /^254(7[0-9]{8}|1[0-9]{8})$/;
-    return kenyanRegex.test(number);
-  };
+    return emailOrPhone;
+  }, [authMethod, emailOrPhone]);
 
   const validateInput = (value: string, method: AuthMethod) => {
     if (!value.trim()) {
@@ -261,7 +228,7 @@ const LoginScreen: React.FC<LoginScreenProps> = () => {
                       validationError && emailOrPhone.trim() && styles.textInputError,
                       isValid && styles.textInputValid,
                     ]}
-                    value={authMethod === 'phone' && emailOrPhone ? formatPhoneForDisplay(emailOrPhone) : emailOrPhone}
+                    value={displayValue}
                     onChangeText={handleInputChange}
                     onFocus={() => setIsFocused(true)}
                     onBlur={() => setIsFocused(false)}
