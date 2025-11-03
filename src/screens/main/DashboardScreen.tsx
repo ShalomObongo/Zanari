@@ -789,7 +789,7 @@ const styles = StyleSheet.create({
     paddingTop: theme.spacing.xs,
   },
   bottomSpacer: {
-    height: 100, // Extra space for floating glassmorphism tab bar
+    height: theme.layout.tabBarBottomPadding,
   },
 });
 

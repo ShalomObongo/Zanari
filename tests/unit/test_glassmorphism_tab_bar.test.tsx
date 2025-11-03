@@ -61,8 +61,8 @@ describe('GlassmorphismTabBar', () => {
   };
 
   const mockProps: BottomTabBarProps = {
-    state: mockState,
-    descriptors: mockDescriptors,
+    state: mockState as any,
+    descriptors: mockDescriptors as any,
     navigation: mockNavigation as any,
     insets: { top: 0, right: 0, bottom: 0, left: 0 },
   };
@@ -116,8 +116,8 @@ describe('GlassmorphismTabBar', () => {
 
     const multiTabProps: BottomTabBarProps = {
       ...mockProps,
-      state: multiTabState,
-      descriptors: multiTabDescriptors,
+      state: multiTabState as any,
+      descriptors: multiTabDescriptors as any,
     };
 
     const { UNSAFE_getAllByType } = render(<GlassmorphismTabBar {...multiTabProps} />);

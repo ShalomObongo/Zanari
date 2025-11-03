@@ -540,7 +540,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: theme.spacing.base,
     paddingTop: theme.spacing.xl,
-    paddingBottom: 100, // Extra space for floating glassmorphism tab bar
+    paddingBottom: theme.layout.tabBarBottomPadding,
   },
   profileSection: {
     backgroundColor: theme.colors.surface,

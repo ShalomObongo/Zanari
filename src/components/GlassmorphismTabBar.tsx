@@ -61,11 +61,26 @@ export const GlassmorphismTabBar: React.FC<BottomTabBarProps> = ({
               });
             };
 
-            // Get icon name from options
-            const iconName = options.tabBarIcon
-              ? (options.tabBarIcon as any)({ color: '', size: 24, focused: isFocused })
-                  ?.props?.name
-              : 'help-outline';
+            // Get icon name from options with proper type handling
+            let iconName = 'help-outline';
+            if (options.tabBarIcon && typeof options.tabBarIcon === 'function') {
+              try {
+                const iconElement = options.tabBarIcon({ 
+                  focused: isFocused, 
+                  color: isFocused ? theme.colors.accent : theme.colors.textSecondary, 
+                  size: 24 
+                });
+                if (iconElement && typeof iconElement === 'object' && 'props' in iconElement) {
+                  const props = iconElement.props as Record<string, unknown>;
+                  if (props && typeof props.name === 'string') {
+                    iconName = props.name;
+                  }
+                }
+              } catch (error) {
+                // Fallback to default icon if extraction fails
+                iconName = 'help-outline';
+              }
+            }
 
             return (
               <TouchableOpacity

@@ -976,7 +976,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 100, // Extra space for floating glassmorphism tab bar
+    paddingBottom: theme.layout.tabBarBottomPadding,
   },
   summaryCardsRow: {
     flexDirection: 'row',
