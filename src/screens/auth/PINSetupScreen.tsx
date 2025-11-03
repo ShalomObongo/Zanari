@@ -17,6 +17,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 
 import { useAuthStore } from '@/store/authStore';
 import { ApiError } from '@/services/api';
+import { useTheme } from '@/theme';
 import theme from '@/theme';
 
 interface PINSetupScreenProps {}
@@ -27,6 +28,7 @@ interface RouteParams {
 
 const PINSetupScreen: React.FC<PINSetupScreenProps> = () => {
   const navigation = useNavigation<any>();
+  const themeColors = useTheme();
   const route = useRoute();
   const { phoneNumber } = (route.params as RouteParams) || { phoneNumber: '' };
 

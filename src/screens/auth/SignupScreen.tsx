@@ -17,6 +17,7 @@ import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useAuthStore } from '@/store/authStore';
 import { ApiError } from '@/services/api';
+import { useTheme } from '@/theme';
 import theme from '@/theme';
 import { formatPhoneNumber, formatPhoneForDisplay, isValidKenyanNumber } from '@/utils/phoneFormatting';
 
@@ -24,6 +25,7 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const SignupScreen: React.FC = () => {
   const navigation = useNavigation<any>();
+  const themeColors = useTheme();
   const register = useAuthStore((state) => state.register);
   const isRegistering = useAuthStore((state) => state.isRegistering);
 

@@ -19,6 +19,7 @@ import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useAuthStore } from '@/store/authStore';
 import { ApiError } from '@/services/api';
+import { useTheme } from '@/theme';
 import theme from '@/theme';
 import { formatPhoneNumber, formatPhoneForDisplay, isValidKenyanNumber } from '@/utils/phoneFormatting';
 
@@ -33,6 +34,7 @@ interface LoginScreenProps {}
 
 const LoginScreen: React.FC<LoginScreenProps> = () => {
   const navigation = useNavigation<any>();
+  const themeColors = useTheme();
   const [authMethod, setAuthMethod] = useState<AuthMethod>('email');
   const [emailOrPhone, setEmailOrPhone] = useState('');
   const [isFocused, setIsFocused] = useState(false);
@@ -172,8 +174,8 @@ const LoginScreen: React.FC<LoginScreenProps> = () => {
 
   return (
     <>
-      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <StatusBar barStyle={themeColors.colors.statusBarStyle} backgroundColor={themeColors.colors.surface} />
+      <SafeAreaView style={[styles.container, { backgroundColor: themeColors.colors.surface }]} edges={['top']}>
         <KeyboardAvoidingView
           style={styles.keyboardContainer}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -181,7 +183,7 @@ const LoginScreen: React.FC<LoginScreenProps> = () => {
           {/* Back Button */}
           <View style={styles.headerContainer}>
             <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
-              <Icon name="arrow-back" size={24} color={theme.colors.textPrimary} />
+              <Icon name="arrow-back" size={24} color={themeColors.colors.textPrimary} />
             </TouchableOpacity>
           </View>
 
@@ -193,33 +195,47 @@ const LoginScreen: React.FC<LoginScreenProps> = () => {
           >
             {/* Logo Header */}
             <View style={styles.logoContainer}>
-              <Icon name="account-balance" size={40} color={theme.colors.primary} />
-              <Text style={styles.logoText}>Zanari</Text>
+              <Icon name="account-balance" size={40} color={themeColors.colors.primary} />
+              <Text style={[styles.logoText, { color: themeColors.colors.textPrimary }]}>Zanari</Text>
             </View>
 
             {/* Title Section */}
             <View style={styles.titleSection}>
-              <Text style={styles.title}>Welcome Back</Text>
-              <Text style={styles.subtitle}>Sign in to access your account.</Text>
+              <Text style={[styles.title, { color: themeColors.colors.textPrimary }]}>Welcome Back</Text>
+              <Text style={[styles.subtitle, { color: themeColors.colors.textSecondary }]}>Sign in to access your account.</Text>
             </View>
 
             {/* Auth Method Switcher */}
-            <View style={styles.switcherContainer}>
+            <View style={[styles.switcherContainer, { backgroundColor: themeColors.colors.gray100 }]}>
               <TouchableOpacity
-                style={[styles.switcherButton, authMethod === 'email' && styles.switcherButtonActive]}
+                style={[
+                  styles.switcherButton,
+                  authMethod === 'email' && [styles.switcherButtonActive, { backgroundColor: themeColors.colors.surface }]
+                ]}
                 onPress={() => handleMethodChange('email')}
                 activeOpacity={0.7}
               >
-                <Text style={[styles.switcherText, authMethod === 'email' && styles.switcherTextActive]}>
+                <Text style={[
+                  styles.switcherText,
+                  { color: themeColors.colors.textSecondary },
+                  authMethod === 'email' && [styles.switcherTextActive, { color: themeColors.colors.primary }]
+                ]}>
                   Email
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.switcherButton, authMethod === 'phone' && styles.switcherButtonActive]}
+                style={[
+                  styles.switcherButton,
+                  authMethod === 'phone' && [styles.switcherButtonActive, { backgroundColor: themeColors.colors.surface }]
+                ]}
                 onPress={() => handleMethodChange('phone')}
                 activeOpacity={0.7}
               >
-                <Text style={[styles.switcherText, authMethod === 'phone' && styles.switcherTextActive]}>
+                <Text style={[
+                  styles.switcherText,
+                  { color: themeColors.colors.textSecondary },
+                  authMethod === 'phone' && [styles.switcherTextActive, { color: themeColors.colors.primary }]
+                ]}>
                   Phone
                 </Text>
               </TouchableOpacity>
@@ -228,7 +244,7 @@ const LoginScreen: React.FC<LoginScreenProps> = () => {
             {/* Input Section */}
             <View style={styles.formSection}>
               <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>
+                <Text style={[styles.inputLabel, { color: themeColors.colors.textSecondary }]}>
                   {authMethod === 'email' ? 'Email address' : 'Phone number'}
                 </Text>
                 <Animated.View 
@@ -241,16 +257,21 @@ const LoginScreen: React.FC<LoginScreenProps> = () => {
                     ref={inputRef}
                     style={[
                       styles.textInput,
-                      isFocused && styles.textInputFocused,
-                      validationError && emailOrPhone.trim() && styles.textInputError,
-                      isValid && styles.textInputValid,
+                      { 
+                        backgroundColor: themeColors.colors.surface,
+                        color: themeColors.colors.textPrimary,
+                        borderColor: themeColors.colors.border
+                      },
+                      isFocused && [styles.textInputFocused, { borderColor: themeColors.colors.primary }],
+                      validationError && emailOrPhone.trim() && [styles.textInputError, { borderColor: themeColors.colors.error }],
+                      isValid && [styles.textInputValid, { borderColor: themeColors.colors.success }],
                     ]}
                     value={displayValue}
                     onChangeText={handleInputChange}
                     onFocus={() => setIsFocused(true)}
                     onBlur={() => setIsFocused(false)}
                     placeholder={authMethod === 'email' ? 'Enter your email' : '0712 345 678'}
-                    placeholderTextColor={theme.colors.textTertiary}
+                    placeholderTextColor={themeColors.colors.textTertiary}
                     keyboardType={authMethod === 'email' ? 'email-address' : 'phone-pad'}
                     autoCapitalize="none"
                     returnKeyType="done"
@@ -261,19 +282,19 @@ const LoginScreen: React.FC<LoginScreenProps> = () => {
                   {emailOrPhone.trim().length > 0 && (
                     <>
                       {isValid && (
-                        <Icon name="check-circle" size={20} color={theme.colors.success} style={styles.inputIcon} />
+                        <Icon name="check-circle" size={20} color={themeColors.colors.success} style={styles.inputIcon} />
                       )}
                       {validationError && (
-                        <Icon name="error" size={20} color={theme.colors.error} style={styles.inputIcon} />
+                        <Icon name="error" size={20} color={themeColors.colors.error} style={styles.inputIcon} />
                       )}
                     </>
                   )}
                 </Animated.View>
                 {validationError && emailOrPhone.trim() && (
-                  <Text style={styles.helperTextError}>{validationError}</Text>
+                  <Text style={[styles.helperTextError, { color: themeColors.colors.error }]}>{validationError}</Text>
                 )}
                 {!validationError && !emailOrPhone.trim() && (
-                  <Text style={styles.helperText}>
+                  <Text style={[styles.helperText, { color: themeColors.colors.textTertiary }]}>
                     {authMethod === 'email' 
                       ? "We'll send you a verification code" 
                       : 'Enter your Kenyan mobile number'}
@@ -286,7 +307,11 @@ const LoginScreen: React.FC<LoginScreenProps> = () => {
           {/* Footer with button */}
           <View style={styles.footer}>
             <TouchableOpacity
-              style={[styles.continueButton, isLoggingIn && styles.continueButtonDisabled]}
+              style={[
+                styles.continueButton,
+                { backgroundColor: themeColors.colors.primary },
+                isLoggingIn && styles.continueButtonDisabled
+              ]}
               onPress={handleContinue}
               disabled={isLoggingIn}
               activeOpacity={0.8}
@@ -295,9 +320,9 @@ const LoginScreen: React.FC<LoginScreenProps> = () => {
               accessibilityRole="button"
             >
               {isLoggingIn ? (
-                <ActivityIndicator color={theme.colors.onPrimaryText} />
+                <ActivityIndicator color={themeColors.colors.onPrimaryText} />
               ) : (
-                <Text style={styles.continueButtonText}>Continue</Text>
+                <Text style={[styles.continueButtonText, { color: themeColors.colors.onPrimaryText }]}>Continue</Text>
               )}
             </TouchableOpacity>
 
@@ -308,8 +333,8 @@ const LoginScreen: React.FC<LoginScreenProps> = () => {
               accessibilityHint="Navigate to signup screen"
               accessibilityRole="button"
             >
-              <Text style={styles.footerText}>
-                Don't have an account? <Text style={styles.footerLink}>Create one</Text>
+              <Text style={[styles.footerText, { color: themeColors.colors.textSecondary }]}>
+                Don't have an account? <Text style={[styles.footerLink, { color: themeColors.colors.primary }]}>Create one</Text>
               </Text>
             </TouchableOpacity>
           </View>

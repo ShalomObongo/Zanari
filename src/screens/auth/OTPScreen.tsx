@@ -17,6 +17,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useAuthStore } from '@/store/authStore';
 import { ApiError } from '@/services/api';
+import { useTheme } from '@/theme';
 import theme from '@/theme';
 
 interface OTPScreenProps {}
@@ -28,6 +29,7 @@ interface RouteParams {
 
 const OTPScreen: React.FC<OTPScreenProps> = () => {
   const navigation = useNavigation<any>();
+  const themeColors = useTheme();
   const route = useRoute();
   const { identifier, method } = (route.params as RouteParams) || { identifier: '', method: 'phone' };
 

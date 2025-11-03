@@ -18,12 +18,14 @@ import { useAuthStore } from '@/store/authStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { biometricAuthService } from '@/services/biometricAuth';
 import { PinLockError } from '@/utils/pinSecurity';
+import { useTheme } from '@/theme';
 import theme from '@/theme';
 
 const LOCK_REFRESH_INTERVAL = 1000;
 
 const PINEntryScreen: React.FC = () => {
   const navigation = useNavigation<any>();
+  const themeColors = useTheme();
 
   // Auth store
   const user = useAuthStore((state) => state.user);
