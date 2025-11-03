@@ -7,6 +7,7 @@ import { lightColors, darkColors, ThemeColors } from './colors';
 import { useThemeStore } from '@/store/themeStore';
 
 // Default to light colors for backward compatibility
+// NOTE: Prefer using useTheme() hook for dynamic theming instead of this static export
 export const colors = lightColors;
 
 export const fonts = {

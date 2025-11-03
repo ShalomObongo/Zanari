@@ -130,9 +130,9 @@ describe('Theme Colors', () => {
 
     it('should have appropriate error colors for both themes', () => {
       // Error colors should be reddish
-      expect(lightColors.error).toContain('#DC2626');
+      expect(lightColors.error).toBe('#DC2626');
       // Dark theme error should be lighter for visibility
-      expect(darkColors.error).toContain('#F87171');
+      expect(darkColors.error).toBe('#F87171');
     });
   });
 
