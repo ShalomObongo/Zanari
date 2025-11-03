@@ -18,7 +18,8 @@ import { useTransactionStore } from '@/store/transactionStore';
 import { useSavingsStore } from '@/store/savingsStore';
 import { useRoundUpStore } from '@/store/roundUpStore';
 import { formatCurrency, formatRelativeDate, mapTransactionType, getTimeBasedGreeting } from '@/utils/formatters';
-import theme from '@/theme';
+import { useTheme } from '@/theme';
+import theme from '@/theme'; // Static theme for StyleSheet
 
 interface DashboardScreenProps {}
 
@@ -26,6 +27,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = () => {
   const navigation = useNavigation<any>();
   const [balanceVisible, setBalanceVisible] = useState(true);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const themeColors = useTheme();
   
   // Zustand stores
   const user = useAuthStore((state) => state.user);
@@ -191,14 +193,14 @@ const DashboardScreen: React.FC<DashboardScreenProps> = () => {
         {actions.map((action) => (
           <TouchableOpacity
             key={action.id}
-            style={styles.quickActionCard}
+            style={[styles.quickActionCard, { backgroundColor: themeColors.colors.surface }]}
             onPress={() => handleQuickAction(action.id)}
             activeOpacity={0.7}
           >
-            <View style={styles.quickActionIconContainer}>
-              <Icon name={action.icon} size={24} color={theme.colors.accentDarker} />
+            <View style={[styles.quickActionIconContainer, { backgroundColor: `${themeColors.colors.accent}15` }]}>
+              <Icon name={action.icon} size={24} color={themeColors.colors.accentDarker} />
             </View>
-            <Text style={styles.quickActionLabel}>{action.label}</Text>
+            <Text style={[styles.quickActionLabel, { color: themeColors.colors.textPrimary }]}>{action.label}</Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -369,11 +371,11 @@ const DashboardScreen: React.FC<DashboardScreenProps> = () => {
   if (isInitialLoading) {
     return (
       <>
-        <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
-        <SafeAreaView style={styles.container} edges={['top']}>
+        <StatusBar barStyle={themeColors.colors.statusBarStyle} backgroundColor={themeColors.colors.surface} />
+        <SafeAreaView style={[styles.container, { backgroundColor: themeColors.colors.surface }]} edges={['top']}>
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={theme.colors.accent} />
-            <Text style={styles.loadingText}>Loading your dashboard...</Text>
+            <ActivityIndicator size="large" color={themeColors.colors.accent} />
+            <Text style={[styles.loadingText, { color: themeColors.colors.textSecondary }]}>Loading your dashboard...</Text>
           </View>
         </SafeAreaView>
       </>
@@ -384,12 +386,12 @@ const DashboardScreen: React.FC<DashboardScreenProps> = () => {
 
   return (
     <>
-      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <StatusBar barStyle={themeColors.colors.statusBarStyle} backgroundColor={themeColors.colors.surface} />
+      <SafeAreaView style={[styles.container, { backgroundColor: themeColors.colors.surface }]} edges={['top']}>
         <ScrollView
           style={styles.scrollContainer}
           refreshControl={
-            <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={theme.colors.accent} />
+            <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={themeColors.colors.accent} />
           }
           showsVerticalScrollIndicator={false}
         >
@@ -400,18 +402,18 @@ const DashboardScreen: React.FC<DashboardScreenProps> = () => {
               onPress={() => navigation.navigate('Settings')}
               activeOpacity={0.7}
             >
-              <Icon name="account-circle" size={40} color={theme.colors.accent} />
+              <Icon name="account-circle" size={40} color={themeColors.colors.accent} />
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.notificationButton}
               activeOpacity={0.7}
             >
-              <Icon name="notifications" size={24} color={theme.colors.textPrimary} />
+              <Icon name="notifications" size={24} color={themeColors.colors.textPrimary} />
             </TouchableOpacity>
           </View>
 
           {/* Greeting */}
-          <Text style={styles.greeting}>{greeting}</Text>
+          <Text style={[styles.greeting, { color: themeColors.colors.textPrimary }]}>{greeting}</Text>
 
           {/* Balance Cards Section */}
           <View style={styles.balanceSection}>
