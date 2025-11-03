@@ -166,7 +166,7 @@ const GoalWithdrawModal: React.FC<GoalWithdrawModalProps> = ({
                   name="account-balance-wallet"
                   size={24}
                   color={
-                    selectedWallet === 'main' ? theme.colors.accent : theme.colors.textTertiary
+                    selectedWallet === 'main' ? themeColors.colors.accent : themeColors.colors.textTertiary
                   }
                 />
               </TouchableOpacity>
@@ -199,7 +199,7 @@ const GoalWithdrawModal: React.FC<GoalWithdrawModalProps> = ({
                   name="savings"
                   size={24}
                   color={
-                    selectedWallet === 'savings' ? theme.colors.accent : theme.colors.textTertiary
+                    selectedWallet === 'savings' ? themeColors.colors.accent : themeColors.colors.textTertiary
                   }
                 />
               </TouchableOpacity>

@@ -314,7 +314,7 @@ const SettingsScreen: React.FC = () => {
 
   return (
     <>
-      <StatusBar barStyle={theme.colors.statusBarStyle} backgroundColor={themeColors.colors.surface} />
+      <StatusBar barStyle={themeColors.colors.statusBarStyle} backgroundColor={themeColors.colors.surface} />
       <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.surface }]} edges={['top']}>
         {/* Header */}
         <View style={[styles.header, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.gray100 }]}>

@@ -244,7 +244,7 @@ const RoundUpSettingsScreen = () => {
                 value={isEnabled}
                 onValueChange={handleToggleEnabled}
                 trackColor={{ false: themeColors.colors.gray300, true: themeColors.colors.accent }}
-                thumbColor={isEnabled ? theme.colors.surface : theme.colors.gray400}
+                thumbColor={isEnabled ? themeColors.colors.surface : themeColors.colors.gray400}
                 disabled={isUpdating}
               />
             </View>

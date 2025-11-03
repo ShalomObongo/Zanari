@@ -106,7 +106,7 @@ const TransactionDetailsScreen: React.FC = () => {
 
   const statusInfo = getStatusDisplay(transaction.status);
   const isDebit = ['payment', 'transfer_out', 'bill_payment', 'withdrawal'].includes(transaction.type);
-  const amountColor = isDebit ? theme.colors.textSecondary : theme.colors.accentDarker;
+  const amountColor = isDebit ? themeColors.colors.textSecondary : themeColors.colors.accentDarker;
 
   // Determine if this is a transfer and extract recipient/sender info
   const isTransfer = transaction.type === 'transfer_out' || transaction.type === 'transfer_in';
