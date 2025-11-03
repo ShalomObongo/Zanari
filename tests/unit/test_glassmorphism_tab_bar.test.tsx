@@ -126,7 +126,7 @@ describe('GlassmorphismTabBar', () => {
   });
 
   it('highlights the active tab', () => {
-    const { UNSAFE_root } = render(<GlassmorphismTabBar {...mockProps} />);
+    render(<GlassmorphismTabBar {...mockProps} />);
     // The active tab should have different styling
     expect(mockState.index).toBe(0);
   });
