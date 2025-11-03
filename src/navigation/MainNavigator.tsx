@@ -16,6 +16,7 @@ import EditProfileScreen from '@/screens/settings/EditProfileScreen';
 import RoundUpSettingsScreen from '@/screens/settings/RoundUpSettingsScreen';
 import KYCUploadScreen from '@/screens/kyc/KYCUploadScreen';
 import SavingsInsightsScreen from '@/screens/savings/SavingsInsightsScreen';
+import { GlassmorphismTabBar } from '@/components/GlassmorphismTabBar';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -43,32 +44,9 @@ export type MainStackParamList = {
 const MainTabs: React.FC = () => {
   return (
     <Tab.Navigator
+      tabBar={(props) => <GlassmorphismTabBar {...props} />}
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#52B788', // theme.colors.accent
-        tabBarInactiveTintColor: '#666666', // theme.colors.textSecondary
-        tabBarStyle: {
-          backgroundColor: '#FFFFFF', // theme.colors.surface
-          borderTopWidth: 1,
-          borderTopColor: 'rgba(229, 231, 235, 0.8)', // subtle border
-          paddingTop: 8,
-          paddingBottom: 8,
-          height: 80,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -1 },
-          shadowOpacity: 0.05,
-          shadowRadius: 3,
-          elevation: 8,
-        },
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: '600',
-          marginTop: 4,
-          fontFamily: 'Manrope_600SemiBold',
-        },
-        tabBarIconStyle: {
-          marginTop: 4,
-        },
       }}
     >
       <Tab.Screen
