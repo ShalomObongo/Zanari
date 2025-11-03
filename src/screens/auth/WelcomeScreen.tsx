@@ -11,7 +11,8 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import theme from '@/theme';
+import { useTheme } from '@/theme';
+import theme from '@/theme'; // Static theme for StyleSheet
 
 const { width, height } = Dimensions.get('window');
 
@@ -20,16 +21,27 @@ interface FeatureItemProps {
   title: string;
   description: string;
   iconBgColor: string;
+  textPrimary: string;
+  textSecondary: string;
+  surface: string;
 }
 
-const FeatureItem: React.FC<FeatureItemProps> = ({ icon, title, description, iconBgColor }) => (
-  <View style={styles.featureItem}>
+const FeatureItem: React.FC<FeatureItemProps> = ({ 
+  icon, 
+  title, 
+  description, 
+  iconBgColor, 
+  textPrimary, 
+  textSecondary,
+  surface 
+}) => (
+  <View style={[styles.featureItem, { backgroundColor: surface }]}>
     <View style={[styles.iconCircle, { backgroundColor: iconBgColor }]}>
       <Icon name={icon} size={24} color="#FFFFFF" />
     </View>
     <View style={styles.featureTextContainer}>
-      <Text style={styles.featureTitle}>{title}</Text>
-      <Text style={styles.featureDescription}>{description}</Text>
+      <Text style={[styles.featureTitle, { color: textPrimary }]}>{title}</Text>
+      <Text style={[styles.featureDescription, { color: textSecondary }]}>{description}</Text>
     </View>
   </View>
 );
@@ -38,11 +50,12 @@ interface WelcomeScreenProps {}
 
 const WelcomeScreen: React.FC<WelcomeScreenProps> = () => {
   const navigation = useNavigation<any>();
+  const themeColors = useTheme();
 
   return (
     <>
-      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.backgroundLight} />
-      <View style={styles.container}>
+      <StatusBar barStyle={themeColors.colors.statusBarStyle} backgroundColor={themeColors.colors.backgroundLight} />
+      <View style={[styles.container, { backgroundColor: themeColors.colors.backgroundLight }]}>
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
@@ -50,7 +63,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = () => {
         >
           {/* Gradient Header */}
           <LinearGradient
-            colors={['#1B4332', '#2D6A4F', '#52B788', '#B7E4C7', '#f6f8f7']}
+            colors={themeColors.gradients.welcome}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.gradientHeader}
@@ -58,8 +71,10 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = () => {
 
           {/* Logo and Tagline */}
           <View style={styles.headerContent}>
-            <Text style={styles.appName}>Zanari</Text>
-            <Text style={styles.tagline}>Smart and simple banking at your fingertips.</Text>
+            <Text style={[styles.appName, { color: themeColors.colors.textPrimary }]}>Zanari</Text>
+            <Text style={[styles.tagline, { color: themeColors.colors.textSecondary }]}>
+              Smart and simple banking at your fingertips.
+            </Text>
           </View>
 
           {/* Features List */}
@@ -68,25 +83,37 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = () => {
               icon="savings"
               title="Automated Savings"
               description="Effortlessly save with round-ups on every transaction."
-              iconBgColor={theme.colors.accent}
+              iconBgColor={themeColors.colors.accent}
+              textPrimary={themeColors.colors.textPrimary}
+              textSecondary={themeColors.colors.textSecondary}
+              surface={themeColors.colors.surface}
             />
             <FeatureItem
               icon="shield"
               title="Secure Payments"
               description="Your transactions are always protected with top-tier security."
-              iconBgColor={theme.colors.accentDarker}
+              iconBgColor={themeColors.colors.accentDarker}
+              textPrimary={themeColors.colors.textPrimary}
+              textSecondary={themeColors.colors.textSecondary}
+              surface={themeColors.colors.surface}
             />
             <FeatureItem
               icon="verified-user"
               title="Quick Verification"
               description="Get verified in minutes with our streamlined KYC process."
-              iconBgColor={theme.colors.accentDarkest}
+              iconBgColor={themeColors.colors.accentDarkest}
+              textPrimary={themeColors.colors.textPrimary}
+              textSecondary={themeColors.colors.textSecondary}
+              surface={themeColors.colors.surface}
             />
             <FeatureItem
               icon="wifi-off"
               title="Offline Access"
               description="Access your essential account information, even without internet."
-              iconBgColor={theme.colors.primary}
+              iconBgColor={themeColors.colors.primary}
+              textPrimary={themeColors.colors.textPrimary}
+              textSecondary={themeColors.colors.textSecondary}
+              surface={themeColors.colors.surface}
             />
           </View>
 
@@ -95,13 +122,15 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = () => {
         </ScrollView>
 
         {/* Action Buttons - Fixed at bottom */}
-        <View style={styles.buttonContainer}>
+        <View style={[styles.buttonContainer, { backgroundColor: themeColors.colors.backgroundLight }]}>
           <TouchableOpacity
-            style={styles.primaryButton}
+            style={[styles.primaryButton, { backgroundColor: themeColors.colors.primary }]}
             onPress={() => navigation.navigate('Signup')}
             activeOpacity={0.8}
           >
-            <Text style={styles.primaryButtonText}>Get Started</Text>
+            <Text style={[styles.primaryButtonText, { color: themeColors.colors.onPrimaryText }]}>
+              Get Started
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -109,7 +138,9 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = () => {
             onPress={() => navigation.navigate('Login')}
             activeOpacity={0.8}
           >
-            <Text style={styles.secondaryButtonText}>Sign In</Text>
+            <Text style={[styles.secondaryButtonText, { color: themeColors.colors.primary }]}>
+              Sign In
+            </Text>
           </TouchableOpacity>
         </View>
       </View>

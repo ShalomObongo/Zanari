@@ -9,7 +9,8 @@ import { BlurView } from 'expo-blur';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import theme from '@/theme';
+import { useTheme } from '@/theme';
+import theme from '@/theme'; // Static theme for StyleSheet
 
 /**
  * GlassmorphismTabBar - A custom bottom tab bar with Apple-style glassmorphism effect
@@ -19,6 +20,7 @@ import theme from '@/theme';
  * - Floating appearance with rounded corners
  * - Subtle shadow for depth
  * - Responsive to safe area insets
+ * - Adaptive to light/dark themes
  */
 export const GlassmorphismTabBar: React.FC<BottomTabBarProps> = ({
   state,
@@ -26,13 +28,22 @@ export const GlassmorphismTabBar: React.FC<BottomTabBarProps> = ({
   navigation,
 }) => {
   const insets = useSafeAreaInsets();
+  const themeColors = useTheme();
 
   return (
     <View style={[styles.container, { paddingBottom: insets.bottom }]}>
       <BlurView
         intensity={Platform.OS === 'ios' ? 80 : 0}
-        tint="light"
-        style={styles.blurContainer}
+        tint={themeColors.isDark ? 'dark' : 'light'}
+        style={[
+          styles.blurContainer,
+          {
+            backgroundColor: themeColors.isDark 
+              ? (Platform.OS === 'ios' ? 'rgba(31, 41, 55, 0.7)' : 'rgba(31, 41, 55, 0.92)')
+              : (Platform.OS === 'ios' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(255, 255, 255, 0.92)'),
+            borderColor: themeColors.isDark ? 'rgba(75, 85, 99, 0.3)' : 'rgba(255, 255, 255, 0.3)',
+          }
+        ]}
       >
         <View style={styles.innerContainer}>
           {state.routes.map((route, index) => {
@@ -67,7 +78,7 @@ export const GlassmorphismTabBar: React.FC<BottomTabBarProps> = ({
               try {
                 const iconElement = options.tabBarIcon({ 
                   focused: isFocused, 
-                  color: isFocused ? theme.colors.accent : theme.colors.textSecondary, 
+                  color: isFocused ? themeColors.colors.accent : themeColors.colors.textSecondary, 
                   size: 24 
                 });
                 if (iconElement && typeof iconElement === 'object' && 'props' in iconElement) {
@@ -96,13 +107,16 @@ export const GlassmorphismTabBar: React.FC<BottomTabBarProps> = ({
                 <View
                   style={[
                     styles.iconContainer,
-                    isFocused && styles.iconContainerActive,
+                    isFocused && [
+                      styles.iconContainerActive,
+                      { backgroundColor: `${themeColors.colors.accent}12` }
+                    ],
                   ]}
                 >
                   <Icon
                     name={iconName}
                     size={24}
-                    color={isFocused ? theme.colors.accent : theme.colors.textSecondary}
+                    color={isFocused ? themeColors.colors.accent : themeColors.colors.textSecondary}
                   />
                 </View>
               </TouchableOpacity>
@@ -126,9 +140,7 @@ const styles = StyleSheet.create({
   blurContainer: {
     borderRadius: 28,
     overflow: 'hidden',
-    backgroundColor: Platform.OS === 'ios' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(255, 255, 255, 0.92)',
     borderWidth: Platform.OS === 'ios' ? 0.5 : 0,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -164,6 +176,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   iconContainerActive: {
-    backgroundColor: 'rgba(82, 183, 136, 0.12)',
+    // backgroundColor is set dynamically based on theme
   },
 });
