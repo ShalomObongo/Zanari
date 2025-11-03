@@ -976,7 +976,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 10, // Space for FAB
+    paddingBottom: 100, // Extra space for floating glassmorphism tab bar
   },
   summaryCardsRow: {
     flexDirection: 'row',

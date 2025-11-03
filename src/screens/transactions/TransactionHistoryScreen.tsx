@@ -769,7 +769,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   bottomSpacer: {
-    height: 32,
+    height: 100, // Extra space for floating glassmorphism tab bar
   },
   loadingContainer: {
     flex: 1,
