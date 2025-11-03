@@ -68,7 +68,7 @@ describe('GlassmorphismTabBar', () => {
   };
 
   it('renders the glassmorphism tab bar', () => {
-    const { getByTestId } = render(<GlassmorphismTabBar {...mockProps} />);
+    render(<GlassmorphismTabBar {...mockProps} />);
     // The component should render without crashing
     expect(true).toBe(true);
   });
