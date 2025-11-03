@@ -160,7 +160,7 @@ const SignupScreen: React.FC = () => {
 
   return (
     <>
-      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.backgroundLight} />
+      <StatusBar barStyle={themeColors.colors.statusBarStyle} backgroundColor={themeColors.colors.backgroundLight} />
       <SafeAreaView style={styles.container} edges={['top']}>
         <KeyboardAvoidingView
           style={styles.keyboardContainer}
@@ -169,7 +169,7 @@ const SignupScreen: React.FC = () => {
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-              <Icon name="arrow-back" size={24} color={theme.colors.textPrimary} />
+              <Icon name="arrow-back" size={24} color={themeColors.colors.textPrimary} />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Create Account</Text>
             <View style={styles.headerSpacer} />
@@ -202,13 +202,13 @@ const SignupScreen: React.FC = () => {
                     onFocus={() => setFocusedField('firstName')}
                     onBlur={() => setFocusedField(null)}
                     placeholder="Enter your first name"
-                    placeholderTextColor={theme.colors.textTertiary}
+                    placeholderTextColor={themeColors.colors.textTertiary}
                     autoCapitalize="words"
                     returnKeyType="next"
                     onSubmitEditing={() => lastNameRef.current?.focus()}
                   />
                   {firstName.trim().length > 0 && firstNameValid && (
-                    <Icon name="check-circle" size={20} color={theme.colors.success} style={styles.inputIcon} />
+                    <Icon name="check-circle" size={20} color={themeColors.colors.success} style={styles.inputIcon} />
                   )}
                 </View>
                 {!firstName.trim() && (
@@ -232,13 +232,13 @@ const SignupScreen: React.FC = () => {
                     onFocus={() => setFocusedField('lastName')}
                     onBlur={() => setFocusedField(null)}
                     placeholder="Enter your last name"
-                    placeholderTextColor={theme.colors.textTertiary}
+                    placeholderTextColor={themeColors.colors.textTertiary}
                     autoCapitalize="words"
                     returnKeyType="next"
                     onSubmitEditing={() => emailRef.current?.focus()}
                   />
                   {lastName.trim().length > 0 && lastNameValid && (
-                    <Icon name="check-circle" size={20} color={theme.colors.success} style={styles.inputIcon} />
+                    <Icon name="check-circle" size={20} color={themeColors.colors.success} style={styles.inputIcon} />
                   )}
                 </View>
                 {!lastName.trim() && (
@@ -266,7 +266,7 @@ const SignupScreen: React.FC = () => {
                       handleEmailBlur();
                     }}
                     placeholder="you@example.com"
-                    placeholderTextColor={theme.colors.textTertiary}
+                    placeholderTextColor={themeColors.colors.textTertiary}
                     keyboardType="email-address"
                     autoCapitalize="none"
                     returnKeyType="next"
@@ -275,10 +275,10 @@ const SignupScreen: React.FC = () => {
                   {email.trim().length > 0 && (
                     <>
                       {emailValid && !emailError && (
-                        <Icon name="check-circle" size={20} color={theme.colors.success} style={styles.inputIcon} />
+                        <Icon name="check-circle" size={20} color={themeColors.colors.success} style={styles.inputIcon} />
                       )}
                       {emailError && (
-                        <Icon name="error" size={20} color={theme.colors.error} style={styles.inputIcon} />
+                        <Icon name="error" size={20} color={themeColors.colors.error} style={styles.inputIcon} />
                       )}
                     </>
                   )}
@@ -306,12 +306,12 @@ const SignupScreen: React.FC = () => {
                     onFocus={() => setFocusedField('phone')}
                     onBlur={() => setFocusedField(null)}
                     placeholder="0712 345 678"
-                    placeholderTextColor={theme.colors.textTertiary}
+                    placeholderTextColor={themeColors.colors.textTertiary}
                     keyboardType="phone-pad"
                     returnKeyType="done"
                   />
                   {phoneNumber.trim().length > 0 && phoneValid && (
-                    <Icon name="check-circle" size={20} color={theme.colors.success} style={styles.inputIcon} />
+                    <Icon name="check-circle" size={20} color={themeColors.colors.success} style={styles.inputIcon} />
                   )}
                 </View>
                 {!phoneNumber.trim() && (
@@ -327,7 +327,7 @@ const SignupScreen: React.FC = () => {
                 activeOpacity={0.7}
               >
                 <View style={[styles.checkbox, acceptedTerms && styles.checkboxChecked]}>
-                  {acceptedTerms && <Icon name="check" size={16} color={theme.colors.surface} />}
+                  {acceptedTerms && <Icon name="check" size={16} color={themeColors.colors.surface} />}
                 </View>
                 <Text style={styles.checkboxText}>
                   By creating an account, you agree to our{' '}
@@ -349,7 +349,7 @@ const SignupScreen: React.FC = () => {
             >
               {isRegistering ? (
                 <View style={styles.loadingContainer}>
-                  <ActivityIndicator color={theme.colors.onPrimaryText} style={styles.spinner} />
+                  <ActivityIndicator color={themeColors.colors.onPrimaryText} style={styles.spinner} />
                   <Text style={styles.primaryButtonText}>Creating account...</Text>
                 </View>
               ) : (
@@ -372,7 +372,7 @@ const SignupScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: themeColors.colors.backgroundLight,
   },
   keyboardContainer: {
     flex: 1,
@@ -430,11 +430,10 @@ const styles = StyleSheet.create({
   inputWrapper: {
     position: 'relative',
   },
-  textInput: {
-    backgroundColor: theme.colors.surface,
+  textInput: { backgroundColor: themeColors.colors.surface,
     borderRadius: theme.borderRadius.xl,
     borderWidth: 2,
-    borderColor: theme.colors.border,
+    borderColor: themeColors.colors.border,
     paddingHorizontal: theme.spacing.base,
     paddingVertical: theme.spacing.base,
     fontSize: theme.fontSizes.base,
@@ -443,15 +442,12 @@ const styles = StyleSheet.create({
     height: 56,
     paddingRight: 48,
   },
-  textInputFocused: {
-    borderColor: theme.colors.primary,
+  textInputFocused: { borderColor: themeColors.colors.primary,
     ...theme.shadows.sm,
   },
-  textInputError: {
-    borderColor: theme.colors.error,
+  textInputError: { borderColor: themeColors.colors.error,
   },
-  textInputValid: {
-    borderColor: theme.colors.success,
+  textInputValid: { borderColor: themeColors.colors.success,
   },
   inputIcon: {
     position: 'absolute',
@@ -483,15 +479,14 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 4,
     borderWidth: 2,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surface,
+    borderColor: themeColors.colors.border,
+    backgroundColor: themeColors.colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 2,
   },
-  checkboxChecked: {
-    backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primary,
+  checkboxChecked: { backgroundColor: themeColors.colors.primary,
+    borderColor: themeColors.colors.primary,
   },
   checkboxText: {
     flex: 1,
@@ -508,11 +503,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.base,
     paddingTop: theme.spacing.base,
     paddingBottom: theme.spacing.lg,
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: themeColors.colors.backgroundLight,
     borderTopWidth: 0,
   },
-  primaryButton: {
-    backgroundColor: theme.colors.primary,
+  primaryButton: { backgroundColor: themeColors.colors.primary,
     height: 56,
     borderRadius: theme.borderRadius.xl,
     justifyContent: 'center',
@@ -520,11 +514,9 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.base,
     ...theme.shadows.md,
   },
-  primaryButtonDisabled: {
-    backgroundColor: theme.colors.gray300,
+  primaryButtonDisabled: { backgroundColor: themeColors.colors.gray300,
   },
-  primaryButtonText: {
-    color: theme.colors.onPrimaryText,
+  primaryButtonText: { color: themeColors.colors.onPrimaryText,
     fontSize: theme.fontSizes.base,
     fontFamily: theme.fonts.bold,
   },

@@ -16,6 +16,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useSavingsStore } from '@/store/savingsStore';
 import { useWalletStore } from '@/store/walletStore';
 import { formatCurrency } from '@/utils/formatters';
+import { useTheme } from '@/theme';
 import theme from '@/theme';
 
 interface GoalWithdrawModalProps {
@@ -31,6 +32,7 @@ const GoalWithdrawModal: React.FC<GoalWithdrawModalProps> = ({
   onClose,
   onSuccess,
 }) => {
+  const themeColors = useTheme();
   const [selectedWallet, setSelectedWallet] = useState<'main' | 'savings'>('main');
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -105,7 +107,7 @@ const GoalWithdrawModal: React.FC<GoalWithdrawModalProps> = ({
           <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
             {/* Info Card */}
             <View style={styles.infoCard}>
-              <Icon name="info-outline" size={20} color={theme.colors.primary} />
+              <Icon name="info-outline" size={20} color={themeColors.colors.primary} />
               <Text style={styles.infoText}>
                 Withdraw your savings from this completed goal to your main or savings wallet
               </Text>
@@ -114,14 +116,14 @@ const GoalWithdrawModal: React.FC<GoalWithdrawModalProps> = ({
             {/* Goal Card */}
             <View style={styles.goalCard}>
               <View style={styles.goalHeader}>
-                <Icon name="emoji-events" size={28} color={theme.colors.accent} />
+                <Icon name="emoji-events" size={28} color={themeColors.colors.accent} />
                 <Text style={styles.goalName}>{currentGoal.name}</Text>
               </View>
               {currentGoal.description && (
                 <Text style={styles.goalDescription}>{currentGoal.description}</Text>
               )}
               <View style={styles.completionBadge}>
-                <Icon name="check-circle" size={16} color={theme.colors.success} />
+                <Icon name="check-circle" size={16} color={themeColors.colors.success} />
                 <Text style={styles.completionText}>Goal Completed!</Text>
               </View>
             </View>
@@ -237,7 +239,7 @@ const GoalWithdrawModal: React.FC<GoalWithdrawModalProps> = ({
               disabled={currentGoal.current_amount <= 0 || isProcessing}
             >
               {isProcessing ? (
-                <ActivityIndicator size="small" color={theme.colors.surface} />
+                <ActivityIndicator size="small" color={themeColors.colors.surface} />
               ) : (
                 <Text style={styles.withdrawButtonText}>Withdraw Funds</Text>
               )}
@@ -252,7 +254,7 @@ const GoalWithdrawModal: React.FC<GoalWithdrawModalProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: themeColors.colors.backgroundLight,
   },
   content: {
     flex: 1,
@@ -263,9 +265,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: theme.spacing.lg,
     paddingVertical: theme.spacing.base,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: themeColors.colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    borderBottomColor: themeColors.colors.border,
   },
   cancelButton: {
     padding: theme.spacing.sm,
@@ -303,13 +305,12 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     lineHeight: 20,
   },
-  goalCard: {
-    backgroundColor: theme.colors.surface,
+  goalCard: { backgroundColor: themeColors.colors.surface,
     padding: theme.spacing.xl,
     borderRadius: theme.borderRadius.xl,
     marginTop: theme.spacing.xl,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: themeColors.colors.border,
   },
   goalHeader: {
     flexDirection: 'row',
@@ -345,13 +346,12 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.semiBold,
     color: theme.colors.success,
   },
-  amountCard: {
-    backgroundColor: theme.colors.surface,
+  amountCard: { backgroundColor: themeColors.colors.surface,
     padding: theme.spacing.xl,
     borderRadius: theme.borderRadius.xl,
     marginTop: theme.spacing.xl,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: themeColors.colors.border,
     alignItems: 'center',
   },
   amountLabel: {
@@ -379,15 +379,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: theme.colors.surface,
+    backgroundColor: themeColors.colors.surface,
     padding: theme.spacing.base,
     borderRadius: theme.borderRadius.xl,
     marginBottom: theme.spacing.md,
     borderWidth: 2,
-    borderColor: theme.colors.border,
+    borderColor: themeColors.colors.border,
   },
-  walletOptionSelected: {
-    borderColor: theme.colors.accent,
+  walletOptionSelected: { borderColor: themeColors.colors.accent,
     backgroundColor: `${theme.colors.accent}08`,
   },
   walletOptionLeft: {
@@ -401,18 +400,17 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: theme.colors.border,
+    borderColor: themeColors.colors.border,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  radioButtonSelected: {
-    borderColor: theme.colors.accent,
+  radioButtonSelected: { borderColor: themeColors.colors.accent,
   },
   radioButtonInner: {
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: theme.colors.accent,
+    backgroundColor: themeColors.colors.accent,
   },
   walletOptionTitle: {
     fontSize: theme.fontSizes.base,
@@ -425,14 +423,13 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     marginTop: 2,
   },
-  summaryCard: {
-    backgroundColor: theme.colors.surface,
+  summaryCard: { backgroundColor: themeColors.colors.surface,
     padding: theme.spacing.xl,
     borderRadius: theme.borderRadius.xl,
     marginTop: theme.spacing.xl,
     marginBottom: theme.spacing.xl,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: themeColors.colors.border,
   },
   summaryTitle: {
     fontSize: theme.fontSizes.base,
@@ -458,7 +455,7 @@ const styles = StyleSheet.create({
   },
   summaryDivider: {
     height: 1,
-    backgroundColor: theme.colors.border,
+    backgroundColor: themeColors.colors.border,
     marginVertical: theme.spacing.sm,
   },
   summaryLabelBold: {
@@ -475,20 +472,18 @@ const styles = StyleSheet.create({
   footer: {
     paddingHorizontal: theme.spacing.lg,
     paddingVertical: theme.spacing.base,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: themeColors.colors.surface,
     borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
+    borderTopColor: themeColors.colors.border,
   },
-  withdrawButton: {
-    backgroundColor: theme.colors.accent,
+  withdrawButton: { backgroundColor: themeColors.colors.accent,
     paddingVertical: theme.spacing.base,
     borderRadius: theme.borderRadius.xl,
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 56,
   },
-  withdrawButtonDisabled: {
-    backgroundColor: theme.colors.gray300,
+  withdrawButtonDisabled: { backgroundColor: themeColors.colors.gray300,
     opacity: 0.6,
   },
   withdrawButtonText: {

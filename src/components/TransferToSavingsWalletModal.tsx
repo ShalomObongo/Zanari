@@ -18,6 +18,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useWalletStore } from '@/store/walletStore';
 import { formatCurrency, parseCentsFromInput } from '@/utils/formatters';
 import PinVerificationModal from './PinVerificationModal';
+import { useTheme } from '@/theme';
 import theme from '@/theme';
 
 interface TransferToSavingsWalletModalProps {
@@ -31,6 +32,7 @@ const TransferToSavingsWalletModal: React.FC<TransferToSavingsWalletModalProps> 
   onClose,
   onSuccess,
 }) => {
+  const themeColors = useTheme();
   const insets = useSafeAreaInsets();
   const [amount, setAmount] = useState('');
   const [showPinModal, setShowPinModal] = useState(false);
@@ -159,7 +161,7 @@ const TransferToSavingsWalletModal: React.FC<TransferToSavingsWalletModalProps> 
             >
               {/* Info Card */}
               <View style={styles.infoCard}>
-                <Icon name="info-outline" size={20} color={theme.colors.primary} />
+                <Icon name="info-outline" size={20} color={themeColors.colors.primary} />
                 <Text style={styles.infoText}>
                   Transfer money from your main wallet to your savings wallet for safekeeping
                 </Text>
@@ -168,7 +170,7 @@ const TransferToSavingsWalletModal: React.FC<TransferToSavingsWalletModalProps> 
               {/* Balance Card */}
               <View style={styles.balanceCard}>
                 <View style={styles.balanceHeader}>
-                  <Icon name="account-balance-wallet" size={24} color={theme.colors.success} />
+                  <Icon name="account-balance-wallet" size={24} color={themeColors.colors.success} />
                   <Text style={styles.balanceLabel}>Main Wallet Balance</Text>
                 </View>
                 <Text style={styles.balanceAmount}>{formatCurrency(availableBalance)}</Text>
@@ -184,7 +186,7 @@ const TransferToSavingsWalletModal: React.FC<TransferToSavingsWalletModalProps> 
                     value={amount}
                     onChangeText={(text) => setAmount(text.replace(/[^0-9]/g, ''))}
                     placeholder="0"
-                    placeholderTextColor={theme.colors.textTertiary}
+                    placeholderTextColor={themeColors.colors.textTertiary}
                     keyboardType="numeric"
                     autoFocus
                   />
@@ -255,7 +257,7 @@ const TransferToSavingsWalletModal: React.FC<TransferToSavingsWalletModalProps> 
                 disabled={!amount || parseInt(amount) <= 0 || isProcessing}
               >
                 {isProcessing ? (
-                  <ActivityIndicator size="small" color={theme.colors.surface} />
+                  <ActivityIndicator size="small" color={themeColors.colors.surface} />
                 ) : (
                   <Text style={styles.continueButtonText}>Continue</Text>
                 )}
@@ -277,7 +279,7 @@ const TransferToSavingsWalletModal: React.FC<TransferToSavingsWalletModalProps> 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: themeColors.colors.backgroundLight,
   },
   content: {
     flex: 1,
@@ -288,9 +290,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: theme.spacing.base,
     paddingVertical: theme.spacing.sm,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: themeColors.colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    borderBottomColor: themeColors.colors.border,
   },
   cancelButton: {
     padding: theme.spacing.sm,
@@ -328,13 +330,12 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     lineHeight: 20,
   },
-  balanceCard: {
-    backgroundColor: theme.colors.surface,
+  balanceCard: { backgroundColor: themeColors.colors.surface,
     padding: theme.spacing.xl,
     borderRadius: theme.borderRadius.xl,
     marginTop: theme.spacing.xl,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: themeColors.colors.border,
   },
   balanceHeader: {
     flexDirection: 'row',
@@ -365,9 +366,9 @@ const styles = StyleSheet.create({
   amountInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.surface,
+    backgroundColor: themeColors.colors.surface,
     borderWidth: 2,
-    borderColor: theme.colors.accent,
+    borderColor: themeColors.colors.accent,
     borderRadius: theme.borderRadius.xl,
     paddingHorizontal: theme.spacing.base,
     paddingVertical: theme.spacing.xs,
@@ -409,9 +410,9 @@ const styles = StyleSheet.create({
   quickAmountChip: {
     flex: 1,
     minWidth: '45%',
-    backgroundColor: theme.colors.surface,
+    backgroundColor: themeColors.colors.surface,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: themeColors.colors.border,
     borderRadius: theme.borderRadius.xl,
     paddingHorizontal: theme.spacing.base,
     paddingVertical: theme.spacing.md,
@@ -419,7 +420,7 @@ const styles = StyleSheet.create({
   },
   quickAmountChipSelected: {
     backgroundColor: `${theme.colors.accent}15`,
-    borderColor: theme.colors.accent,
+    borderColor: themeColors.colors.accent,
     borderWidth: 2,
   },
   quickAmountChipText: {
@@ -427,17 +428,15 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.semiBold,
     color: theme.colors.textPrimary,
   },
-  quickAmountChipTextSelected: {
-    color: theme.colors.accent,
+  quickAmountChipTextSelected: { color: themeColors.colors.accent,
   },
-  summaryCard: {
-    backgroundColor: theme.colors.surface,
+  summaryCard: { backgroundColor: themeColors.colors.surface,
     padding: theme.spacing.xl,
     borderRadius: theme.borderRadius.xl,
     marginTop: theme.spacing.xl,
     marginBottom: theme.spacing.xl,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: themeColors.colors.border,
   },
   summaryTitle: {
     fontSize: theme.fontSizes.base,
@@ -463,7 +462,7 @@ const styles = StyleSheet.create({
   },
   summaryDivider: {
     height: 1,
-    backgroundColor: theme.colors.border,
+    backgroundColor: themeColors.colors.border,
     marginVertical: theme.spacing.sm,
   },
   summaryLabelBold: {
@@ -480,20 +479,18 @@ const styles = StyleSheet.create({
   footer: {
     paddingHorizontal: theme.spacing.lg,
     paddingVertical: theme.spacing.base,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: themeColors.colors.surface,
     borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
+    borderTopColor: themeColors.colors.border,
   },
-  continueButton: {
-    backgroundColor: theme.colors.accent,
+  continueButton: { backgroundColor: themeColors.colors.accent,
     paddingVertical: theme.spacing.base,
     borderRadius: theme.borderRadius.xl,
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 56,
   },
-  continueButtonDisabled: {
-    backgroundColor: theme.colors.gray300,
+  continueButtonDisabled: { backgroundColor: themeColors.colors.gray300,
     opacity: 0.6,
   },
   continueButtonText: {

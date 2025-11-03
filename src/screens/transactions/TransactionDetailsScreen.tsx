@@ -13,6 +13,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useTransactionStore } from '@/store/transactionStore';
 import { formatCurrency } from '@/utils/formatters';
+import { useTheme } from '@/theme';
 import theme from '@/theme';
 
 type TransactionDetailsRouteProp = RouteProp<
@@ -21,6 +22,7 @@ type TransactionDetailsRouteProp = RouteProp<
 >;
 
 const TransactionDetailsScreen: React.FC = () => {
+  const themeColors = useTheme();
   const navigation = useNavigation();
   const route = useRoute<TransactionDetailsRouteProp>();
   const { transactionId } = route.params;
@@ -205,7 +207,7 @@ const TransactionDetailsScreen: React.FC = () => {
 
   return (
     <>
-      <StatusBar barStyle="light-content" backgroundColor={theme.colors.primary} />
+      <StatusBar barStyle={themeColors.colors.statusBarStyle} backgroundColor={themeColors.colors.primary} />
       <SafeAreaView style={styles.container} edges={['top']}>
         {/* Header */}
         <View style={styles.header}>
@@ -213,7 +215,7 @@ const TransactionDetailsScreen: React.FC = () => {
             style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
-            <Icon name="arrow-back" size={24} color={theme.colors.surface} />
+            <Icon name="arrow-back" size={24} color={themeColors.colors.surface} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Transaction Details</Text>
           <View style={styles.backButton} />
@@ -242,7 +244,7 @@ const TransactionDetailsScreen: React.FC = () => {
                   <Icon
                     name={getCategoryIcon(transaction.category)}
                     size={24}
-                    color={theme.colors.accentDarkest}
+                    color={themeColors.colors.accentDarkest}
                   />
                   <Text style={styles.detailLabel}>Category</Text>
                 </View>
@@ -256,7 +258,7 @@ const TransactionDetailsScreen: React.FC = () => {
               {/* Status */}
               <View style={styles.detailRow}>
                 <View style={styles.detailLeft}>
-                  <Icon name="task-alt" size={24} color={theme.colors.accentDarkest} />
+                  <Icon name="task-alt" size={24} color={themeColors.colors.accentDarkest} />
                   <Text style={styles.detailLabel}>Status</Text>
                 </View>
                 <View style={styles.statusContainer}>
@@ -272,7 +274,7 @@ const TransactionDetailsScreen: React.FC = () => {
                 <>
                   <View style={styles.detailRow}>
                     <View style={styles.detailLeft}>
-                      <Icon name={transferInfo.icon} size={24} color={theme.colors.accentDarkest} />
+                      <Icon name={transferInfo.icon} size={24} color={themeColors.colors.accentDarkest} />
                       <Text style={styles.detailLabel}>{transferInfo.label}</Text>
                     </View>
                     <Text style={styles.detailValue}>{transferInfo.value}</Text>
@@ -285,7 +287,7 @@ const TransactionDetailsScreen: React.FC = () => {
               {/* Payment Method */}
               <View style={styles.detailRow}>
                 <View style={styles.detailLeft}>
-                  <Icon name="credit-card" size={24} color={theme.colors.accentDarkest} />
+                  <Icon name="credit-card" size={24} color={themeColors.colors.accentDarkest} />
                   <Text style={styles.detailLabel}>Payment Method</Text>
                 </View>
                 <Text style={styles.detailValue}>
@@ -325,7 +327,7 @@ const TransactionDetailsScreen: React.FC = () => {
                       <Icon
                         name="receipt-long"
                         size={20}
-                        color={theme.colors.primary}
+                        color={themeColors.colors.primary}
                       />
                       <Text style={styles.attachmentName}>{attachment}</Text>
                     </View>
@@ -369,13 +371,13 @@ const TransactionDetailsScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: themeColors.colors.surface,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: theme.colors.primary,
+    backgroundColor: themeColors.colors.primary,
     paddingHorizontal: theme.spacing.base,
     paddingVertical: theme.spacing.sm,
     paddingBottom: theme.spacing.md,
@@ -404,7 +406,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: theme.spacing['2xl'],
     paddingHorizontal: theme.spacing.base,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: themeColors.colors.surface,
   },
   amount: {
     fontSize: 40,
@@ -427,8 +429,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.base,
     paddingVertical: theme.spacing.sm,
   },
-  detailsCard: {
-    backgroundColor: theme.colors.backgroundLight,
+  detailsCard: { backgroundColor: themeColors.colors.backgroundLight,
     borderRadius: theme.borderRadius.xl,
     padding: theme.spacing.base,
   },
@@ -467,7 +468,7 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: theme.colors.gray200,
+    backgroundColor: themeColors.colors.gray200,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -504,9 +505,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing.sm,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: themeColors.colors.surface,
     borderWidth: 1,
-    borderColor: theme.colors.gray200,
+    borderColor: themeColors.colors.gray200,
     borderRadius: theme.borderRadius.lg,
     padding: theme.spacing.sm,
   },
@@ -520,8 +521,7 @@ const styles = StyleSheet.create({
     paddingTop: theme.spacing.base,
     gap: theme.spacing.md,
   },
-  primaryButton: {
-    backgroundColor: theme.colors.primary,
+  primaryButton: { backgroundColor: themeColors.colors.primary,
     borderRadius: theme.borderRadius.xl,
     paddingVertical: theme.spacing.base,
     alignItems: 'center',

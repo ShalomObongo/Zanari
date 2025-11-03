@@ -16,6 +16,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import PINInput from '@/components/PINInput';
 import { useAuthStore } from '@/store/authStore';
 import { ApiError } from '@/services/api';
+import { useTheme } from '@/theme';
 import theme from '@/theme';
 import { evaluatePinSecurity, PinLockError } from '@/utils/pinSecurity';
 
@@ -39,6 +40,7 @@ const formatRemaining = (seconds: number) => {
 };
 
 const ChangePINScreen: React.FC = () => {
+  const themeColors = useTheme();
   const navigation = useNavigation<any>();
   const verifyPin = useAuthStore((state) => state.verifyPin);
   const setupPin = useAuthStore((state) => state.setupPin);
@@ -212,7 +214,7 @@ const ChangePINScreen: React.FC = () => {
 
   return (
     <>
-      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.backgroundLight} />
+      <StatusBar barStyle={themeColors.colors.statusBarStyle} backgroundColor={themeColors.colors.backgroundLight} />
       <SafeAreaView style={styles.container} edges={['top']}>
         <KeyboardAvoidingView
           style={styles.keyboardContainer}
@@ -226,7 +228,7 @@ const ChangePINScreen: React.FC = () => {
               accessibilityLabel="Go back"
               disabled={isBusy}
             >
-              <Icon name="arrow-back" size={24} color={theme.colors.textPrimary} />
+              <Icon name="arrow-back" size={24} color={themeColors.colors.textPrimary} />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Change PIN</Text>
             <View style={styles.headerSpacer} />
@@ -287,7 +289,7 @@ const ChangePINScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: themeColors.colors.backgroundLight,
   },
   keyboardContainer: {
     flex: 1,
@@ -328,7 +330,7 @@ const styles = StyleSheet.create({
   },
   stepPill: {
     alignSelf: 'flex-start',
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: themeColors.colors.gray100,
     borderRadius: theme.borderRadius.lg,
     paddingVertical: 6,
     paddingHorizontal: theme.spacing.base,
@@ -355,12 +357,11 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing['2xl'],
     gap: theme.spacing.md,
   },
-  validationCard: {
-    backgroundColor: theme.colors.surface,
+  validationCard: { backgroundColor: themeColors.colors.surface,
     borderRadius: theme.borderRadius.xl,
     padding: theme.spacing.base,
     borderWidth: 1,
-    borderColor: theme.colors.gray200,
+    borderColor: themeColors.colors.gray200,
     gap: theme.spacing.xs,
   },
   validationText: {
@@ -371,7 +372,7 @@ const styles = StyleSheet.create({
   primaryButton: {
     height: 56,
     borderRadius: theme.borderRadius.xl,
-    backgroundColor: theme.colors.primary,
+    backgroundColor: themeColors.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     ...theme.shadows.md,
@@ -379,8 +380,7 @@ const styles = StyleSheet.create({
   primaryButtonDisabled: {
     opacity: 0.5,
   },
-  primaryButtonText: {
-    color: theme.colors.onPrimaryText,
+  primaryButtonText: { color: themeColors.colors.onPrimaryText,
     fontSize: theme.fontSizes.base,
     fontFamily: theme.fonts.bold,
   },

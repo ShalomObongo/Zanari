@@ -248,7 +248,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = () => {
           return (
             <View key={transaction.id} style={styles.transactionItem}>
               <View style={styles.transactionIconContainer}>
-                <Icon name={iconName} size={24} color={theme.colors.textPrimary} />
+                <Icon name={iconName} size={24} color={themeColors.colors.textPrimary} />
               </View>
               <View style={styles.transactionDetails}>
                 <Text style={styles.transactionDescription}>{title}</Text>
@@ -326,14 +326,14 @@ const DashboardScreen: React.FC<DashboardScreenProps> = () => {
             style={styles.roundUpSettingsButton}
             activeOpacity={0.7}
           >
-            <Icon name="settings" size={20} color={theme.colors.accent} />
+            <Icon name="settings" size={20} color={themeColors.colors.accent} />
           </TouchableOpacity>
         </View>
 
         <View style={styles.roundUpCard}>
           <View style={styles.roundUpStats}>
             <View style={styles.roundUpStat}>
-              <Icon name="savings" size={32} color={theme.colors.accent} />
+              <Icon name="savings" size={32} color={themeColors.colors.accent} />
               <Text style={styles.roundUpStatValue}>{formatCurrency(totalSaved)}</Text>
               <Text style={styles.roundUpStatLabel}>Total Saved</Text>
             </View>
@@ -341,7 +341,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = () => {
             <View style={styles.roundUpStatDivider} />
 
             <View style={styles.roundUpStat}>
-              <Icon name="trending-up" size={32} color={theme.colors.success} />
+              <Icon name="trending-up" size={32} color={themeColors.colors.success} />
               <Text style={styles.roundUpStatValue}>{totalRoundUps}</Text>
               <Text style={styles.roundUpStatLabel}>Round-Ups</Text>
             </View>
@@ -349,7 +349,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = () => {
             <View style={styles.roundUpStatDivider} />
 
             <View style={styles.roundUpStat}>
-              <Icon name="analytics" size={32} color={theme.colors.info} />
+              <Icon name="analytics" size={32} color={themeColors.colors.info} />
               <Text style={styles.roundUpStatValue}>{formatCurrency(averageRoundUp)}</Text>
               <Text style={styles.roundUpStatLabel}>Avg Amount</Text>
             </View>
@@ -425,7 +425,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = () => {
                   <Icon
                     name={balanceVisible ? 'visibility-off' : 'visibility'}
                     size={24}
-                    color={theme.colors.onPrimaryText}
+                    color={themeColors.colors.onPrimaryText}
                   />
                 </TouchableOpacity>
               </View>

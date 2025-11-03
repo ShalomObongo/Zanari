@@ -195,7 +195,7 @@ const OTPScreen: React.FC<OTPScreenProps> = () => {
 
   return (
     <>
-      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
+      <StatusBar barStyle={themeColors.colors.statusBarStyle} backgroundColor={themeColors.colors.surface} />
       <SafeAreaView style={styles.container} edges={['top']}>
         <KeyboardAvoidingView
           style={styles.keyboardContainer}
@@ -204,7 +204,7 @@ const OTPScreen: React.FC<OTPScreenProps> = () => {
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
-              <Icon name="arrow-back" size={24} color={theme.colors.textPrimary} />
+              <Icon name="arrow-back" size={24} color={themeColors.colors.textPrimary} />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Verify Your Identity</Text>
             <View style={styles.headerSpacer} />
@@ -264,7 +264,7 @@ const OTPScreen: React.FC<OTPScreenProps> = () => {
               activeOpacity={0.8}
             >
               {isVerifyingOtp ? (
-                <ActivityIndicator color={theme.colors.surface} />
+                <ActivityIndicator color={themeColors.colors.surface} />
               ) : (
                 <Text style={styles.verifyButtonText}>Verify</Text>
               )}
@@ -281,7 +281,7 @@ const OTPScreen: React.FC<OTPScreenProps> = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: themeColors.colors.surface,
   },
   keyboardContainer: {
     flex: 1,
@@ -347,16 +347,15 @@ const styles = StyleSheet.create({
     width: 48,
     height: 56,
     borderRadius: theme.borderRadius.lg,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: themeColors.colors.surface,
     borderWidth: 1,
-    borderColor: theme.colors.gray300,
+    borderColor: themeColors.colors.gray300,
     textAlign: 'center',
     fontSize: theme.fontSizes['2xl'],
     fontFamily: theme.fonts.bold,
     color: theme.colors.textSecondary,
   },
-  otpInputFilled: {
-    borderColor: theme.colors.accentDarkest,
+  otpInputFilled: { borderColor: themeColors.colors.accentDarkest,
     borderWidth: 2,
     color: theme.colors.textPrimary,
   },
@@ -380,8 +379,7 @@ const styles = StyleSheet.create({
     paddingTop: theme.spacing.sm,
     gap: theme.spacing.base,
   },
-  verifyButton: {
-    backgroundColor: theme.colors.accent,
+  verifyButton: { backgroundColor: themeColors.colors.accent,
     height: 56,
     borderRadius: theme.borderRadius.xl,
     justifyContent: 'center',
@@ -391,8 +389,7 @@ const styles = StyleSheet.create({
   verifyButtonDisabled: {
     opacity: 0.5,
   },
-  verifyButtonText: {
-    color: theme.colors.surface,
+  verifyButtonText: { color: themeColors.colors.surface,
     fontSize: theme.fontSizes.base,
     fontFamily: theme.fonts.bold,
   },
@@ -405,8 +402,7 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.semiBold,
     color: theme.colors.accentDarkest,
   },
-  alternativeMethodTextDisabled: {
-    color: theme.colors.textTertiary,
+  alternativeMethodTextDisabled: { color: themeColors.colors.textTertiary,
   },
 });
 

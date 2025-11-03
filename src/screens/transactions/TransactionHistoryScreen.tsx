@@ -18,6 +18,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useTransactionStore } from '@/store/transactionStore';
 import type { TransactionType, TransactionCategory } from '@/store/transactionStore';
 import { formatCurrency, formatRelativeDate, mapTransactionType } from '@/utils/formatters';
+import { useTheme } from '@/theme';
 import theme from '@/theme';
 
 interface TransactionHistoryScreenProps {}
@@ -29,6 +30,7 @@ interface FilterOptions {
 }
 
 const TransactionHistoryScreen: React.FC<TransactionHistoryScreenProps> = () => {
+  const themeColors = useTheme();
   const navigation = useNavigation<any>();
 
   const [isInitialLoading, setIsInitialLoading] = useState(true);
@@ -378,7 +380,7 @@ const TransactionHistoryScreen: React.FC<TransactionHistoryScreenProps> = () => 
   if (isInitialLoading) {
     return (
       <>
-        <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
+        <StatusBar barStyle={themeColors.colors.statusBarStyle} backgroundColor={themeColors.colors.surface} />
         <SafeAreaView style={styles.container} edges={['top']}>
           <View style={styles.header}>
             <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
@@ -409,7 +411,7 @@ const TransactionHistoryScreen: React.FC<TransactionHistoryScreenProps> = () => 
         onPress={() => handleTransactionPress(item.id)}
       >
         <View style={styles.transactionIcon}>
-          <Icon name={iconName} size={24} color={theme.colors.textPrimary} />
+          <Icon name={iconName} size={24} color={themeColors.colors.textPrimary} />
         </View>
         <View style={styles.transactionDetails}>
           <Text style={styles.transactionDescription}>{title}</Text>
@@ -446,7 +448,7 @@ const TransactionHistoryScreen: React.FC<TransactionHistoryScreenProps> = () => 
 
   return (
     <>
-      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
+      <StatusBar barStyle={themeColors.colors.statusBarStyle} backgroundColor={themeColors.colors.surface} />
       <SafeAreaView style={styles.container} edges={['top']}>
         {/* Header */}
         <View style={styles.header}>
@@ -583,7 +585,7 @@ const TransactionHistoryScreen: React.FC<TransactionHistoryScreenProps> = () => 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: themeColors.colors.backgroundLight,
   },
   header: {
     flexDirection: 'row',
@@ -591,9 +593,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: theme.spacing.base,
     paddingVertical: theme.spacing.md,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: themeColors.colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    borderBottomColor: themeColors.colors.border,
   },
   backButton: {
     width: 44,
@@ -608,18 +610,17 @@ const styles = StyleSheet.create({
     color: theme.colors.textPrimary,
     letterSpacing: -0.5,
   },
-  filterSection: {
-    backgroundColor: theme.colors.surface,
+  filterSection: { backgroundColor: themeColors.colors.surface,
     paddingTop: theme.spacing.sm,
     paddingBottom: theme.spacing.base,
     paddingHorizontal: theme.spacing.base,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    borderBottomColor: themeColors.colors.border,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: themeColors.colors.backgroundLight,
     borderRadius: theme.borderRadius.xl,
     paddingHorizontal: theme.spacing.base,
     paddingVertical: theme.spacing.md,
@@ -641,7 +642,7 @@ const styles = StyleSheet.create({
   },
   filterDropdownButton: {
     flex: 1,
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: themeColors.colors.backgroundLight,
     borderRadius: theme.borderRadius.full,
     paddingHorizontal: theme.spacing.base,
     paddingVertical: theme.spacing.sm,
@@ -654,7 +655,7 @@ const styles = StyleSheet.create({
   },
   segmentedControl: {
     flexDirection: 'row',
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: themeColors.colors.backgroundLight,
     borderRadius: theme.borderRadius.full,
     padding: 4,
     gap: 4,
@@ -665,8 +666,7 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.full,
     alignItems: 'center',
   },
-  segmentButtonActive: {
-    backgroundColor: theme.colors.primary,
+  segmentButtonActive: { backgroundColor: themeColors.colors.primary,
     ...theme.shadows.sm,
   },
   segmentButtonText: {
@@ -674,8 +674,7 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.medium,
     color: theme.colors.textSecondary,
   },
-  segmentButtonTextActive: {
-    color: theme.colors.surface,
+  segmentButtonTextActive: { color: themeColors.colors.surface,
     fontFamily: theme.fonts.semiBold,
   },
   transactionsList: {
@@ -688,12 +687,12 @@ const styles = StyleSheet.create({
   transactionCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.surface,
+    backgroundColor: themeColors.colors.surface,
     paddingVertical: theme.spacing.base,
     paddingHorizontal: theme.spacing.base,
     gap: theme.spacing.base,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.divider,
+    borderBottomColor: themeColors.colors.divider,
   },
   transactionIcon: {
     width: 48,
@@ -701,7 +700,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: themeColors.colors.backgroundLight,
   },
   transactionDetails: {
     flex: 1,
@@ -725,11 +724,9 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSizes.base,
     fontFamily: theme.fonts.medium,
   },
-  creditAmount: {
-    color: theme.colors.accentDarker,
+  creditAmount: { color: themeColors.colors.accentDarker,
   },
-  debitAmount: {
-    color: theme.colors.textSecondary,
+  debitAmount: { color: themeColors.colors.textSecondary,
   },
   statusBadge: {
     flexDirection: 'row',
@@ -775,7 +772,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: themeColors.colors.backgroundLight,
   },
   loadingText: {
     marginTop: theme.spacing.md,
@@ -803,8 +800,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
-  modalContent: {
-    backgroundColor: theme.colors.surface,
+  modalContent: { backgroundColor: themeColors.colors.surface,
     borderTopLeftRadius: theme.borderRadius['2xl'],
     borderTopRightRadius: theme.borderRadius['2xl'],
     paddingTop: theme.spacing.xl,

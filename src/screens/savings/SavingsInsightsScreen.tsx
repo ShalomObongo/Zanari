@@ -6,11 +6,13 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useSavingsStore } from '@/store/savingsStore';
 import { useTransactionStore } from '@/store/transactionStore';
 import { formatCurrency } from '@/utils/formatters';
+import { useTheme } from '@/theme';
 import theme from '@/theme';
 
 const monthsBack = 6;
 
 const SavingsInsightsScreen: React.FC = () => {
+  const themeColors = useTheme();
   const navigation = useNavigation<any>();
   const goals = useSavingsStore((s) => s.goals);
   const getTotalSavedAmount = useSavingsStore((s) => s.getTotalSavedAmount);
@@ -60,12 +62,12 @@ const SavingsInsightsScreen: React.FC = () => {
 
   return (
     <>
-      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
+      <StatusBar barStyle={themeColors.colors.statusBarStyle} backgroundColor={themeColors.colors.surface} />
       <SafeAreaView style={styles.container} edges={['top']}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Icon name="arrow-back" size={24} color={theme.colors.textPrimary} />
+            <Icon name="arrow-back" size={24} color={themeColors.colors.textPrimary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Savings Insights</Text>
           <View style={styles.headerSpacer} />
@@ -75,7 +77,7 @@ const SavingsInsightsScreen: React.FC = () => {
           {/* Hero Summary */}
           <View style={styles.summaryCard}>
             <View style={styles.summaryHeader}>
-              <Icon name="pie-chart" size={24} color={theme.colors.accent} />
+              <Icon name="pie-chart" size={24} color={themeColors.colors.accent} />
               <Text style={styles.summaryTitle}>Total Saved Across Goals</Text>
             </View>
             <Text style={styles.summaryAmount}>{formatCurrency(totalSaved)}</Text>
@@ -84,15 +86,15 @@ const SavingsInsightsScreen: React.FC = () => {
 
           {/* Stat Grid */}
           <View style={styles.statsRow}>
-            <View style={[styles.statCard, { borderColor: theme.colors.accent }]}>
+            <View style={[styles.statCard, { borderColor: themeColors.colors.accent }]}>
               <Text style={styles.statLabel}>Active Goals</Text>
               <Text style={styles.statValue}>{activeGoals.length}</Text>
             </View>
-            <View style={[styles.statCard, { borderColor: theme.colors.info }]}>
+            <View style={[styles.statCard, { borderColor: themeColors.colors.info }]}>
               <Text style={styles.statLabel}>Completed (Uncashed)</Text>
               <Text style={styles.statValue}>{completedPendingCashOut.length}</Text>
             </View>
-            <View style={[styles.statCard, { borderColor: theme.colors.textSecondary }]}>
+            <View style={[styles.statCard, { borderColor: themeColors.colors.textSecondary }]}>
               <Text style={styles.statLabel}>Cashed Out</Text>
               <Text style={styles.statValue}>{cashedOutGoals.length}</Text>
             </View>
@@ -125,7 +127,7 @@ const SavingsInsightsScreen: React.FC = () => {
               .map((t) => (
                 <View key={t.id} style={styles.activityItem}>
                   <View style={[styles.activityIcon, t.type === 'withdrawal' ? styles.iconWithdrawal : styles.iconDeposit]}>
-                    <Icon name={t.type === 'withdrawal' ? 'south' : 'north'} size={18} color={theme.colors.surface} />
+                    <Icon name={t.type === 'withdrawal' ? 'south' : 'north'} size={18} color={themeColors.colors.surface} />
                   </View>
                   <View style={styles.activityInfo}>
                     <Text style={styles.activityTitle}>
@@ -155,16 +157,16 @@ const SavingsInsightsScreen: React.FC = () => {
 };
 
   const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: theme.colors.backgroundLight },
+  container: { flex: 1, backgroundColor: themeColors.colors.backgroundLight },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: theme.spacing.base,
     paddingVertical: theme.spacing.md,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: themeColors.colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    borderBottomColor: themeColors.colors.border,
   },
   backButton: { width: 48, height: 48, justifyContent: 'center', alignItems: 'center' },
   headerTitle: { fontSize: theme.fontSizes.lg, fontFamily: theme.fonts.bold, color: theme.colors.textPrimary },
@@ -174,7 +176,7 @@ const SavingsInsightsScreen: React.FC = () => {
   summaryCard: {
     marginHorizontal: theme.spacing.base,
     marginTop: theme.spacing.base,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: themeColors.colors.surface,
     borderRadius: theme.borderRadius.xl,
     padding: theme.spacing.xl,
     ...theme.shadows.DEFAULT,
@@ -191,13 +193,13 @@ const SavingsInsightsScreen: React.FC = () => {
   },
   statCard: {
     flex: 1,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: themeColors.colors.surface,
     borderRadius: theme.borderRadius.lg,
     paddingVertical: theme.spacing.base,
     alignItems: 'center',
     borderWidth: 1,
   },
-  statLabel: { color: theme.colors.textSecondary, fontFamily: theme.fonts.medium },
+  statLabel: { color: themeColors.colors.textSecondary, fontFamily: theme.fonts.medium },
   statValue: { marginTop: 4, fontSize: 20, color: theme.colors.textPrimary, fontFamily: theme.fonts.bold },
   sectionTitle: {
     marginTop: theme.spacing.lg,
@@ -207,8 +209,7 @@ const SavingsInsightsScreen: React.FC = () => {
     fontFamily: theme.fonts.bold,
     fontSize: theme.fontSizes.base,
   },
-  chartContainer: {
-    backgroundColor: theme.colors.surface,
+  chartContainer: { backgroundColor: themeColors.colors.surface,
     marginHorizontal: theme.spacing.base,
     borderRadius: theme.borderRadius.lg,
     padding: theme.spacing.base,
@@ -220,31 +221,30 @@ const SavingsInsightsScreen: React.FC = () => {
     flex: 1,
     height: 12,
     borderRadius: 6,
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: themeColors.colors.backgroundLight,
     marginHorizontal: 8,
     overflow: 'hidden',
   },
-  chartBarFill: { height: 12, backgroundColor: theme.colors.accent, borderRadius: 6 },
+  chartBarFill: { height: 12, backgroundColor: themeColors.colors.accent, borderRadius: 6 },
   chartValue: { width: 100, textAlign: 'right', color: theme.colors.textSecondary },
   goalCard: {
     marginHorizontal: theme.spacing.base,
     marginBottom: theme.spacing.sm,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: themeColors.colors.surface,
     borderRadius: theme.borderRadius.lg,
     padding: theme.spacing.base,
   },
   goalHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   goalTitle: { fontFamily: theme.fonts.semiBold, color: theme.colors.textPrimary },
   goalMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
-  goalMetaText: { color: theme.colors.textSecondary },
-  goalMetaSubText: { color: theme.colors.textTertiary },
+  goalMetaText: { color: themeColors.colors.textSecondary },
+  goalMetaSubText: { color: themeColors.colors.textTertiary },
   emptyState: { alignItems: 'center', paddingVertical: theme.spacing.xl },
   emptyIcon: { fontSize: 28 },
   emptyTitle: { marginTop: 8, fontFamily: theme.fonts.bold, color: theme.colors.textPrimary },
   emptyDescription: { marginTop: 4, color: theme.colors.textSecondary },
 
-  activityList: {
-    backgroundColor: theme.colors.surface,
+  activityList: { backgroundColor: themeColors.colors.surface,
     marginHorizontal: theme.spacing.base,
     borderRadius: theme.borderRadius.lg,
     paddingVertical: theme.spacing.base,
@@ -264,14 +264,14 @@ const SavingsInsightsScreen: React.FC = () => {
     justifyContent: 'center',
     marginRight: theme.spacing.base,
   },
-  iconWithdrawal: { backgroundColor: theme.colors.error },
-  iconDeposit: { backgroundColor: theme.colors.accent },
+  iconWithdrawal: { backgroundColor: themeColors.colors.error },
+  iconDeposit: { backgroundColor: themeColors.colors.accent },
   activityInfo: { flex: 1 },
-  activityTitle: { color: theme.colors.textPrimary, fontFamily: theme.fonts.semiBold },
-  activitySubtitle: { color: theme.colors.textSecondary },
+  activityTitle: { color: themeColors.colors.textPrimary, fontFamily: theme.fonts.semiBold },
+  activitySubtitle: { color: themeColors.colors.textSecondary },
   activityAmount: { fontFamily: theme.fonts.bold },
-  positive: { color: theme.colors.accent },
-  negative: { color: theme.colors.error },
+  positive: { color: themeColors.colors.accent },
+  negative: { color: themeColors.colors.error },
 });
 
 export default SavingsInsightsScreen;

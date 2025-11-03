@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
+import { useTheme } from '@/theme';
 import theme from '@/theme';
 import { useAuthStore } from '@/store/authStore';
 import { ApiError } from '@/services/api';
@@ -45,6 +46,7 @@ const isValidKenyanPhone = (value: string) => /^254(7[0-9]{8}|1[0-9]{8})$/.test(
 const MIN_NAME_LENGTH = 2;
 
 const EditProfileScreen: React.FC = () => {
+  const themeColors = useTheme();
   const navigation = useNavigation<any>();
   const user = useAuthStore((state) => state.user);
   const updateProfile = useAuthStore((state) => state.updateProfile);
@@ -162,7 +164,7 @@ const EditProfileScreen: React.FC = () => {
 
   return (
     <>
-      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.backgroundLight} />
+      <StatusBar barStyle={themeColors.colors.statusBarStyle} backgroundColor={themeColors.colors.backgroundLight} />
       <SafeAreaView style={styles.container} edges={['top']}>
         <KeyboardAvoidingView
           style={styles.keyboardContainer}
@@ -170,7 +172,7 @@ const EditProfileScreen: React.FC = () => {
         >
           <View style={styles.header}>
             <TouchableOpacity style={styles.backButton} onPress={handleBack} accessibilityLabel="Go back">
-              <Icon name="arrow-back" size={24} color={theme.colors.textPrimary} />
+              <Icon name="arrow-back" size={24} color={themeColors.colors.textPrimary} />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Edit Profile</Text>
             <View style={styles.headerSpacer} />
@@ -197,7 +199,7 @@ const EditProfileScreen: React.FC = () => {
                   value={firstName}
                   onChangeText={setFirstName}
                   placeholder="Enter your first name"
-                  placeholderTextColor={theme.colors.textTertiary}
+                  placeholderTextColor={themeColors.colors.textTertiary}
                   autoCapitalize="words"
                   returnKeyType="next"
                 />
@@ -210,7 +212,7 @@ const EditProfileScreen: React.FC = () => {
                   value={lastName}
                   onChangeText={setLastName}
                   placeholder="Enter your last name"
-                  placeholderTextColor={theme.colors.textTertiary}
+                  placeholderTextColor={themeColors.colors.textTertiary}
                   autoCapitalize="words"
                   returnKeyType="next"
                 />
@@ -223,7 +225,7 @@ const EditProfileScreen: React.FC = () => {
                   value={email}
                   onChangeText={setEmail}
                   placeholder="Enter your email"
-                  placeholderTextColor={theme.colors.textTertiary}
+                  placeholderTextColor={themeColors.colors.textTertiary}
                   autoCapitalize="none"
                   keyboardType="email-address"
                   returnKeyType="next"
@@ -240,7 +242,7 @@ const EditProfileScreen: React.FC = () => {
                   value={phoneNumber}
                   onChangeText={handlePhoneChange}
                   placeholder="2547XXXXXXXX"
-                  placeholderTextColor={theme.colors.textTertiary}
+                  placeholderTextColor={themeColors.colors.textTertiary}
                   keyboardType="phone-pad"
                   returnKeyType="done"
                   maxLength={12}
@@ -257,7 +259,7 @@ const EditProfileScreen: React.FC = () => {
               testID="edit-profile-save-button"
             >
               {isUpdatingProfile ? (
-                <ActivityIndicator color={theme.colors.onPrimaryText} />
+                <ActivityIndicator color={themeColors.colors.onPrimaryText} />
               ) : (
                 <Text style={styles.saveButtonText}>Save Changes</Text>
               )}
@@ -272,7 +274,7 @@ const EditProfileScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: themeColors.colors.backgroundLight,
   },
   keyboardContainer: {
     flex: 1,
@@ -282,9 +284,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 24,
     paddingVertical: 16,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: themeColors.colors.surface,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.border,
+    borderBottomColor: themeColors.colors.border,
   },
   backButton: {
     width: 40,
@@ -292,7 +294,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: themeColors.colors.gray100,
   },
   headerTitle: {
     flex: 1,
@@ -358,33 +360,31 @@ const styles = StyleSheet.create({
   },
   textInput: {
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: themeColors.colors.border,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontFamily: theme.fonts.regular,
     fontSize: 16,
     color: theme.colors.textPrimary,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: themeColors.colors.surface,
   },
   footer: {
     paddingHorizontal: 24,
     paddingTop: 16,
     paddingBottom: Platform.OS === 'ios' ? 32 : 24,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: themeColors.colors.surface,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: theme.colors.border,
+    borderTopColor: themeColors.colors.border,
   },
-  saveButton: {
-    backgroundColor: theme.colors.accent,
+  saveButton: { backgroundColor: themeColors.colors.accent,
     borderRadius: 16,
     paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
     ...theme.shadows.md,
   },
-  saveButtonDisabled: {
-    backgroundColor: theme.colors.disabled,
+  saveButtonDisabled: { backgroundColor: themeColors.colors.disabled,
     shadowOpacity: 0,
     shadowRadius: 0,
     elevation: 0,

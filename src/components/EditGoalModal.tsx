@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useSavingsStore } from '@/store/savingsStore';
 import { formatCurrency, parseCentsFromInput } from '@/utils/formatters';
+import { useTheme } from '@/theme';
 import theme from '@/theme';
 
 interface EditGoalModalProps {
@@ -35,6 +36,7 @@ const GOAL_CATEGORIES = {
 };
 
 const EditGoalModal: React.FC<EditGoalModalProps> = ({ visible, goalId, onClose, onSuccess }) => {
+  const themeColors = useTheme();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [goalData, setGoalData] = useState({
     name: '',
@@ -161,7 +163,7 @@ const EditGoalModal: React.FC<EditGoalModalProps> = ({ visible, goalId, onClose,
               disabled={isSubmitting || !canEdit}
             >
               {isSubmitting ? (
-                <ActivityIndicator size="small" color={theme.colors.accent} />
+                <ActivityIndicator size="small" color={themeColors.colors.accent} />
               ) : (
                 <Text style={[styles.saveText, !canEdit && styles.saveTextDisabled]}>Save</Text>
               )}
@@ -171,7 +173,7 @@ const EditGoalModal: React.FC<EditGoalModalProps> = ({ visible, goalId, onClose,
           <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
             {!canEdit && (
               <View style={styles.warningCard}>
-                <Icon name="info-outline" size={20} color={theme.colors.warning} />
+                <Icon name="info-outline" size={20} color={themeColors.colors.warning} />
                 <Text style={styles.warningText}>
                   This goal cannot be edited because it is {currentGoal.status}
                 </Text>
@@ -205,7 +207,7 @@ const EditGoalModal: React.FC<EditGoalModalProps> = ({ visible, goalId, onClose,
                 value={goalData.name}
                 onChangeText={(text) => setGoalData((prev) => ({ ...prev, name: text }))}
                 placeholder="e.g., Emergency Fund, New Car, Vacation"
-                placeholderTextColor={theme.colors.textTertiary}
+                placeholderTextColor={themeColors.colors.textTertiary}
                 maxLength={50}
                 editable={canEdit}
               />
@@ -219,7 +221,7 @@ const EditGoalModal: React.FC<EditGoalModalProps> = ({ visible, goalId, onClose,
                 value={goalData.description}
                 onChangeText={(text) => setGoalData((prev) => ({ ...prev, description: text }))}
                 placeholder="Brief description of your savings goal"
-                placeholderTextColor={theme.colors.textTertiary}
+                placeholderTextColor={themeColors.colors.textTertiary}
                 multiline
                 numberOfLines={3}
                 maxLength={200}
@@ -237,7 +239,7 @@ const EditGoalModal: React.FC<EditGoalModalProps> = ({ visible, goalId, onClose,
                   setGoalData((prev) => ({ ...prev, targetAmount: text.replace(/[^0-9]/g, '') }))
                 }
                 placeholder="50000"
-                placeholderTextColor={theme.colors.textTertiary}
+                placeholderTextColor={themeColors.colors.textTertiary}
                 keyboardType="numeric"
                 editable={canEdit}
               />
@@ -254,7 +256,7 @@ const EditGoalModal: React.FC<EditGoalModalProps> = ({ visible, goalId, onClose,
                 value={goalData.targetDate}
                 onChangeText={(text) => setGoalData((prev) => ({ ...prev, targetDate: text }))}
                 placeholder="YYYY-MM-DD (e.g., 2025-12-31)"
-                placeholderTextColor={theme.colors.textTertiary}
+                placeholderTextColor={themeColors.colors.textTertiary}
                 editable={canEdit}
               />
               <Text style={styles.helpText}>Leave empty if you don't have a specific deadline</Text>
@@ -301,7 +303,7 @@ const EditGoalModal: React.FC<EditGoalModalProps> = ({ visible, goalId, onClose,
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: themeColors.colors.backgroundLight,
   },
   content: {
     flex: 1,
@@ -312,9 +314,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: theme.spacing.lg,
     paddingVertical: theme.spacing.base,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: themeColors.colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    borderBottomColor: themeColors.colors.border,
   },
   cancelButton: {
     padding: theme.spacing.sm,
@@ -337,8 +339,7 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.semiBold,
     color: theme.colors.accent,
   },
-  saveTextDisabled: {
-    color: theme.colors.textTertiary,
+  saveTextDisabled: { color: themeColors.colors.textTertiary,
   },
   scrollView: {
     flex: 1,
@@ -362,13 +363,12 @@ const styles = StyleSheet.create({
     color: theme.colors.warning,
     lineHeight: 20,
   },
-  progressCard: {
-    backgroundColor: theme.colors.surface,
+  progressCard: { backgroundColor: themeColors.colors.surface,
     padding: theme.spacing.xl,
     borderRadius: theme.borderRadius.xl,
     marginTop: theme.spacing.lg,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: themeColors.colors.border,
   },
   progressHeader: {
     flexDirection: 'row',
@@ -396,12 +396,12 @@ const styles = StyleSheet.create({
   progressBarBackground: {
     width: '100%',
     height: 8,
-    backgroundColor: theme.colors.gray200,
+    backgroundColor: themeColors.colors.gray200,
     borderRadius: theme.borderRadius.full,
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: theme.colors.accent,
+    backgroundColor: themeColors.colors.accent,
     borderRadius: theme.borderRadius.full,
   },
   formGroup: {
@@ -413,10 +413,9 @@ const styles = StyleSheet.create({
     color: theme.colors.textPrimary,
     marginBottom: theme.spacing.sm,
   },
-  formInput: {
-    backgroundColor: theme.colors.surface,
+  formInput: { backgroundColor: themeColors.colors.surface,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: themeColors.colors.border,
     borderRadius: theme.borderRadius.xl,
     paddingHorizontal: theme.spacing.base,
     paddingVertical: theme.spacing.md,
@@ -424,8 +423,7 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.regular,
     color: theme.colors.textPrimary,
   },
-  formInputDisabled: {
-    backgroundColor: theme.colors.gray100,
+  formInputDisabled: { backgroundColor: themeColors.colors.gray100,
     color: theme.colors.textTertiary,
   },
   textArea: {
@@ -446,9 +444,9 @@ const styles = StyleSheet.create({
     padding: theme.spacing.md,
     marginRight: theme.spacing.md,
     borderRadius: theme.borderRadius.xl,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: themeColors.colors.surface,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: themeColors.colors.border,
     minWidth: 80,
   },
   categoryButtonDisabled: {

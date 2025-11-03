@@ -16,6 +16,7 @@ import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useRoundUpStore } from '@/store/roundUpStore';
 import { formatCurrency } from '@/utils/formatters';
+import { useTheme } from '@/theme';
 import theme from '@/theme';
 
 type IncrementType = '10' | '50' | '100' | 'auto' | 'percentage';
@@ -37,6 +38,7 @@ const INCREMENT_OPTIONS: Array<{ value: IncrementType; label: string; descriptio
 ];
 
 const RoundUpSettingsScreen = () => {
+  const themeColors = useTheme();
   const navigation = useNavigation();
   const {
     rule,
@@ -132,17 +134,17 @@ const RoundUpSettingsScreen = () => {
         <Text style={styles.sectionTitle}>Your Round-Up Stats</Text>
         <View style={styles.statsGrid}>
           <View style={styles.statCard}>
-            <Icon name="savings" size={24} color={theme.colors.accent} />
+            <Icon name="savings" size={24} color={themeColors.colors.accent} />
             <Text style={styles.statValue}>{formatCurrency(rule.total_amount_saved)}</Text>
             <Text style={styles.statLabel}>Total Saved</Text>
           </View>
           <View style={styles.statCard}>
-            <Icon name="trending-up" size={24} color={theme.colors.success} />
+            <Icon name="trending-up" size={24} color={themeColors.colors.success} />
             <Text style={styles.statValue}>{rule.total_round_ups_count}</Text>
             <Text style={styles.statLabel}>Round-Ups</Text>
           </View>
           <View style={styles.statCard}>
-            <Icon name="analytics" size={24} color={theme.colors.accent} />
+            <Icon name="analytics" size={24} color={themeColors.colors.accent} />
             <Text style={styles.statValue}>
               {rule.total_round_ups_count > 0
                 ? formatCurrency(Math.round(rule.total_amount_saved / rule.total_round_ups_count))
@@ -191,7 +193,7 @@ const RoundUpSettingsScreen = () => {
         {analysis.recommendations.map((rec, index) => (
           <View key={index} style={styles.recommendationCard}>
             <View style={styles.recommendationHeader}>
-              <Icon name="lightbulb" size={20} color={theme.colors.warning} />
+              <Icon name="lightbulb" size={20} color={themeColors.colors.warning} />
               <Text style={styles.recommendationType}>{rec.type}</Text>
             </View>
             <Text style={styles.recommendationMessage}>{rec.message}</Text>
@@ -208,7 +210,7 @@ const RoundUpSettingsScreen = () => {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.colors.accent} />
+          <ActivityIndicator size="large" color={themeColors.colors.accent} />
           <Text style={styles.loadingText}>Loading round-up settings...</Text>
         </View>
       </SafeAreaView>
@@ -217,12 +219,12 @@ const RoundUpSettingsScreen = () => {
 
   return (
     <>
-      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
+      <StatusBar barStyle={themeColors.colors.statusBarStyle} backgroundColor={themeColors.colors.surface} />
       <SafeAreaView style={styles.container} edges={['top']}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Icon name="arrow-back" size={24} color={theme.colors.textPrimary} />
+            <Icon name="arrow-back" size={24} color={themeColors.colors.textPrimary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Round-Up Savings</Text>
           <View style={styles.headerSpacer} />
@@ -241,7 +243,7 @@ const RoundUpSettingsScreen = () => {
               <Switch
                 value={isEnabled}
                 onValueChange={handleToggleEnabled}
-                trackColor={{ false: theme.colors.gray300, true: theme.colors.accent }}
+                trackColor={{ false: themeColors.colors.gray300, true: themeColors.colors.accent }}
                 thumbColor={isEnabled ? theme.colors.surface : theme.colors.gray400}
                 disabled={isUpdating}
               />
@@ -295,7 +297,7 @@ const RoundUpSettingsScreen = () => {
                     onChangeText={setPercentageValue}
                     keyboardType="decimal-pad"
                     placeholder="5"
-                    placeholderTextColor={theme.colors.textTertiary}
+                    placeholderTextColor={themeColors.colors.textTertiary}
                     maxLength={5}
                   />
                   <TouchableOpacity
@@ -322,7 +324,7 @@ const RoundUpSettingsScreen = () => {
           {/* Info Section */}
           <View style={styles.infoSection}>
             <View style={styles.infoCard}>
-              <Icon name="info" size={20} color={theme.colors.accent} />
+              <Icon name="info" size={20} color={themeColors.colors.accent} />
               <Text style={styles.infoText}>
                 Round-up savings are automatically transferred to your savings wallet after each transaction.
                 Watch your savings grow effortlessly!
@@ -338,7 +340,7 @@ const RoundUpSettingsScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: themeColors.colors.surface,
   },
   loadingContainer: {
     flex: 1,
@@ -358,7 +360,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.base,
     paddingVertical: theme.spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray200,
+    borderBottomColor: themeColors.colors.gray200,
   },
   backButton: {
     width: 48,
@@ -382,7 +384,7 @@ const styles = StyleSheet.create({
   section: {
     padding: theme.spacing.base,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray200,
+    borderBottomColor: themeColors.colors.gray200,
   },
   toggleRow: {
     flexDirection: 'row',
@@ -422,14 +424,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: theme.spacing.md,
     borderRadius: theme.borderRadius.lg,
-    backgroundColor: theme.colors.gray50,
+    backgroundColor: themeColors.colors.gray50,
     marginBottom: theme.spacing.sm,
     borderWidth: 2,
     borderColor: 'transparent',
   },
-  incrementOptionSelected: {
-    backgroundColor: theme.colors.gray50,
-    borderColor: theme.colors.accent,
+  incrementOptionSelected: { backgroundColor: themeColors.colors.gray50,
+    borderColor: themeColors.colors.accent,
   },
   incrementLeft: {
     flexDirection: 'row',
@@ -441,19 +442,18 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: theme.colors.gray300,
+    borderColor: themeColors.colors.gray300,
     marginRight: theme.spacing.md,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  radioSelected: {
-    borderColor: theme.colors.accent,
+  radioSelected: { borderColor: themeColors.colors.accent,
   },
   radioInner: {
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: theme.colors.accent,
+    backgroundColor: themeColors.colors.accent,
   },
   incrementLabel: {
     fontSize: theme.fontSizes.base,
@@ -470,7 +470,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.sm,
     paddingVertical: 4,
     borderRadius: theme.borderRadius.sm,
-    backgroundColor: theme.colors.accent,
+    backgroundColor: themeColors.colors.accent,
   },
   autoTagText: {
     fontSize: theme.fontSizes.xs,
@@ -480,7 +480,7 @@ const styles = StyleSheet.create({
   statsContainer: {
     padding: theme.spacing.base,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray200,
+    borderBottomColor: themeColors.colors.gray200,
   },
   statsGrid: {
     flexDirection: 'row',
@@ -491,7 +491,7 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: theme.spacing.md,
     borderRadius: theme.borderRadius.lg,
-    backgroundColor: theme.colors.gray50,
+    backgroundColor: themeColors.colors.gray50,
     alignItems: 'center',
   },
   statValue: {
@@ -510,10 +510,9 @@ const styles = StyleSheet.create({
   projectionsContainer: {
     padding: theme.spacing.base,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray200,
+    borderBottomColor: themeColors.colors.gray200,
   },
-  projectionsList: {
-    backgroundColor: theme.colors.gray50,
+  projectionsList: { backgroundColor: themeColors.colors.gray50,
     borderRadius: theme.borderRadius.lg,
     padding: theme.spacing.md,
   },
@@ -523,7 +522,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: theme.spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray200,
+    borderBottomColor: themeColors.colors.gray200,
   },
   projectionLabel: {
     fontSize: theme.fontSizes.base,
@@ -538,7 +537,7 @@ const styles = StyleSheet.create({
   recommendationsContainer: {
     padding: theme.spacing.base,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray200,
+    borderBottomColor: themeColors.colors.gray200,
   },
   recommendationCard: {
     padding: theme.spacing.md,
@@ -575,7 +574,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     padding: theme.spacing.md,
     borderRadius: theme.borderRadius.lg,
-    backgroundColor: theme.colors.gray50,
+    backgroundColor: themeColors.colors.gray50,
   },
   infoText: {
     flex: 1,
@@ -588,10 +587,10 @@ const styles = StyleSheet.create({
   percentageInputContainer: {
     marginTop: theme.spacing.md,
     padding: theme.spacing.md,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: themeColors.colors.surface,
     borderRadius: theme.borderRadius.lg,
     borderWidth: 1,
-    borderColor: theme.colors.accent,
+    borderColor: themeColors.colors.accent,
   },
   percentageInputLabel: {
     fontSize: theme.fontSizes.sm,
@@ -602,18 +601,18 @@ const styles = StyleSheet.create({
   percentageInput: {
     height: 48,
     borderWidth: 1,
-    borderColor: theme.colors.gray300,
+    borderColor: themeColors.colors.gray300,
     borderRadius: theme.borderRadius.DEFAULT,
     paddingHorizontal: theme.spacing.md,
     fontSize: theme.fontSizes.base,
     fontFamily: theme.fonts.regular,
     color: theme.colors.textPrimary,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: themeColors.colors.surface,
     marginBottom: theme.spacing.sm,
   },
   applyButton: {
     height: 40,
-    backgroundColor: theme.colors.accent,
+    backgroundColor: themeColors.colors.accent,
     borderRadius: theme.borderRadius.DEFAULT,
     justifyContent: 'center',
     alignItems: 'center',

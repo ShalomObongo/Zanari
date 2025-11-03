@@ -262,7 +262,7 @@ const SettingsScreen: React.FC = () => {
       activeOpacity={rightElement === 'arrow' ? 0.7 : 1}
     >
       <View style={styles.settingLeft}>
-        <Icon name={icon} size={24} color={theme.colors.textSecondary} />
+        <Icon name={icon} size={24} color={themeColors.colors.textSecondary} />
         <View style={styles.settingTextContainer}>
           <Text style={[styles.settingTitle, { color: theme.colors.textPrimary }]}>{title}</Text>
           {subtitle && <Text style={[styles.settingSubtitle, { color: theme.colors.textSecondary }]}>{subtitle}</Text>}
@@ -272,13 +272,13 @@ const SettingsScreen: React.FC = () => {
         <Switch
           value={switchValue}
           onValueChange={onSwitchChange}
-          trackColor={{ false: theme.colors.gray200, true: theme.colors.accent }}
-          thumbColor={theme.colors.surface}
-          ios_backgroundColor={theme.colors.gray200}
+          trackColor={{ false: themeColors.colors.gray200, true: themeColors.colors.accent }}
+          thumbColor={themeColors.colors.surface}
+          ios_backgroundColor={themeColors.colors.gray200}
         />
       )}
       {rightElement === 'arrow' && (
-        <Icon name="arrow-forward-ios" size={20} color={theme.colors.textTertiary} />
+        <Icon name="arrow-forward-ios" size={20} color={themeColors.colors.textTertiary} />
       )}
     </TouchableOpacity>
   );
@@ -301,20 +301,20 @@ const SettingsScreen: React.FC = () => {
         <Switch
           value={switchValue}
           onValueChange={onSwitchChange}
-          trackColor={{ false: theme.colors.gray200, true: theme.colors.accent }}
-          thumbColor={theme.colors.surface}
-          ios_backgroundColor={theme.colors.gray200}
+          trackColor={{ false: themeColors.colors.gray200, true: themeColors.colors.accent }}
+          thumbColor={themeColors.colors.surface}
+          ios_backgroundColor={themeColors.colors.gray200}
         />
       )}
       {rightElement === 'arrow' && (
-        <Icon name="arrow-forward-ios" size={20} color={theme.colors.textTertiary} />
+        <Icon name="arrow-forward-ios" size={20} color={themeColors.colors.textTertiary} />
       )}
     </TouchableOpacity>
   );
 
   return (
     <>
-      <StatusBar barStyle={theme.colors.statusBarStyle} backgroundColor={theme.colors.surface} />
+      <StatusBar barStyle={theme.colors.statusBarStyle} backgroundColor={themeColors.colors.surface} />
       <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.surface }]} edges={['top']}>
         {/* Header */}
         <View style={[styles.header, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.gray100 }]}>
@@ -577,12 +577,12 @@ const SettingsScreen: React.FC = () => {
                   setThemeModalVisible(false);
                 }}
               >
-                <Icon name="wb-sunny" size={24} color={theme.colors.textPrimary} />
+                <Icon name="wb-sunny" size={24} color={themeColors.colors.textPrimary} />
                 <Text style={[styles.themeOptionText, { color: theme.colors.textPrimary }]}>
                   Light Mode
                 </Text>
                 {themeMode === 'light' && (
-                  <Icon name="check" size={24} color={theme.colors.accent} />
+                  <Icon name="check" size={24} color={themeColors.colors.accent} />
                 )}
               </TouchableOpacity>
 
@@ -600,12 +600,12 @@ const SettingsScreen: React.FC = () => {
                   setThemeModalVisible(false);
                 }}
               >
-                <Icon name="nights-stay" size={24} color={theme.colors.textPrimary} />
+                <Icon name="nights-stay" size={24} color={themeColors.colors.textPrimary} />
                 <Text style={[styles.themeOptionText, { color: theme.colors.textPrimary }]}>
                   Dark Mode
                 </Text>
                 {themeMode === 'dark' && (
-                  <Icon name="check" size={24} color={theme.colors.accent} />
+                  <Icon name="check" size={24} color={themeColors.colors.accent} />
                 )}
               </TouchableOpacity>
 
@@ -623,12 +623,12 @@ const SettingsScreen: React.FC = () => {
                   setThemeModalVisible(false);
                 }}
               >
-                <Icon name="phone-android" size={24} color={theme.colors.textPrimary} />
+                <Icon name="phone-android" size={24} color={themeColors.colors.textPrimary} />
                 <Text style={[styles.themeOptionText, { color: theme.colors.textPrimary }]}>
                   System Default
                 </Text>
                 {themeMode === 'system' && (
-                  <Icon name="check" size={24} color={theme.colors.accent} />
+                  <Icon name="check" size={24} color={themeColors.colors.accent} />
                 )}
               </TouchableOpacity>
 

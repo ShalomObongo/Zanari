@@ -261,7 +261,7 @@ const PINEntryScreen: React.FC = () => {
 
   return (
     <>
-      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
+      <StatusBar barStyle={themeColors.colors.statusBarStyle} backgroundColor={themeColors.colors.surface} />
       <SafeAreaView style={styles.container} edges={['top']}>
         <KeyboardAvoidingView
           style={styles.keyboardContainer}
@@ -273,7 +273,7 @@ const PINEntryScreen: React.FC = () => {
               onPress={handleGoBack}
               disabled={isVerifyingPin}
             >
-              <Icon name="arrow-back" size={24} color={theme.colors.textPrimary} />
+              <Icon name="arrow-back" size={24} color={themeColors.colors.textPrimary} />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Enter PIN</Text>
             <View style={styles.headerSpacer} />
@@ -282,7 +282,7 @@ const PINEntryScreen: React.FC = () => {
           <View style={styles.content}>
             <View style={styles.heroSection}>
               <View style={styles.heroIcon}>
-                <Icon name="lock" size={32} color={theme.colors.primary} />
+                <Icon name="lock" size={32} color={themeColors.colors.primary} />
               </View>
               <Text style={styles.heroLabel}>Zanari</Text>
             </View>
@@ -328,7 +328,7 @@ const PINEntryScreen: React.FC = () => {
                   <Icon
                     name="fingerprint"
                     size={24}
-                    color={theme.colors.primary}
+                    color={themeColors.colors.primary}
                   />
                   <Text style={styles.biometricButtonText}>
                     {isAuthenticatingBiometric ? 'Authenticating...' : `Use ${biometricType}`}
@@ -353,7 +353,7 @@ const PINEntryScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: themeColors.colors.surface,
   },
   keyboardContainer: {
     flex: 1,
@@ -396,7 +396,7 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: themeColors.colors.gray100,
     justifyContent: 'center',
     alignItems: 'center',
     ...theme.shadows.sm,
@@ -453,7 +453,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing.xs,
     paddingVertical: theme.spacing.sm,
     paddingHorizontal: theme.spacing.base,
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: themeColors.colors.gray100,
     borderRadius: theme.borderRadius.lg,
   },
   biometricButtonText: {

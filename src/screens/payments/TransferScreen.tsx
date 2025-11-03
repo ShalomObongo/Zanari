@@ -25,11 +25,13 @@ import { useRoundUpStore } from '@/store/roundUpStore';
 import { formatCurrency, parseCentsFromInput } from '@/utils/formatters';
 import { calculateRoundUp, getRoundUpDescription } from '@/utils/roundUpCalculator';
 import api, { ApiError } from '@/services/api';
+import { useTheme } from '@/theme';
 import theme from '@/theme';
 
 interface TransferScreenProps {}
 
 const TransferScreen: React.FC<TransferScreenProps> = () => {
+  const themeColors = useTheme();
   const navigation = useNavigation<any>();
   const { popup } = usePaystack();
 
@@ -494,7 +496,7 @@ const TransferScreen: React.FC<TransferScreenProps> = () => {
 
   return (
     <>
-      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
+      <StatusBar barStyle={themeColors.colors.statusBarStyle} backgroundColor={themeColors.colors.surface} />
       <SafeAreaView style={styles.container} edges={['top']}>
         <KeyboardAvoidingView
           style={styles.keyboardContainer}
@@ -503,7 +505,7 @@ const TransferScreen: React.FC<TransferScreenProps> = () => {
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
-              <Icon name="arrow-back" size={24} color={theme.colors.textPrimary} />
+              <Icon name="arrow-back" size={24} color={themeColors.colors.textPrimary} />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Transfer</Text>
             <View style={styles.headerSpacer} />
@@ -518,7 +520,7 @@ const TransferScreen: React.FC<TransferScreenProps> = () => {
                 onPress={() => setShowPaymentMethodModal(true)}
               >
                 <View style={styles.accountIconContainer}>
-                  <Icon name={getPaymentMethodIcon(paymentMethod)} size={24} color={theme.colors.primary} />
+                  <Icon name={getPaymentMethodIcon(paymentMethod)} size={24} color={themeColors.colors.primary} />
                 </View>
                 <View style={styles.accountInfo}>
                   <Text style={styles.accountName}>{getPaymentMethodLabel(paymentMethod)}</Text>
@@ -528,7 +530,7 @@ const TransferScreen: React.FC<TransferScreenProps> = () => {
                       : fee > 0 ? `Fee: ${formatCurrency(fee)}` : 'No fees'}
                   </Text>
                 </View>
-                <Icon name="unfold-more" size={28} color={theme.colors.textPrimary} />
+                <Icon name="unfold-more" size={28} color={themeColors.colors.textPrimary} />
               </TouchableOpacity>
             </View>
 
@@ -542,20 +544,20 @@ const TransferScreen: React.FC<TransferScreenProps> = () => {
                   value={recipientPhone.startsWith('254') ? recipientPhone.slice(3) : recipientPhone}
                   onChangeText={(text) => handlePhoneChange('254' + text)}
                   placeholder="712 345 678"
-                  placeholderTextColor={theme.colors.textTertiary}
+                  placeholderTextColor={themeColors.colors.textTertiary}
                   keyboardType="phone-pad"
                   maxLength={9}
                 />
                 {isValidatingRecipient && (
-                  <ActivityIndicator size="small" color={theme.colors.primary} style={styles.validationIndicator} />
+                  <ActivityIndicator size="small" color={themeColors.colors.primary} style={styles.validationIndicator} />
                 )}
                 {!isValidatingRecipient && recipientUser?.exists && (
-                  <Icon name="check-circle" size={24} color={theme.colors.accent} style={styles.validationIndicator} />
+                  <Icon name="check-circle" size={24} color={themeColors.colors.accent} style={styles.validationIndicator} />
                 )}
               </View>
               {recipientUser?.exists && recipientName && (
                 <View style={styles.recipientInfoBanner}>
-                  <Icon name="person" size={20} color={theme.colors.accent} />
+                  <Icon name="person" size={20} color={themeColors.colors.accent} />
                   <Text style={styles.recipientInfoText}>{recipientName}</Text>
                 </View>
               )}
@@ -571,7 +573,7 @@ const TransferScreen: React.FC<TransferScreenProps> = () => {
                   value={amount}
                   onChangeText={handleAmountChange}
                   placeholder="0.00"
-                  placeholderTextColor={theme.colors.textTertiary}
+                  placeholderTextColor={themeColors.colors.textTertiary}
                   keyboardType="numeric"
                   maxLength={15}
                 />
@@ -586,7 +588,7 @@ const TransferScreen: React.FC<TransferScreenProps> = () => {
                 value={message}
                 onChangeText={setMessage}
                 placeholder="Add a note"
-                placeholderTextColor={theme.colors.textTertiary}
+                placeholderTextColor={themeColors.colors.textTertiary}
                 multiline
                 numberOfLines={4}
                 textAlignVertical="top"
@@ -614,7 +616,7 @@ const TransferScreen: React.FC<TransferScreenProps> = () => {
                   <View style={styles.previewRow}>
                     <View style={styles.previewLabelWithIcon}>
                       <Text style={styles.previewLabel}>Round-up to Savings</Text>
-                      <Icon name="info-outline" size={16} color={theme.colors.textSecondary} />
+                      <Icon name="info-outline" size={16} color={themeColors.colors.textSecondary} />
                     </View>
                     <Text style={styles.previewValueAccent}>
                       +{formatCurrency(roundUpAmount)}
@@ -624,7 +626,7 @@ const TransferScreen: React.FC<TransferScreenProps> = () => {
 
                 {roundUpRule?.is_enabled && roundUpCalculation && (
                   <View style={styles.roundUpInfoBanner}>
-                    <Icon name="savings" size={16} color={theme.colors.accent} />
+                    <Icon name="savings" size={16} color={themeColors.colors.accent} />
                     <Text style={styles.roundUpInfoText}>
                       {getRoundUpDescription(roundUpRule)}
                     </Text>
@@ -674,7 +676,7 @@ const TransferScreen: React.FC<TransferScreenProps> = () => {
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Payment Method</Text>
                 <TouchableOpacity onPress={() => setShowPaymentMethodModal(false)}>
-                  <Icon name="close" size={24} color={theme.colors.textPrimary} />
+                  <Icon name="close" size={24} color={themeColors.colors.textPrimary} />
                 </TouchableOpacity>
               </View>
               <View style={styles.modalList}>
@@ -686,14 +688,14 @@ const TransferScreen: React.FC<TransferScreenProps> = () => {
                   }}
                 >
                   <View style={styles.accountIconContainer}>
-                    <Icon name="account-balance-wallet" size={24} color={theme.colors.primary} />
+                    <Icon name="account-balance-wallet" size={24} color={themeColors.colors.primary} />
                   </View>
                   <View style={styles.accountInfo}>
                     <Text style={styles.accountName}>Main Wallet</Text>
                     <Text style={styles.accountBalance}>Free, instant transfer</Text>
                   </View>
                   {paymentMethod === 'wallet' && (
-                    <Icon name="check" size={20} color={theme.colors.accent} />
+                    <Icon name="check" size={20} color={themeColors.colors.accent} />
                   )}
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -704,14 +706,14 @@ const TransferScreen: React.FC<TransferScreenProps> = () => {
                   }}
                 >
                   <View style={styles.accountIconContainer}>
-                    <Icon name="savings" size={24} color={theme.colors.primary} />
+                    <Icon name="savings" size={24} color={themeColors.colors.primary} />
                   </View>
                   <View style={styles.accountInfo}>
                     <Text style={styles.accountName}>Savings Account</Text>
                     <Text style={styles.accountBalance}>Free, instant transfer</Text>
                   </View>
                   {paymentMethod === 'savings' && (
-                    <Icon name="check" size={20} color={theme.colors.accent} />
+                    <Icon name="check" size={20} color={themeColors.colors.accent} />
                   )}
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -722,14 +724,14 @@ const TransferScreen: React.FC<TransferScreenProps> = () => {
                   }}
                 >
                   <View style={styles.accountIconContainer}>
-                    <Icon name="phone-android" size={24} color={theme.colors.primary} />
+                    <Icon name="phone-android" size={24} color={themeColors.colors.primary} />
                   </View>
                   <View style={styles.accountInfo}>
                     <Text style={styles.accountName}>M-Pesa</Text>
                     <Text style={styles.accountBalance}>Fee: {formatCurrency(1000)}</Text>
                   </View>
                   {paymentMethod === 'mpesa' && (
-                    <Icon name="check" size={20} color={theme.colors.accent} />
+                    <Icon name="check" size={20} color={themeColors.colors.accent} />
                   )}
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -740,14 +742,14 @@ const TransferScreen: React.FC<TransferScreenProps> = () => {
                   }}
                 >
                   <View style={styles.accountIconContainer}>
-                    <Icon name="credit-card" size={24} color={theme.colors.primary} />
+                    <Icon name="credit-card" size={24} color={themeColors.colors.primary} />
                   </View>
                   <View style={styles.accountInfo}>
                     <Text style={styles.accountName}>Debit Card</Text>
                     <Text style={styles.accountBalance}>Fee: {formatCurrency(1000)}</Text>
                   </View>
                   {paymentMethod === 'card' && (
-                    <Icon name="check" size={20} color={theme.colors.accent} />
+                    <Icon name="check" size={20} color={themeColors.colors.accent} />
                   )}
                 </TouchableOpacity>
               </View>
@@ -769,7 +771,7 @@ const TransferScreen: React.FC<TransferScreenProps> = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: themeColors.colors.surface,
   },
   keyboardContainer: {
     flex: 1,
@@ -780,9 +782,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: theme.spacing.base,
     paddingVertical: theme.spacing.md,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: themeColors.colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    borderBottomColor: themeColors.colors.border,
   },
   backButton: {
     width: 48,
@@ -805,7 +807,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: theme.spacing.base,
     paddingTop: theme.spacing.base,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: themeColors.colors.surface,
   },
   section: {
     marginBottom: theme.spacing.base,
@@ -819,10 +821,10 @@ const styles = StyleSheet.create({
   accountSelector: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: themeColors.colors.backgroundLight,
     borderRadius: theme.borderRadius.lg,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: themeColors.colors.border,
     padding: theme.spacing.base,
     gap: theme.spacing.base,
   },
@@ -851,10 +853,10 @@ const styles = StyleSheet.create({
   recipientInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: themeColors.colors.backgroundLight,
     borderRadius: theme.borderRadius.lg,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: themeColors.colors.border,
     height: 56,
   },
   recipientInput: {
@@ -891,10 +893,10 @@ const styles = StyleSheet.create({
   phoneInputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: themeColors.colors.backgroundLight,
     borderRadius: theme.borderRadius.lg,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: themeColors.colors.border,
     height: 56,
     paddingHorizontal: theme.spacing.base,
   },
@@ -913,10 +915,10 @@ const styles = StyleSheet.create({
   amountInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: themeColors.colors.backgroundLight,
     borderRadius: theme.borderRadius.lg,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: themeColors.colors.border,
     height: 56,
     paddingHorizontal: theme.spacing.base,
   },
@@ -932,11 +934,10 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.semiBold,
     color: theme.colors.textPrimary,
   },
-  referenceInput: {
-    backgroundColor: theme.colors.backgroundLight,
+  referenceInput: { backgroundColor: themeColors.colors.backgroundLight,
     borderRadius: theme.borderRadius.lg,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: themeColors.colors.border,
     minHeight: 112,
     paddingHorizontal: theme.spacing.base,
     paddingVertical: theme.spacing.base,
@@ -950,18 +951,17 @@ const styles = StyleSheet.create({
   sendButtonSection: {
     paddingHorizontal: theme.spacing.base,
     paddingVertical: theme.spacing.base,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: themeColors.colors.surface,
   },
   sendButton: {
     height: 56,
     borderRadius: theme.borderRadius.full,
-    backgroundColor: theme.colors.accent,
+    backgroundColor: themeColors.colors.accent,
     justifyContent: 'center',
     alignItems: 'center',
     ...theme.shadows.md,
   },
-  sendButtonDisabled: {
-    backgroundColor: theme.colors.disabled,
+  sendButtonDisabled: { backgroundColor: themeColors.colors.disabled,
     ...theme.shadows.sm,
   },
   sendButtonText: {
@@ -974,8 +974,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
-  modalContent: {
-    backgroundColor: theme.colors.surface,
+  modalContent: { backgroundColor: themeColors.colors.surface,
     borderTopLeftRadius: theme.borderRadius['2xl'],
     borderTopRightRadius: theme.borderRadius['2xl'],
     paddingTop: theme.spacing.xl,
@@ -1004,15 +1003,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.base,
     gap: theme.spacing.base,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.divider,
+    borderBottomColor: themeColors.colors.divider,
   },
-  previewCard: {
-    backgroundColor: theme.colors.backgroundLight,
+  previewCard: { backgroundColor: themeColors.colors.backgroundLight,
     borderRadius: theme.borderRadius.xl,
     padding: theme.spacing.xl,
     marginTop: theme.spacing.lg,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: themeColors.colors.border,
   },
   previewTitle: {
     fontSize: theme.fontSizes.base,
@@ -1058,7 +1056,7 @@ const styles = StyleSheet.create({
   },
   previewDivider: {
     height: 1,
-    backgroundColor: theme.colors.border,
+    backgroundColor: themeColors.colors.border,
     marginVertical: theme.spacing.md,
   },
   roundUpInfoBanner: {

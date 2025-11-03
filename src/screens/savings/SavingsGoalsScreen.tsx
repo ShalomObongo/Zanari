@@ -26,6 +26,7 @@ import { apiClient } from '@/services/api';
 import TransferToSavingsWalletModal from '@/components/TransferToSavingsWalletModal';
 import EditGoalModal from '@/components/EditGoalModal';
 import GoalWithdrawModal from '@/components/GoalWithdrawModal';
+import { useTheme } from '@/theme';
 import theme from '@/theme';
 
 // Category colors for goal cards (left bar indicator)
@@ -41,6 +42,7 @@ const GOAL_CATEGORIES = {
 };
 
 const SavingsGoalsScreen: React.FC = () => {
+  const themeColors = useTheme();
   // State management
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -312,7 +314,7 @@ const SavingsGoalsScreen: React.FC = () => {
             <View style={styles.goalHeaderRight}>
               {goal.lock_in_enabled && (
                 <View style={styles.roundUpBadge}>
-                  <Icon name="all-inclusive" size={14} color={theme.colors.primary} />
+                  <Icon name="all-inclusive" size={14} color={themeColors.colors.primary} />
                   <Text style={styles.roundUpBadgeText}>Round-up</Text>
                 </View>
               )}
@@ -324,7 +326,7 @@ const SavingsGoalsScreen: React.FC = () => {
                     setShowEditModal(true);
                   }}
                 >
-                  <Icon name="edit" size={20} color={theme.colors.textSecondary} />
+                  <Icon name="edit" size={20} color={themeColors.colors.textSecondary} />
                 </TouchableOpacity>
               )}
             </View>
@@ -384,19 +386,19 @@ const SavingsGoalsScreen: React.FC = () => {
   if (isInitialLoading) {
     return (
       <>
-        <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
+        <StatusBar barStyle={themeColors.colors.statusBarStyle} backgroundColor={themeColors.colors.surface} />
         <SafeAreaView style={styles.container} edges={['top']}>
           <View style={styles.header}>
             <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-              <Icon name="arrow-back" size={24} color={theme.colors.textPrimary} />
+              <Icon name="arrow-back" size={24} color={themeColors.colors.textPrimary} />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Savings</Text>
             <TouchableOpacity style={styles.menuButton}>
-              <Icon name="more-horiz" size={24} color={theme.colors.textPrimary} />
+              <Icon name="more-horiz" size={24} color={themeColors.colors.textPrimary} />
             </TouchableOpacity>
           </View>
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={theme.colors.accent} />
+            <ActivityIndicator size="large" color={themeColors.colors.accent} />
             <Text style={styles.loadingText}>Loading your goals...</Text>
           </View>
         </SafeAreaView>
@@ -441,19 +443,19 @@ const SavingsGoalsScreen: React.FC = () => {
 
   return (
     <>
-      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
+      <StatusBar barStyle={themeColors.colors.statusBarStyle} backgroundColor={themeColors.colors.surface} />
       <SafeAreaView style={styles.container} edges={['top']}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Icon name="arrow-back" size={24} color={theme.colors.textPrimary} />
+            <Icon name="arrow-back" size={24} color={themeColors.colors.textPrimary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Savings</Text>
           <TouchableOpacity
             style={styles.menuButton}
             onPress={() => setShowMenuModal(true)}
           >
-            <Icon name="more-vert" size={24} color={theme.colors.textPrimary} />
+            <Icon name="more-vert" size={24} color={themeColors.colors.textPrimary} />
           </TouchableOpacity>
         </View>
 
@@ -508,13 +510,13 @@ const SavingsGoalsScreen: React.FC = () => {
           }}
           contentContainerStyle={styles.scrollContent}
           refreshControl={
-            <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor={theme.colors.accent} />
+            <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor={themeColors.colors.accent} />
           }
           ListHeaderComponent={
             savingsSummary ? (
               <View style={styles.savingsWalletCard}>
                 <View style={styles.walletHeader}>
-                  <Icon name="account-balance-wallet" size={24} color={theme.colors.accent} />
+                  <Icon name="account-balance-wallet" size={24} color={themeColors.colors.accent} />
                   <Text style={styles.walletTitle}>Savings Wallet</Text>
                 </View>
 
@@ -537,7 +539,7 @@ const SavingsGoalsScreen: React.FC = () => {
                   style={styles.transferToSavingsButton}
                   onPress={() => setShowTransferModal(true)}
                 >
-                  <Icon name="add-circle-outline" size={20} color={theme.colors.surface} />
+                  <Icon name="add-circle-outline" size={20} color={themeColors.colors.surface} />
                   <Text style={styles.transferButtonText}>Transfer to Savings</Text>
                 </TouchableOpacity>
               </View>
@@ -551,7 +553,7 @@ const SavingsGoalsScreen: React.FC = () => {
           onPress={() => setShowCreateModal(true)}
           activeOpacity={0.8}
         >
-          <Icon name="add" size={32} color={theme.colors.surface} />
+          <Icon name="add" size={32} color={themeColors.colors.surface} />
         </TouchableOpacity>
 
         {/* Modals remain the same */}
@@ -631,7 +633,7 @@ const SavingsGoalsScreen: React.FC = () => {
                     value={newGoal.targetDate}
                     onChangeText={(text) => setNewGoal(prev => ({ ...prev, targetDate: text }))}
                     placeholder="YYYY-MM-DD (e.g., 2025-12-31)"
-                    placeholderTextColor={theme.colors.textTertiary}
+                    placeholderTextColor={themeColors.colors.textTertiary}
                   />
                   <Text style={styles.helpText}>Leave empty if you don't have a specific deadline</Text>
                 </View>
@@ -666,9 +668,9 @@ const SavingsGoalsScreen: React.FC = () => {
                     <Switch
                       value={newGoal.roundUpEnabled}
                       onValueChange={(value) => setNewGoal(prev => ({ ...prev, roundUpEnabled: value }))}
-                      trackColor={{ false: theme.colors.gray200, true: theme.colors.accent }}
-                      thumbColor={theme.colors.surface}
-                      ios_backgroundColor={theme.colors.gray200}
+                      trackColor={{ false: themeColors.colors.gray200, true: themeColors.colors.accent }}
+                      thumbColor={themeColors.colors.surface}
+                      ios_backgroundColor={themeColors.colors.gray200}
                     />
                   </View>
                 </View>
@@ -716,7 +718,7 @@ const SavingsGoalsScreen: React.FC = () => {
                   <>
                     <View style={styles.selectedGoalCard}>
                       <View style={styles.goalIconContainer}>
-                        <Icon name="savings" size={32} color={theme.colors.accent} />
+                        <Icon name="savings" size={32} color={themeColors.colors.accent} />
                       </View>
                       <Text style={styles.selectedGoalTitle}>{selectedGoal.name}</Text>
                       <View style={styles.goalProgressInfo}>
@@ -752,7 +754,7 @@ const SavingsGoalsScreen: React.FC = () => {
                           <Icon
                             name="account-balance-wallet"
                             size={20}
-                            color={selectedSourceWallet === 'main' ? theme.colors.accent : theme.colors.textSecondary}
+                            color={selectedSourceWallet === 'main' ? themeColors.colors.accent : themeColors.colors.textSecondary}
                           />
                           <View style={styles.walletSelectorInfo}>
                             <Text style={[
@@ -766,7 +768,7 @@ const SavingsGoalsScreen: React.FC = () => {
                             </Text>
                           </View>
                           {selectedSourceWallet === 'main' && (
-                            <Icon name="check-circle" size={20} color={theme.colors.accent} />
+                            <Icon name="check-circle" size={20} color={themeColors.colors.accent} />
                           )}
                         </TouchableOpacity>
 
@@ -780,7 +782,7 @@ const SavingsGoalsScreen: React.FC = () => {
                           <Icon
                             name="savings"
                             size={20}
-                            color={selectedSourceWallet === 'savings' ? theme.colors.accent : theme.colors.textSecondary}
+                            color={selectedSourceWallet === 'savings' ? themeColors.colors.accent : themeColors.colors.textSecondary}
                           />
                           <View style={styles.walletSelectorInfo}>
                             <Text style={[
@@ -794,7 +796,7 @@ const SavingsGoalsScreen: React.FC = () => {
                             </Text>
                           </View>
                           {selectedSourceWallet === 'savings' && (
-                            <Icon name="check-circle" size={20} color={theme.colors.accent} />
+                            <Icon name="check-circle" size={20} color={themeColors.colors.accent} />
                           )}
                         </TouchableOpacity>
                       </View>
@@ -811,7 +813,7 @@ const SavingsGoalsScreen: React.FC = () => {
                       value={addAmount}
                       onChangeText={(text) => setAddAmount(text.replace(/[^0-9]/g, ''))}
                       placeholder="0"
-                      placeholderTextColor={theme.colors.textTertiary}
+                      placeholderTextColor={themeColors.colors.textTertiary}
                       keyboardType="numeric"
                       autoFocus
                     />
@@ -870,7 +872,7 @@ const SavingsGoalsScreen: React.FC = () => {
                   navigation.navigate('SavingsInsights');
                 }}
               >
-                <Icon name="pie-chart" size={24} color={theme.colors.textPrimary} />
+                <Icon name="pie-chart" size={24} color={themeColors.colors.textPrimary} />
                 <Text style={styles.menuOptionText}>View Total Saved</Text>
               </TouchableOpacity>
 
@@ -881,7 +883,7 @@ const SavingsGoalsScreen: React.FC = () => {
                   setShowTransferModal(true);
                 }}
               >
-                <Icon name="arrow-forward" size={24} color={theme.colors.textPrimary} />
+                <Icon name="arrow-forward" size={24} color={themeColors.colors.textPrimary} />
                 <Text style={styles.menuOptionText}>Transfer to Savings</Text>
               </TouchableOpacity>
 
@@ -892,7 +894,7 @@ const SavingsGoalsScreen: React.FC = () => {
                   navigation.navigate('RoundUpSettings');
                 }}
               >
-                <Icon name="settings" size={24} color={theme.colors.textPrimary} />
+                <Icon name="settings" size={24} color={themeColors.colors.textPrimary} />
                 <Text style={styles.menuOptionText}>Round-up Settings</Text>
               </TouchableOpacity>
             </View>
@@ -940,7 +942,7 @@ const SavingsGoalsScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: themeColors.colors.backgroundLight,
   },
   header: {
     flexDirection: 'row',
@@ -948,9 +950,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: theme.spacing.base,
     paddingVertical: theme.spacing.md,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: themeColors.colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    borderBottomColor: themeColors.colors.border,
   },
   backButton: {
     width: 48,
@@ -986,11 +988,11 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     flex: 1,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: themeColors.colors.surface,
     borderRadius: theme.borderRadius.xl,
     padding: theme.spacing.xl,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: themeColors.colors.border,
   },
   summaryLabel: {
     fontSize: theme.fontSizes.sm,
@@ -1016,10 +1018,10 @@ const styles = StyleSheet.create({
   goalCard: {
     marginHorizontal: theme.spacing.base,
     marginVertical: theme.spacing.xs,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: themeColors.colors.surface,
     borderRadius: theme.borderRadius.xl,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: themeColors.colors.border,
     overflow: 'hidden',
   },
   inactiveGoal: {
@@ -1078,7 +1080,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: theme.borderRadius.full,
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: themeColors.colors.gray100,
   },
   progressSection: {
     gap: theme.spacing.sm,
@@ -1110,12 +1112,12 @@ const styles = StyleSheet.create({
   progressBarBackground: {
     width: '100%',
     height: 8,
-    backgroundColor: theme.colors.gray200,
+    backgroundColor: themeColors.colors.gray200,
     borderRadius: theme.borderRadius.full,
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: theme.colors.accent,
+    backgroundColor: themeColors.colors.accent,
     borderRadius: theme.borderRadius.full,
   },
   goalFooter: {
@@ -1132,7 +1134,7 @@ const styles = StyleSheet.create({
   addFundsButton: {
     paddingHorizontal: theme.spacing.base,
     paddingVertical: theme.spacing.sm,
-    backgroundColor: theme.colors.accentDarker,
+    backgroundColor: themeColors.colors.accentDarker,
     borderRadius: theme.borderRadius.lg,
   },
   addFundsButtonText: {
@@ -1140,8 +1142,7 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.bold,
     color: theme.colors.surface,
   },
-  withdrawButton: {
-    backgroundColor: theme.colors.success,
+  withdrawButton: { backgroundColor: themeColors.colors.success,
   },
   withdrawButtonText: {
     fontSize: theme.fontSizes.sm,
@@ -1155,7 +1156,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: theme.borderRadius.full,
-    backgroundColor: theme.colors.primary,
+    backgroundColor: themeColors.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     ...theme.shadows.lg,
@@ -1183,8 +1184,7 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.xl,
     lineHeight: 22,
   },
-  emptyActionButton: {
-    backgroundColor: theme.colors.accent,
+  emptyActionButton: { backgroundColor: themeColors.colors.accent,
     paddingHorizontal: theme.spacing.xl,
     paddingVertical: theme.spacing.md,
     borderRadius: theme.borderRadius.xl,
@@ -1207,7 +1207,7 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: themeColors.colors.backgroundLight,
   },
   modalContent: {
     flex: 1,
@@ -1218,9 +1218,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: theme.spacing.lg,
     paddingVertical: theme.spacing.base,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: themeColors.colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    borderBottomColor: themeColors.colors.border,
   },
   modalCancelButton: {
     padding: theme.spacing.sm,
@@ -1256,10 +1256,9 @@ const styles = StyleSheet.create({
     color: theme.colors.textPrimary,
     marginBottom: theme.spacing.sm,
   },
-  formInput: {
-    backgroundColor: theme.colors.surface,
+  formInput: { backgroundColor: themeColors.colors.surface,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: themeColors.colors.border,
     borderRadius: theme.borderRadius.xl,
     paddingHorizontal: theme.spacing.base,
     paddingVertical: theme.spacing.md,
@@ -1279,9 +1278,9 @@ const styles = StyleSheet.create({
     padding: theme.spacing.md,
     marginRight: theme.spacing.md,
     borderRadius: theme.borderRadius.xl,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: themeColors.colors.surface,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: themeColors.colors.border,
     minWidth: 80,
   },
   categoryIcon: {
@@ -1298,9 +1297,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: theme.colors.surface,
+    backgroundColor: themeColors.colors.surface,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: themeColors.colors.border,
     borderRadius: theme.borderRadius.xl,
     padding: theme.spacing.base,
   },
@@ -1323,18 +1322,17 @@ const styles = StyleSheet.create({
     width: 52,
     height: 32,
     borderRadius: theme.borderRadius.full,
-    backgroundColor: theme.colors.gray200,
+    backgroundColor: themeColors.colors.gray200,
     justifyContent: 'center',
     paddingHorizontal: 2,
   },
-  switchActive: {
-    backgroundColor: theme.colors.accent,
+  switchActive: { backgroundColor: themeColors.colors.accent,
   },
   switchThumb: {
     width: 28,
     height: 28,
     borderRadius: theme.borderRadius.full,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: themeColors.colors.surface,
     ...theme.shadows.sm,
   },
   switchThumbActive: {
@@ -1345,14 +1343,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.lg,
     paddingTop: theme.spacing.lg,
   },
-  selectedGoalCard: {
-    backgroundColor: theme.colors.surface,
+  selectedGoalCard: { backgroundColor: themeColors.colors.surface,
     padding: theme.spacing.xl,
     borderRadius: theme.borderRadius.xl,
     marginBottom: theme.spacing.base,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: themeColors.colors.border,
   },
   goalIconContainer: {
     width: 64,
@@ -1390,7 +1387,7 @@ const styles = StyleSheet.create({
   progressBarContainer: {
     width: '100%',
     height: 8,
-    backgroundColor: theme.colors.gray200,
+    backgroundColor: themeColors.colors.gray200,
     borderRadius: theme.borderRadius.full,
     marginBottom: theme.spacing.sm,
   },
@@ -1428,9 +1425,9 @@ const styles = StyleSheet.create({
   amountInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.surface,
+    backgroundColor: themeColors.colors.surface,
     borderWidth: 2,
-    borderColor: theme.colors.accent,
+    borderColor: themeColors.colors.accent,
     borderRadius: theme.borderRadius.xl,
     paddingHorizontal: theme.spacing.base,
     paddingVertical: theme.spacing.xs,
@@ -1472,9 +1469,9 @@ const styles = StyleSheet.create({
   quickAmountChip: {
     flex: 1,
     minWidth: '45%',
-    backgroundColor: theme.colors.surface,
+    backgroundColor: themeColors.colors.surface,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: themeColors.colors.border,
     borderRadius: theme.borderRadius.xl,
     paddingHorizontal: theme.spacing.base,
     paddingVertical: theme.spacing.md,
@@ -1482,7 +1479,7 @@ const styles = StyleSheet.create({
   },
   quickAmountChipSelected: {
     backgroundColor: `${theme.colors.accent}15`,
-    borderColor: theme.colors.accent,
+    borderColor: themeColors.colors.accent,
     borderWidth: 2,
   },
   quickAmountChipText: {
@@ -1490,8 +1487,7 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.semiBold,
     color: theme.colors.textPrimary,
   },
-  quickAmountChipTextSelected: {
-    color: theme.colors.accent,
+  quickAmountChipTextSelected: { color: themeColors.colors.accent,
   },
   helpText: {
     fontSize: theme.fontSizes.sm,
@@ -1503,11 +1499,11 @@ const styles = StyleSheet.create({
   savingsWalletCard: {
     marginHorizontal: theme.spacing.base,
     marginVertical: theme.spacing.base,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: themeColors.colors.surface,
     borderRadius: theme.borderRadius.xl,
     padding: theme.spacing.xl,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: themeColors.colors.border,
   },
   walletHeader: {
     flexDirection: 'row',
@@ -1549,14 +1545,13 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.semiBold,
     color: theme.colors.textPrimary,
   },
-  availableAmount: {
-    color: theme.colors.success,
+  availableAmount: { color: themeColors.colors.success,
   },
   transferToSavingsButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: theme.colors.accentDarker,
+    backgroundColor: themeColors.colors.accentDarker,
     paddingVertical: theme.spacing.md,
     borderRadius: theme.borderRadius.lg,
     gap: theme.spacing.sm,
@@ -1574,16 +1569,15 @@ const styles = StyleSheet.create({
   walletSelectorOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.surface,
+    backgroundColor: themeColors.colors.surface,
     borderWidth: 2,
-    borderColor: theme.colors.border,
+    borderColor: themeColors.colors.border,
     borderRadius: theme.borderRadius.xl,
     padding: theme.spacing.base,
     gap: theme.spacing.md,
     marginBottom: theme.spacing.sm,
   },
-  walletSelectorOptionSelected: {
-    borderColor: theme.colors.accent,
+  walletSelectorOptionSelected: { borderColor: themeColors.colors.accent,
     backgroundColor: `${theme.colors.accent}08`,
   },
   walletSelectorInfo: {
@@ -1595,8 +1589,7 @@ const styles = StyleSheet.create({
     color: theme.colors.textPrimary,
     marginBottom: theme.spacing.xs / 2,
   },
-  walletSelectorLabelSelected: {
-    color: theme.colors.accent,
+  walletSelectorLabelSelected: { color: themeColors.colors.accent,
   },
   walletSelectorBalance: {
     fontSize: theme.fontSizes.sm,
@@ -1612,8 +1605,7 @@ const styles = StyleSheet.create({
     paddingTop: StatusBar.currentHeight ? StatusBar.currentHeight + 60 : 60,
     paddingRight: theme.spacing.base,
   },
-  menuModalContent: {
-    backgroundColor: theme.colors.surface,
+  menuModalContent: { backgroundColor: themeColors.colors.surface,
     borderRadius: theme.borderRadius.xl,
     minWidth: 240,
     ...theme.shadows.lg,
@@ -1625,7 +1617,7 @@ const styles = StyleSheet.create({
     padding: theme.spacing.base,
     gap: theme.spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    borderBottomColor: themeColors.colors.border,
   },
   menuOptionLast: {
     borderBottomWidth: 0,

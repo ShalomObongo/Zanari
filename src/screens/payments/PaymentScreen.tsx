@@ -19,6 +19,7 @@ import PinVerificationModal from '@/components/PinVerificationModal';
 import { useWalletStore } from '@/store/walletStore';
 import { useAuthStore } from '@/store/authStore';
 import { formatCurrency } from '@/utils/formatters';
+import { useTheme } from '@/theme';
 import theme from '@/theme';
 import api from '../../services/api';
 
@@ -36,6 +37,7 @@ interface PaymentOption {
 }
 
 const PaymentScreen: React.FC<PaymentScreenProps> = () => {
+  const themeColors = useTheme();
   const navigation = useNavigation<any>();
   const route = useRoute();
   const { mode = 'payment' } = (route.params as RouteParams) || {};
@@ -410,7 +412,7 @@ const PaymentScreen: React.FC<PaymentScreenProps> = () => {
             onPress={() => handlePaymentMethodSelect(option.id)}
           >
             <View style={styles.paymentMethodIcon}>
-              <Icon name={option.icon} size={24} color={theme.colors.primary} />
+              <Icon name={option.icon} size={24} color={themeColors.colors.primary} />
             </View>
             <View style={styles.paymentMethodDetails}>
               <Text style={styles.paymentMethodName}>{option.name}</Text>
@@ -429,7 +431,7 @@ const PaymentScreen: React.FC<PaymentScreenProps> = () => {
 
   return (
     <>
-      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
+      <StatusBar barStyle={themeColors.colors.statusBarStyle} backgroundColor={themeColors.colors.surface} />
       <SafeAreaView style={styles.container} edges={['top']}>
         <KeyboardAvoidingView
           style={styles.keyboardContainer}
@@ -438,7 +440,7 @@ const PaymentScreen: React.FC<PaymentScreenProps> = () => {
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
-              <Icon name="arrow-back" size={24} color={theme.colors.textPrimary} />
+              <Icon name="arrow-back" size={24} color={themeColors.colors.textPrimary} />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>
               {mode === 'topup' ? 'Top Up Wallet' : 'Make Payment'}
@@ -464,7 +466,7 @@ const PaymentScreen: React.FC<PaymentScreenProps> = () => {
                   value={amount}
                   onChangeText={handleAmountChange}
                   placeholder="0"
-                  placeholderTextColor={theme.colors.textTertiary}
+                  placeholderTextColor={themeColors.colors.textTertiary}
                   keyboardType="numeric"
                   maxLength={15}
                   autoFocus={true}
@@ -483,7 +485,7 @@ const PaymentScreen: React.FC<PaymentScreenProps> = () => {
                 <View style={styles.merchantHeader}>
                   <Text style={styles.sectionTitle}>Merchant Details</Text>
                   <TouchableOpacity style={styles.qrButton} onPress={handleScanQR}>
-                    <Icon name="qr-code-scanner" size={16} color={theme.colors.surface} />
+                    <Icon name="qr-code-scanner" size={16} color={themeColors.colors.surface} />
                     <Text style={styles.qrButtonText}>Scan QR</Text>
                   </TouchableOpacity>
                 </View>
@@ -492,7 +494,7 @@ const PaymentScreen: React.FC<PaymentScreenProps> = () => {
                   value={merchantCode}
                   onChangeText={setMerchantCode}
                   placeholder="Enter till number (e.g., 123456)"
-                  placeholderTextColor={theme.colors.textTertiary}
+                  placeholderTextColor={themeColors.colors.textTertiary}
                   autoCapitalize="none"
                   keyboardType="numeric"
                 />
@@ -501,7 +503,7 @@ const PaymentScreen: React.FC<PaymentScreenProps> = () => {
                   value={description}
                   onChangeText={setDescription}
                   placeholder="Payment description (optional)"
-                  placeholderTextColor={theme.colors.textTertiary}
+                  placeholderTextColor={themeColors.colors.textTertiary}
                   multiline
                   numberOfLines={2}
                 />
@@ -514,7 +516,7 @@ const PaymentScreen: React.FC<PaymentScreenProps> = () => {
                   value={description}
                   onChangeText={setDescription}
                   placeholder="Add note (optional)"
-                  placeholderTextColor={theme.colors.textTertiary}
+                  placeholderTextColor={themeColors.colors.textTertiary}
                   multiline
                   numberOfLines={2}
                 />
@@ -527,7 +529,7 @@ const PaymentScreen: React.FC<PaymentScreenProps> = () => {
             {/* Round-up Option */}
             <View style={styles.roundUpSection}>
               <View style={styles.roundUpHeader}>
-                <Icon name="savings" size={20} color={theme.colors.accent} />
+                <Icon name="savings" size={20} color={themeColors.colors.accent} />
                 <Text style={styles.roundUpTitle}>Auto Round-up</Text>
                 <View style={styles.roundUpBadge}>
                   <Text style={styles.roundUpBadgeText}>NEW</Text>
@@ -611,7 +613,7 @@ const PaymentScreen: React.FC<PaymentScreenProps> = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: themeColors.colors.surface,
   },
   keyboardContainer: {
     flex: 1,
@@ -622,9 +624,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: theme.spacing.base,
     paddingVertical: theme.spacing.md,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: themeColors.colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray100,
+    borderBottomColor: themeColors.colors.gray100,
   },
   backButton: {
     width: 40,
@@ -671,10 +673,10 @@ const styles = StyleSheet.create({
   amountInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: themeColors.colors.backgroundLight,
     borderRadius: theme.borderRadius.lg,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: themeColors.colors.border,
     paddingHorizontal: theme.spacing.base,
     paddingVertical: theme.spacing.md,
   },
@@ -711,7 +713,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing.xs,
     paddingHorizontal: theme.spacing.sm,
     paddingVertical: theme.spacing.xs,
-    backgroundColor: theme.colors.accent,
+    backgroundColor: themeColors.colors.accent,
     borderRadius: theme.borderRadius.DEFAULT,
   },
   qrButtonText: {
@@ -719,11 +721,10 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.semiBold,
     color: theme.colors.surface,
   },
-  merchantInput: {
-    backgroundColor: theme.colors.backgroundLight,
+  merchantInput: { backgroundColor: themeColors.colors.backgroundLight,
     borderRadius: theme.borderRadius.lg,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: themeColors.colors.border,
     paddingHorizontal: theme.spacing.base,
     paddingVertical: theme.spacing.md,
     fontSize: theme.fontSizes.base,
@@ -731,11 +732,10 @@ const styles = StyleSheet.create({
     color: theme.colors.textPrimary,
     marginBottom: theme.spacing.sm,
   },
-  descriptionInput: {
-    backgroundColor: theme.colors.backgroundLight,
+  descriptionInput: { backgroundColor: themeColors.colors.backgroundLight,
     borderRadius: theme.borderRadius.lg,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: themeColors.colors.border,
     paddingHorizontal: theme.spacing.base,
     paddingVertical: theme.spacing.md,
     fontSize: theme.fontSizes.base,
@@ -752,15 +752,14 @@ const styles = StyleSheet.create({
   paymentMethodItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: themeColors.colors.backgroundLight,
     borderRadius: theme.borderRadius.lg,
     padding: theme.spacing.base,
     marginBottom: theme.spacing.sm,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: themeColors.colors.border,
   },
-  paymentMethodSelected: {
-    borderColor: theme.colors.accent,
+  paymentMethodSelected: { borderColor: themeColors.colors.accent,
     backgroundColor: `${theme.colors.accent}15`,
   },
   paymentMethodIcon: {
@@ -791,7 +790,7 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: theme.colors.accent,
+    borderColor: themeColors.colors.accent,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -799,7 +798,7 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: theme.colors.accent,
+    backgroundColor: themeColors.colors.accent,
   },
   roundUpSection: {
     backgroundColor: `${theme.colors.accent}10`,
@@ -824,7 +823,7 @@ const styles = StyleSheet.create({
   roundUpBadge: {
     paddingHorizontal: theme.spacing.sm,
     paddingVertical: 2,
-    backgroundColor: theme.colors.accent,
+    backgroundColor: themeColors.colors.accent,
     borderRadius: theme.borderRadius.sm,
   },
   roundUpBadgeText: {
@@ -839,8 +838,7 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.sm,
     lineHeight: 20,
   },
-  roundUpExample: {
-    backgroundColor: theme.colors.backgroundLight,
+  roundUpExample: { backgroundColor: themeColors.colors.backgroundLight,
     padding: theme.spacing.sm,
     borderRadius: theme.borderRadius.DEFAULT,
   },
@@ -853,29 +851,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.base,
     paddingBottom: theme.spacing['2xl'],
     paddingTop: theme.spacing.base,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: themeColors.colors.surface,
     borderTopWidth: 1,
-    borderTopColor: theme.colors.gray100,
+    borderTopColor: themeColors.colors.gray100,
   },
-  payButton: {
-    backgroundColor: theme.colors.primary,
+  payButton: { backgroundColor: themeColors.colors.primary,
     paddingVertical: theme.spacing.base,
     borderRadius: theme.borderRadius.xl,
     alignItems: 'center',
     ...theme.shadows.DEFAULT,
   },
-  payButtonDisabled: {
-    backgroundColor: theme.colors.disabled,
+  payButtonDisabled: { backgroundColor: themeColors.colors.disabled,
     elevation: 0,
     shadowOpacity: 0,
   },
-  payButtonText: {
-    color: theme.colors.surface,
+  payButtonText: { color: themeColors.colors.surface,
     fontSize: theme.fontSizes.lg,
     fontFamily: theme.fonts.bold,
   },
-  payButtonTextDisabled: {
-    color: theme.colors.textTertiary,
+  payButtonTextDisabled: { color: themeColors.colors.textTertiary,
   },
   topupHint: {
     fontSize: theme.fontSizes.sm,

@@ -230,7 +230,7 @@ const PINSetupScreen: React.FC<PINSetupScreenProps> = () => {
                   }
                 >
                   {item === 'backspace' ? (
-                    <Icon name="backspace" size={28} color={theme.colors.textPrimary} />
+                    <Icon name="backspace" size={28} color={themeColors.colors.textPrimary} />
                   ) : !isPlaceholder ? (
                     <Text style={styles.keypadButtonText}>{item}</Text>
                   ) : null}
@@ -247,7 +247,7 @@ const PINSetupScreen: React.FC<PINSetupScreenProps> = () => {
 
   return (
     <>
-      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.backgroundLight} />
+      <StatusBar barStyle={themeColors.colors.statusBarStyle} backgroundColor={themeColors.colors.backgroundLight} />
       <SafeAreaView style={styles.container} edges={['top']}>
         <KeyboardAvoidingView
           style={styles.keyboardContainer}
@@ -260,7 +260,7 @@ const PINSetupScreen: React.FC<PINSetupScreenProps> = () => {
               accessibilityRole="button"
               accessibilityLabel="Go back"
             >
-              <Icon name="arrow-back" size={24} color={theme.colors.textPrimary} />
+              <Icon name="arrow-back" size={24} color={themeColors.colors.textPrimary} />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>{step === 'create' ? 'Create PIN' : 'Confirm PIN'}</Text>
             <View style={styles.headerSpacer} />
@@ -280,14 +280,14 @@ const PINSetupScreen: React.FC<PINSetupScreenProps> = () => {
                       <Icon
                         name={step === 'create' ? 'lock-outline' : 'verified-user'}
                         size={32}
-                        color={theme.colors.primary}
+                        color={themeColors.colors.primary}
                       />
                     </View>
                     <View style={styles.heroDetails}>
                       <Text style={styles.heroLabel}>Zanari</Text>
                       {phoneNumber ? (
                         <View style={styles.heroBadge}>
-                          <Icon name="phone-iphone" size={16} color={theme.colors.accentDarkest} />
+                          <Icon name="phone-iphone" size={16} color={themeColors.colors.accentDarkest} />
                           <Text style={styles.heroBadgeText}>{phoneNumber}</Text>
                         </View>
                       ) : null}
@@ -347,7 +347,7 @@ const PINSetupScreen: React.FC<PINSetupScreenProps> = () => {
                     <Icon
                       name={isPinStrong ? 'verified' : 'warning'}
                       size={18}
-                      color={isPinStrong ? theme.colors.success : theme.colors.error}
+                      color={isPinStrong ? themeColors.colors.success : themeColors.colors.error}
                     />
                     <Text
                       style={[
@@ -392,7 +392,7 @@ const PINSetupScreen: React.FC<PINSetupScreenProps> = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: themeColors.colors.backgroundLight,
   },
   keyboardContainer: {
     flex: 1,
@@ -438,8 +438,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing.lg,
     paddingBottom: theme.spacing.lg,
   },
-  infoCard: {
-    backgroundColor: theme.colors.surface,
+  infoCard: { backgroundColor: themeColors.colors.surface,
     borderRadius: theme.borderRadius['2xl'],
     padding: theme.spacing.xl,
     gap: theme.spacing.lg,
@@ -454,7 +453,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: themeColors.colors.gray100,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -472,7 +471,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: themeColors.colors.gray100,
     borderRadius: theme.borderRadius.lg,
     paddingHorizontal: theme.spacing.sm,
     paddingVertical: 4,
@@ -505,13 +504,12 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     lineHeight: 24,
   },
-  tipsCard: {
-    backgroundColor: theme.colors.surface,
+  tipsCard: { backgroundColor: themeColors.colors.surface,
     borderRadius: theme.borderRadius['2xl'],
     padding: theme.spacing.lg,
     gap: theme.spacing.sm,
     borderWidth: 1,
-    borderColor: theme.colors.gray200,
+    borderColor: themeColors.colors.gray200,
   },
   tipsTitle: {
     fontSize: theme.fontSizes.base,
@@ -527,7 +525,7 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: theme.colors.accent,
+    backgroundColor: themeColors.colors.accent,
     marginTop: 6,
   },
   tipsText: {
@@ -537,8 +535,7 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     lineHeight: 20,
   },
-  keypadCard: {
-    backgroundColor: theme.colors.surface,
+  keypadCard: { backgroundColor: themeColors.colors.surface,
     borderRadius: theme.borderRadius['2xl'],
     padding: theme.spacing.xl,
     gap: theme.spacing.lg,
@@ -570,10 +567,9 @@ const styles = StyleSheet.create({
     width: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: theme.colors.gray200,
+    backgroundColor: themeColors.colors.gray200,
   },
-  pinDotFilled: {
-    backgroundColor: theme.colors.primary,
+  pinDotFilled: { backgroundColor: themeColors.colors.primary,
   },
   securityIndicator: {
     flexDirection: 'row',
@@ -587,23 +583,21 @@ const styles = StyleSheet.create({
   securityIndicatorPositive: {
     backgroundColor: 'rgba(82, 183, 136, 0.12)',
     borderWidth: 1,
-    borderColor: theme.colors.success,
+    borderColor: themeColors.colors.success,
   },
   securityIndicatorWarning: {
     backgroundColor: 'rgba(220, 38, 38, 0.12)',
     borderWidth: 1,
-    borderColor: theme.colors.error,
+    borderColor: themeColors.colors.error,
   },
   securityIndicatorText: {
     flex: 1,
     fontSize: theme.fontSizes.sm,
     fontFamily: theme.fonts.medium,
   },
-  securityIndicatorTextPositive: {
-    color: theme.colors.success,
+  securityIndicatorTextPositive: { color: themeColors.colors.success,
   },
-  securityIndicatorTextWarning: {
-    color: theme.colors.error,
+  securityIndicatorTextWarning: { color: themeColors.colors.error,
   },
   keypadSection: {
     alignItems: 'center',
@@ -622,9 +616,9 @@ const styles = StyleSheet.create({
     width: 78,
     height: 78,
     borderRadius: theme.borderRadius.full,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: themeColors.colors.surface,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: themeColors.colors.border,
     justifyContent: 'center',
     alignItems: 'center',
     ...theme.shadows.sm,
@@ -650,7 +644,7 @@ const styles = StyleSheet.create({
     height: 56,
     width: '100%',
     borderRadius: theme.borderRadius.xl,
-    backgroundColor: theme.colors.primary,
+    backgroundColor: themeColors.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     ...theme.shadows.md,
@@ -658,8 +652,7 @@ const styles = StyleSheet.create({
   continueButtonDisabled: {
     opacity: 0.5,
   },
-  continueButtonText: {
-    color: theme.colors.onPrimaryText,
+  continueButtonText: { color: themeColors.colors.onPrimaryText,
     fontSize: theme.fontSizes.base,
     fontFamily: theme.fonts.bold,
   },
