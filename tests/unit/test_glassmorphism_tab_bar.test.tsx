@@ -120,7 +120,7 @@ describe('GlassmorphismTabBar', () => {
       descriptors: multiTabDescriptors as any,
     };
 
-    const { UNSAFE_getAllByType } = render(<GlassmorphismTabBar {...multiTabProps} />);
+    render(<GlassmorphismTabBar {...multiTabProps} />);
     // Should render multiple touchable components for each tab
     expect(true).toBe(true);
   });
