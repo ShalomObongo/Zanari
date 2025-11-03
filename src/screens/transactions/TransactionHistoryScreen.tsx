@@ -769,7 +769,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   bottomSpacer: {
-    height: 32,
+    height: theme.layout.tabBarBottomPadding,
   },
   loadingContainer: {
     flex: 1,

@@ -540,7 +540,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: theme.spacing.base,
     paddingTop: theme.spacing.xl,
-    paddingBottom: theme.spacing['3xl'],
+    paddingBottom: theme.layout.tabBarBottomPadding,
   },
   profileSection: {
     backgroundColor: theme.colors.surface,

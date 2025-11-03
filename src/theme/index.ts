@@ -142,6 +142,11 @@ export const iconSizes = {
   '3xl': 48,
 };
 
+// Layout constants
+export const layout = {
+  tabBarBottomPadding: 100, // Extra space for floating glassmorphism tab bar
+};
+
 export const theme = {
   colors,
   fonts,
@@ -151,6 +156,7 @@ export const theme = {
   shadows,
   gradients,
   iconSizes,
+  layout,
 };
 
 export default theme;

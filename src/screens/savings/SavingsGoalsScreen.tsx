@@ -976,7 +976,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 10, // Space for FAB
+    paddingBottom: theme.layout.tabBarBottomPadding,
   },
   summaryCardsRow: {
     flexDirection: 'row',
