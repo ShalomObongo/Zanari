@@ -63,7 +63,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = () => {
         >
           {/* Gradient Header */}
           <LinearGradient
-            colors={themeColors.gradients.welcome}
+            colors={themeColors.gradients.welcome as readonly [string, string, ...string[]]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.gradientHeader}
