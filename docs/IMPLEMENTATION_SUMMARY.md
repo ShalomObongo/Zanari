@@ -62,7 +62,7 @@ All tab screens updated to use theme constant for bottom padding:
   - Platform differences
 
 #### 7. Dependencies
-- Added `expo-blur` (^18.0.0) for glassmorphism blur effect
+- Added `expo-blur` (^15.0.7) for glassmorphism blur effect
 - No breaking changes to existing dependencies
 
 ### Code Quality
