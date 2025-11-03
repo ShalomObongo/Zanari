@@ -8,12 +8,14 @@ import { useAuthStore } from './authStore';
 import { useWalletStore } from './walletStore';
 import { useTransactionStore } from './transactionStore';
 import { useSavingsStore } from './savingsStore';
+import { useThemeStore } from './themeStore';
 
 export { useAuthStore } from './authStore';
 export { useAuthStatus, usePinLockStatus } from './authStore';
 export { useWalletStore } from './walletStore';
 export { useTransactionStore } from './transactionStore';
 export { useSavingsStore } from './savingsStore';
+export { useThemeStore } from './themeStore';
 
 // Store configuration and middleware
 export const STORE_CONFIG = {

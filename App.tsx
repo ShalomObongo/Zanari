@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { View, Appearance } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -17,12 +17,15 @@ import 'react-native-url-polyfill/auto';
 
 import AppNavigator from '@/navigation/AppNavigator';
 import { PAYSTACK_CONFIG } from '@/config/paystack';
+import { useThemeStore } from '@/store/themeStore';
 
 // Keep the splash screen visible while we load fonts
 SplashScreen.preventAutoHideAsync();
 
 export default function App() {
   const [appIsReady, setAppIsReady] = useState(false);
+  const updateSystemTheme = useThemeStore((state) => state.updateSystemTheme);
+  const currentTheme = useThemeStore((state) => state.currentTheme);
 
   useEffect(() => {
     async function prepare() {
@@ -45,6 +48,15 @@ export default function App() {
     prepare();
   }, []);
 
+  // Listen to system theme changes
+  useEffect(() => {
+    const subscription = Appearance.addChangeListener(({ colorScheme }) => {
+      updateSystemTheme(colorScheme);
+    });
+
+    return () => subscription.remove();
+  }, [updateSystemTheme]);
+
   const onLayoutRootView = useCallback(async () => {
     if (appIsReady) {
       await SplashScreen.hideAsync();
@@ -61,7 +73,7 @@ export default function App() {
         <PaystackProvider publicKey={PAYSTACK_CONFIG.publicKey}>
           <NavigationContainer>
             <AppNavigator />
-            <StatusBar style="auto" />
+            <StatusBar style={currentTheme === 'dark' ? 'light' : 'dark'} />
           </NavigationContainer>
         </PaystackProvider>
       </SafeAreaProvider>

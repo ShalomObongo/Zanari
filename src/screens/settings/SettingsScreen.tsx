@@ -8,6 +8,8 @@ import {
   Alert,
   Switch,
   StatusBar,
+  Modal,
+  Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -18,15 +20,22 @@ import { useWalletStore } from '@/store/walletStore';
 import { useTransactionStore } from '@/store/transactionStore';
 import { useSavingsStore } from '@/store/savingsStore';
 import { useSettingsStore } from '@/store/settingsStore';
+import { useThemeStore, ThemeMode } from '@/store/themeStore';
 import { biometricAuthService } from '@/services/biometricAuth';
 import PinVerificationModal from '@/components/PinVerificationModal';
-import theme from '@/theme';
+import { useTheme } from '@/theme';
+import theme from '@/theme'; // Static theme for StyleSheet
 
 const SettingsScreen: React.FC = () => {
   // Zustand stores
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
   const navigation = useNavigation<any>();
+  
+  // Theme store
+  const themeMode = useThemeStore((state) => state.themeMode);
+  const setThemeMode = useThemeStore((state) => state.setThemeMode);
+  const theme = useTheme();
 
   // Settings store
   const isBiometricEnabled = useSettingsStore((state) => state.isBiometricEnabled);
@@ -35,6 +44,9 @@ const SettingsScreen: React.FC = () => {
   const checkBiometricCapability = useSettingsStore((state) => state.checkBiometricCapability);
   const isEnablingBiometric = useSettingsStore((state) => state.isEnablingBiometric);
   const isDisablingBiometric = useSettingsStore((state) => state.isDisablingBiometric);
+  
+  // Theme selector modal
+  const [themeModalVisible, setThemeModalVisible] = useState(false);
 
   // Preferences state
   const [preferences, setPreferences] = useState({
@@ -56,6 +68,17 @@ const SettingsScreen: React.FC = () => {
     resolve: (token: string) => void;
     reject: () => void;
   } | null>(null);
+  
+  const getThemeDisplayName = (mode: ThemeMode): string => {
+    switch (mode) {
+      case 'light':
+        return 'Light';
+      case 'dark':
+        return 'Dark';
+      case 'system':
+        return 'System Default';
+    }
+  };
 
   // Get user initials
   const getUserInitials = () => {
@@ -220,7 +243,7 @@ const SettingsScreen: React.FC = () => {
   };
 
   const renderSectionHeader = (title: string) => (
-    <Text style={styles.sectionHeader}>{title}</Text>
+    <Text style={[styles.sectionHeader, { color: theme.colors.textPrimary }]}>{title}</Text>
   );
 
   const renderSettingRow = (
@@ -241,8 +264,8 @@ const SettingsScreen: React.FC = () => {
       <View style={styles.settingLeft}>
         <Icon name={icon} size={24} color={theme.colors.textSecondary} />
         <View style={styles.settingTextContainer}>
-          <Text style={styles.settingTitle}>{title}</Text>
-          {subtitle && <Text style={styles.settingSubtitle}>{subtitle}</Text>}
+          <Text style={[styles.settingTitle, { color: theme.colors.textPrimary }]}>{title}</Text>
+          {subtitle && <Text style={[styles.settingSubtitle, { color: theme.colors.textSecondary }]}>{subtitle}</Text>}
         </View>
       </View>
       {rightElement === 'switch' && (
@@ -273,7 +296,7 @@ const SettingsScreen: React.FC = () => {
       disabled={rightElement !== 'arrow'}
       activeOpacity={rightElement === 'arrow' ? 0.7 : 1}
     >
-      <Text style={styles.simpleSettingTitle}>{title}</Text>
+      <Text style={[styles.simpleSettingTitle, { color: theme.colors.textPrimary }]}>{title}</Text>
       {rightElement === 'switch' && (
         <Switch
           value={switchValue}
@@ -291,11 +314,11 @@ const SettingsScreen: React.FC = () => {
 
   return (
     <>
-      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <StatusBar barStyle={theme.colors.statusBarStyle} backgroundColor={theme.colors.surface} />
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.surface }]} edges={['top']}>
         {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Settings</Text>
+        <View style={[styles.header, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.gray100 }]}>
+          <Text style={[styles.headerTitle, { color: theme.colors.textPrimary }]}>Settings</Text>
         </View>
 
         <ScrollView
@@ -304,27 +327,27 @@ const SettingsScreen: React.FC = () => {
           showsVerticalScrollIndicator={false}
         >
           {/* Profile Section */}
-          <View style={styles.profileSection}>
+          <View style={[styles.profileSection, { backgroundColor: theme.colors.surface }]}>
             <View style={styles.profileRow}>
-              <View style={styles.avatarContainer}>
-                <Text style={styles.avatarText}>{getUserInitials()}</Text>
+              <View style={[styles.avatarContainer, { backgroundColor: `${theme.colors.primary}33` }]}>
+                <Text style={[styles.avatarText, { color: theme.colors.primary }]}>{getUserInitials()}</Text>
               </View>
               <View style={styles.profileInfo}>
-                <Text style={styles.profileName}>{getUserFullName()}</Text>
-                <Text style={styles.profileEmail}>{getUserEmail()}</Text>
+                <Text style={[styles.profileName, { color: theme.colors.textPrimary }]}>{getUserFullName()}</Text>
+                <Text style={[styles.profileEmail, { color: theme.colors.textSecondary }]}>{getUserEmail()}</Text>
               </View>
             </View>
             <TouchableOpacity
               style={styles.editProfileButton}
               onPress={() => navigation.navigate('EditProfile')}
             >
-              <Text style={styles.editProfileText}>Edit Profile</Text>
+              <Text style={[styles.editProfileText, { color: theme.colors.primary }]}>Edit Profile</Text>
             </TouchableOpacity>
           </View>
 
           {/* Security Section */}
           {renderSectionHeader('Security')}
-          <View style={styles.section}>
+          <View style={[styles.section, { backgroundColor: theme.colors.gray50 }]}>
             {renderSettingRow(
               'pin',
               'Change PIN',
@@ -333,7 +356,7 @@ const SettingsScreen: React.FC = () => {
               undefined,
               () => navigation.navigate('ChangePIN')
             )}
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: theme.colors.gray100 }]} />
             {renderSettingRow(
               'verified-user',
               'Two-Factor Authentication',
@@ -343,7 +366,7 @@ const SettingsScreen: React.FC = () => {
               undefined,
               () => togglePreference('twoFactorAuth')
             )}
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: theme.colors.gray100 }]} />
             {renderSettingRow(
               'fingerprint',
               'Biometric Authentication',
@@ -357,7 +380,7 @@ const SettingsScreen: React.FC = () => {
 
           {/* Savings Section */}
           {renderSectionHeader('Savings')}
-          <View style={styles.section}>
+          <View style={[styles.section, { backgroundColor: theme.colors.gray50 }]}>
             {renderSettingRow(
               'savings',
               'Round-Up Savings',
@@ -368,9 +391,22 @@ const SettingsScreen: React.FC = () => {
             )}
           </View>
 
+          {/* Appearance Section */}
+          {renderSectionHeader('Appearance')}
+          <View style={[styles.section, { backgroundColor: theme.colors.gray50 }]}>
+            {renderSettingRow(
+              'palette',
+              'Theme',
+              getThemeDisplayName(themeMode),
+              'arrow',
+              undefined,
+              () => setThemeModalVisible(true)
+            )}
+          </View>
+
           {/* Privacy Section */}
           {renderSectionHeader('Privacy')}
-          <View style={styles.section}>
+          <View style={[styles.section, { backgroundColor: theme.colors.gray50 }]}>
             {renderSettingRow(
               'share',
               'Data Sharing Preferences',
@@ -380,7 +416,7 @@ const SettingsScreen: React.FC = () => {
               undefined,
               () => togglePreference('dataSharing')
             )}
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: theme.colors.gray100 }]} />
             {renderSettingRow(
               'history',
               'Session Management',
@@ -389,7 +425,7 @@ const SettingsScreen: React.FC = () => {
               undefined,
               () => Alert.alert('Session Management', 'Feature coming soon')
             )}
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: theme.colors.gray100 }]} />
             {renderSettingRow(
               'devices',
               'Manage Connected Devices',
@@ -402,7 +438,7 @@ const SettingsScreen: React.FC = () => {
 
           {/* Notifications Section */}
           {renderSectionHeader('Notifications')}
-          <View style={styles.section}>
+          <View style={[styles.section, { backgroundColor: theme.colors.gray50 }]}>
             {renderSimpleSettingRow(
               'Email',
               'switch',
@@ -410,7 +446,7 @@ const SettingsScreen: React.FC = () => {
               undefined,
               () => togglePreference('emailNotifications')
             )}
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: theme.colors.gray100 }]} />
             {renderSimpleSettingRow(
               'SMS',
               'switch',
@@ -418,7 +454,7 @@ const SettingsScreen: React.FC = () => {
               undefined,
               () => togglePreference('smsNotifications')
             )}
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: theme.colors.gray100 }]} />
             {renderSimpleSettingRow(
               'Transaction Alerts',
               'switch',
@@ -426,7 +462,7 @@ const SettingsScreen: React.FC = () => {
               undefined,
               () => togglePreference('transactionAlerts')
             )}
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: theme.colors.gray100 }]} />
             {renderSimpleSettingRow(
               'Savings Reminders',
               'switch',
@@ -434,7 +470,7 @@ const SettingsScreen: React.FC = () => {
               undefined,
               () => togglePreference('savingsReminders')
             )}
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: theme.colors.gray100 }]} />
             {renderSimpleSettingRow(
               'Security Alerts',
               'switch',
@@ -442,7 +478,7 @@ const SettingsScreen: React.FC = () => {
               undefined,
               () => togglePreference('securityAlerts')
             )}
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: theme.colors.gray100 }]} />
             {renderSimpleSettingRow(
               'Hide Balance by Default',
               'switch',
@@ -454,21 +490,21 @@ const SettingsScreen: React.FC = () => {
 
           {/* About Section */}
           {renderSectionHeader('About')}
-          <View style={styles.section}>
+          <View style={[styles.section, { backgroundColor: theme.colors.gray50 }]}>
             {renderSimpleSettingRow(
               'Privacy Policy',
               'arrow',
               undefined,
               () => Alert.alert('Privacy Policy', 'Opening privacy policy...')
             )}
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: theme.colors.gray100 }]} />
             {renderSimpleSettingRow(
               'Terms of Service',
               'arrow',
               undefined,
               () => Alert.alert('Terms of Service', 'Opening terms...')
             )}
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: theme.colors.gray100 }]} />
             {renderSimpleSettingRow(
               'Help & Support',
               'arrow',
@@ -482,7 +518,7 @@ const SettingsScreen: React.FC = () => {
             <TouchableOpacity style={styles.signOutButton} onPress={handleLogout}>
               <Text style={styles.signOutText}>Sign Out</Text>
             </TouchableOpacity>
-            <Text style={styles.versionText}>App Version 1.2.3</Text>
+            <Text style={[styles.versionText, { color: theme.colors.textTertiary }]}>App Version 1.2.3</Text>
           </View>
         </ScrollView>
 
@@ -510,6 +546,103 @@ const SettingsScreen: React.FC = () => {
           }}
           message="Verify your PIN to enable biometric authentication"
         />
+
+        {/* Theme Selector Modal */}
+        <Modal
+          visible={themeModalVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setThemeModalVisible(false)}
+        >
+          <Pressable 
+            style={styles.modalOverlay}
+            onPress={() => setThemeModalVisible(false)}
+          >
+            <View style={[styles.modalContent, { backgroundColor: theme.colors.surface }]}>
+              <Text style={[styles.modalTitle, { color: theme.colors.textPrimary }]}>
+                Choose Theme
+              </Text>
+              
+              <TouchableOpacity
+                style={[
+                  styles.themeOption,
+                  { borderColor: theme.colors.border },
+                  themeMode === 'light' && { 
+                    backgroundColor: `${theme.colors.accent}15`,
+                    borderColor: theme.colors.accent 
+                  }
+                ]}
+                onPress={() => {
+                  setThemeMode('light');
+                  setThemeModalVisible(false);
+                }}
+              >
+                <Icon name="wb-sunny" size={24} color={theme.colors.textPrimary} />
+                <Text style={[styles.themeOptionText, { color: theme.colors.textPrimary }]}>
+                  Light Mode
+                </Text>
+                {themeMode === 'light' && (
+                  <Icon name="check" size={24} color={theme.colors.accent} />
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.themeOption,
+                  { borderColor: theme.colors.border },
+                  themeMode === 'dark' && { 
+                    backgroundColor: `${theme.colors.accent}15`,
+                    borderColor: theme.colors.accent 
+                  }
+                ]}
+                onPress={() => {
+                  setThemeMode('dark');
+                  setThemeModalVisible(false);
+                }}
+              >
+                <Icon name="nights-stay" size={24} color={theme.colors.textPrimary} />
+                <Text style={[styles.themeOptionText, { color: theme.colors.textPrimary }]}>
+                  Dark Mode
+                </Text>
+                {themeMode === 'dark' && (
+                  <Icon name="check" size={24} color={theme.colors.accent} />
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.themeOption,
+                  { borderColor: theme.colors.border },
+                  themeMode === 'system' && { 
+                    backgroundColor: `${theme.colors.accent}15`,
+                    borderColor: theme.colors.accent 
+                  }
+                ]}
+                onPress={() => {
+                  setThemeMode('system');
+                  setThemeModalVisible(false);
+                }}
+              >
+                <Icon name="phone-android" size={24} color={theme.colors.textPrimary} />
+                <Text style={[styles.themeOptionText, { color: theme.colors.textPrimary }]}>
+                  System Default
+                </Text>
+                {themeMode === 'system' && (
+                  <Icon name="check" size={24} color={theme.colors.accent} />
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.cancelButton, { backgroundColor: theme.colors.gray100 }]}
+                onPress={() => setThemeModalVisible(false)}
+              >
+                <Text style={[styles.cancelButtonText, { color: theme.colors.textPrimary }]}>
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Modal>
       </SafeAreaView>
     </>
   );
@@ -670,6 +803,49 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSizes.xs,
     fontFamily: theme.fonts.regular,
     color: theme.colors.textTertiary,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: theme.spacing.base,
+  },
+  modalContent: {
+    width: '100%',
+    maxWidth: 400,
+    borderRadius: theme.borderRadius.xl,
+    padding: theme.spacing.xl,
+    gap: theme.spacing.md,
+  },
+  modalTitle: {
+    fontSize: theme.fontSizes.xl,
+    fontFamily: theme.fonts.bold,
+    textAlign: 'center',
+    marginBottom: theme.spacing.sm,
+  },
+  themeOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: theme.spacing.base,
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: 2,
+    gap: theme.spacing.md,
+  },
+  themeOptionText: {
+    flex: 1,
+    fontSize: theme.fontSizes.base,
+    fontFamily: theme.fonts.medium,
+  },
+  cancelButton: {
+    padding: theme.spacing.base,
+    borderRadius: theme.borderRadius.lg,
+    alignItems: 'center',
+    marginTop: theme.spacing.sm,
+  },
+  cancelButtonText: {
+    fontSize: theme.fontSizes.base,
+    fontFamily: theme.fonts.medium,
   },
 });
 

@@ -3,49 +3,11 @@
  * Centralized theme configuration matching the new UI designs
  */
 
-export const colors = {
-  // Primary Colors
-  primary: '#1B4332',
+import { lightColors, darkColors, ThemeColors } from './colors';
+import { useThemeStore } from '@/store/themeStore';
 
-  // Accent Colors
-  accent: '#52B788',
-  accentDarker: '#2D6A4F',
-  accentDarkest: '#40916C',
-  onPrimaryText: '#B7E4C7',
-
-  // Text Colors
-  textPrimary: '#333333',
-  textSecondary: '#666666',
-  textTertiary: '#999999',
-
-  // Surface & Background
-  surface: '#FFFFFF',
-  backgroundLight: '#f6f8f7',
-  backgroundDark: '#11211b',
-
-  // Semantic Colors
-  success: '#52B788',
-  error: '#DC2626',
-  warning: '#F59E0B',
-  info: '#3B82F6',
-
-  // Utility Colors
-  border: '#E5E7EB',
-  divider: '#F3F4F6',
-  disabled: '#D1D5DB',
-
-  // Additional Shades
-  gray50: '#F9FAFB',
-  gray100: '#F3F4F6',
-  gray200: '#E5E7EB',
-  gray300: '#D1D5DB',
-  gray400: '#9CA3AF',
-  gray500: '#6B7280',
-  gray600: '#4B5563',
-  gray700: '#374151',
-  gray800: '#1F2937',
-  gray900: '#111827',
-};
+// Default to light colors for backward compatibility
+export const colors = lightColors;
 
 export const fonts = {
   regular: 'Manrope_400Regular',
@@ -129,6 +91,7 @@ export const shadows = {
 
 export const gradients = {
   welcome: ['#1B4332', '#2D6A4F', '#f6f8f7'],
+  welcomeDark: ['#52B788', '#40916C', '#2D6A4F'],
 };
 
 // Icon sizes
@@ -158,5 +121,32 @@ export const theme = {
   iconSizes,
   layout,
 };
+
+// Custom hook to get dynamic theme based on current theme mode
+export const useTheme = () => {
+  const currentTheme = useThemeStore((state) => state.currentTheme);
+  
+  const themeColors = currentTheme === 'dark' ? darkColors : lightColors;
+  const themeGradients = currentTheme === 'dark' 
+    ? { ...gradients, welcome: gradients.welcomeDark }
+    : gradients;
+  
+  return {
+    colors: themeColors,
+    fonts,
+    fontSizes,
+    spacing,
+    borderRadius,
+    shadows,
+    gradients: themeGradients,
+    iconSizes,
+    layout,
+    isDark: currentTheme === 'dark',
+  };
+};
+
+// Export color palettes for direct use
+export { lightColors, darkColors };
+export type { ThemeColors };
 
 export default theme;
