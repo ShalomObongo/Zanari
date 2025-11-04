@@ -474,7 +474,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = () => {
 const createStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
   },
   scrollContainer: {
     flex: 1,
@@ -483,7 +483,7 @@ const createStyles = (theme: any) => StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
   },
   loadingText: {
     marginTop: theme.spacing.base,

@@ -245,7 +245,7 @@ export const gradients = {
     light: ['#1B4332', '#2D6A4F', '#f6f8f7'],
     dark: ['#0F1419', '#1F2937', '#2D6A4F'],
   },
-};
+} as const;
 
 // Icon sizes
 export const iconSizes = {

@@ -215,7 +215,7 @@ const ChangePINScreen: React.FC = () => {
 
   return (
     <>
-      <StatusBar barStyle={theme.colors.statusBarStyle} backgroundColor={theme.colors.backgroundLight} />
+      <StatusBar barStyle={theme.colors.statusBarStyle} backgroundColor={theme.colors.background} />
       <SafeAreaView style={styles.container} edges={['top']}>
         <KeyboardAvoidingView
           style={styles.keyboardContainer}
@@ -290,7 +290,7 @@ const ChangePINScreen: React.FC = () => {
 const createStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
   },
   keyboardContainer: {
     flex: 1,

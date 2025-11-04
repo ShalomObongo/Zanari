@@ -254,7 +254,7 @@ const GoalWithdrawModal: React.FC<GoalWithdrawModalProps> = ({
 const createStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
   },
   content: {
     flex: 1,

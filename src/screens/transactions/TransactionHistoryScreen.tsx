@@ -607,7 +607,7 @@ const TransactionHistoryScreen: React.FC<TransactionHistoryScreenProps> = () => 
 const createStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -643,7 +643,7 @@ const createStyles = (theme: any) => StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
     borderRadius: theme.borderRadius.xl,
     paddingHorizontal: theme.spacing.base,
     paddingVertical: theme.spacing.md,
@@ -665,7 +665,7 @@ const createStyles = (theme: any) => StyleSheet.create({
   },
   filterDropdownButton: {
     flex: 1,
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
     borderRadius: theme.borderRadius.full,
     paddingHorizontal: theme.spacing.base,
     paddingVertical: theme.spacing.sm,
@@ -678,7 +678,7 @@ const createStyles = (theme: any) => StyleSheet.create({
   },
   segmentedControl: {
     flexDirection: 'row',
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
     borderRadius: theme.borderRadius.full,
     padding: 4,
     gap: 4,
@@ -725,7 +725,7 @@ const createStyles = (theme: any) => StyleSheet.create({
     borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
   },
   transactionDetails: {
     flex: 1,
@@ -799,7 +799,7 @@ const createStyles = (theme: any) => StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
   },
   loadingText: {
     marginTop: theme.spacing.md,

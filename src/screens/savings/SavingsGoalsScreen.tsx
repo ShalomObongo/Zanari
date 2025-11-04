@@ -943,7 +943,7 @@ const SavingsGoalsScreen: React.FC = () => {
 const createStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -1210,7 +1210,7 @@ const createStyles = (theme: any) => StyleSheet.create({
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
   },
   modalContent: {
     flex: 1,

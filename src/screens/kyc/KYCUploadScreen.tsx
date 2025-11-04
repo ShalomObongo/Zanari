@@ -353,7 +353,7 @@ const KYCUploadScreen: React.FC = () => {
 
   return (
     <>
-      <StatusBar barStyle={theme.colors.statusBarStyle} backgroundColor={theme.colors.backgroundLight} />
+      <StatusBar barStyle={theme.colors.statusBarStyle} backgroundColor={theme.colors.background} />
       <SafeAreaView style={styles.container} edges={['top']}>
         {/* Header */}
         <View style={styles.header}>
@@ -484,7 +484,7 @@ const KYCUploadScreen: React.FC = () => {
 const createStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
   },
   header: {
     paddingHorizontal: 20,
@@ -639,7 +639,7 @@ const createStyles = (theme: any) => StyleSheet.create({
   uploadedDocument: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
     padding: 12,
     borderRadius: 8,
     marginBottom: 8,
@@ -694,7 +694,7 @@ const createStyles = (theme: any) => StyleSheet.create({
     marginLeft: 36,
   },
   uploadMoreButton: {
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
     borderWidth: 1,
     borderColor: theme.colors.success,
   },
@@ -787,7 +787,7 @@ const createStyles = (theme: any) => StyleSheet.create({
   },
   modalCancelButton: {
     flex: 1,
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',

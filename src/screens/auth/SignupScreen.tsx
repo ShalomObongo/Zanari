@@ -160,7 +160,7 @@ const SignupScreen: React.FC = () => {
 
   return (
     <>
-      <StatusBar barStyle={theme.colors.statusBarStyle} backgroundColor={theme.colors.backgroundLight} />
+      <StatusBar barStyle={theme.colors.statusBarStyle} backgroundColor={theme.colors.background} />
       <SafeAreaView style={styles.container} edges={['top']}>
         <KeyboardAvoidingView
           style={styles.keyboardContainer}
@@ -372,7 +372,7 @@ const SignupScreen: React.FC = () => {
 const createStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
   },
   keyboardContainer: {
     flex: 1,
@@ -508,7 +508,7 @@ const createStyles = (theme: any) => StyleSheet.create({
     paddingHorizontal: theme.spacing.base,
     paddingTop: theme.spacing.base,
     paddingBottom: theme.spacing.lg,
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
     borderTopWidth: 0,
   },
   primaryButton: {

@@ -303,7 +303,7 @@ const EditGoalModal: React.FC<EditGoalModalProps> = ({ visible, goalId, onClose,
 const createStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
   },
   content: {
     flex: 1,

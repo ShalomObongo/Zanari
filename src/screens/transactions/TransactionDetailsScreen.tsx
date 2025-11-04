@@ -35,6 +35,8 @@ const TransactionDetailsScreen: React.FC = () => {
   const [notes, setNotes] = useState('Lunch with the team.');
   const [attachments] = useState<string[]>(['receipt.jpg']);
 
+  const styles = createStyles(theme);
+
   if (!transaction) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
@@ -204,7 +206,7 @@ const TransactionDetailsScreen: React.FC = () => {
     Alert.alert('Add File', 'File attachment coming soon');
   };
 
-  const styles = createStyles(theme);
+  
 
   return (
     <>
@@ -431,7 +433,7 @@ const createStyles = (theme: any) => StyleSheet.create({
     paddingVertical: theme.spacing.sm,
   },
   detailsCard: {
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
     borderRadius: theme.borderRadius.xl,
     padding: theme.spacing.base,
   },

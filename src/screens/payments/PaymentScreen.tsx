@@ -673,7 +673,7 @@ const createStyles = (theme: any) => StyleSheet.create({
   amountInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
     borderRadius: theme.borderRadius.lg,
     borderWidth: 1,
     borderColor: theme.colors.border,
@@ -722,7 +722,7 @@ const createStyles = (theme: any) => StyleSheet.create({
     color: theme.colors.surface,
   },
   merchantInput: {
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
     borderRadius: theme.borderRadius.lg,
     borderWidth: 1,
     borderColor: theme.colors.border,
@@ -734,7 +734,7 @@ const createStyles = (theme: any) => StyleSheet.create({
     marginBottom: theme.spacing.sm,
   },
   descriptionInput: {
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
     borderRadius: theme.borderRadius.lg,
     borderWidth: 1,
     borderColor: theme.colors.border,
@@ -754,7 +754,7 @@ const createStyles = (theme: any) => StyleSheet.create({
   paymentMethodItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
     borderRadius: theme.borderRadius.lg,
     padding: theme.spacing.base,
     marginBottom: theme.spacing.sm,
@@ -842,7 +842,7 @@ const createStyles = (theme: any) => StyleSheet.create({
     lineHeight: 20,
   },
   roundUpExample: {
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
     padding: theme.spacing.sm,
     borderRadius: theme.borderRadius.DEFAULT,
   },

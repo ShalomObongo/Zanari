@@ -138,7 +138,7 @@ const createStyles = (theme: any) => StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
-    backgroundColor: theme?.colors?.backgroundLight || '#F8FAFC',
+    backgroundColor: theme?.colors?.background || '#F8FAFC',
   },
   card: {
     width: '100%',

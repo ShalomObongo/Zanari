@@ -158,7 +158,7 @@ const SavingsInsightsScreen: React.FC = () => {
 };
 
 const createStyles = (theme: any) => StyleSheet.create({
-  container: { flex: 1, backgroundColor: theme.colors.backgroundLight },
+  container: { flex: 1, backgroundColor: theme.colors.background },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -223,7 +223,7 @@ const createStyles = (theme: any) => StyleSheet.create({
     flex: 1,
     height: 12,
     borderRadius: 6,
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
     marginHorizontal: 8,
     overflow: 'hidden',
   },

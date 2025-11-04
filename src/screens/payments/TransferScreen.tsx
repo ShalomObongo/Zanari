@@ -821,7 +821,7 @@ const createStyles = (theme: any) => StyleSheet.create({
   accountSelector: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
     borderRadius: theme.borderRadius.lg,
     borderWidth: 1,
     borderColor: theme.colors.border,
@@ -853,7 +853,7 @@ const createStyles = (theme: any) => StyleSheet.create({
   recipientInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
     borderRadius: theme.borderRadius.lg,
     borderWidth: 1,
     borderColor: theme.colors.border,
@@ -893,7 +893,7 @@ const createStyles = (theme: any) => StyleSheet.create({
   phoneInputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
     borderRadius: theme.borderRadius.lg,
     borderWidth: 1,
     borderColor: theme.colors.border,
@@ -915,7 +915,7 @@ const createStyles = (theme: any) => StyleSheet.create({
   amountInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
     borderRadius: theme.borderRadius.lg,
     borderWidth: 1,
     borderColor: theme.colors.border,
@@ -935,7 +935,7 @@ const createStyles = (theme: any) => StyleSheet.create({
     color: theme.colors.textPrimary,
   },
   referenceInput: {
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
     borderRadius: theme.borderRadius.lg,
     borderWidth: 1,
     borderColor: theme.colors.border,
@@ -1009,7 +1009,7 @@ const createStyles = (theme: any) => StyleSheet.create({
     borderBottomColor: theme.colors.divider,
   },
   previewCard: {
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
     borderRadius: theme.borderRadius.xl,
     padding: theme.spacing.xl,
     marginTop: theme.spacing.lg,

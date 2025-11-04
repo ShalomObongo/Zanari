@@ -48,7 +48,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = () => {
 
   return (
     <>
-      <StatusBar barStyle={theme.colors.statusBarStyle} backgroundColor={theme.colors.backgroundLight} />
+      <StatusBar barStyle={theme.colors.statusBarStyle} backgroundColor={theme.colors.background} />
       <View style={styles.container}>
         <ScrollView
           style={styles.scrollView}
@@ -57,7 +57,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = () => {
         >
           {/* Gradient Header */}
           <LinearGradient
-            colors={gradientColors}
+            colors={[...gradientColors]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.gradientHeader}
@@ -131,7 +131,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = () => {
 const createStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
   },
   scrollView: {
     flex: 1,
@@ -209,7 +209,7 @@ const createStyles = (theme: any) => StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
     paddingHorizontal: theme.spacing.xl,
     paddingBottom: theme.spacing.xl,
     paddingTop: theme.spacing.base,
