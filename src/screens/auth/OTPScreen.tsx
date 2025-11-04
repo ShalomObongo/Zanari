@@ -17,7 +17,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useAuthStore } from '@/store/authStore';
 import { ApiError } from '@/services/api';
-import theme from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface OTPScreenProps {}
 
@@ -28,6 +28,8 @@ interface RouteParams {
 
 const OTPScreen: React.FC<OTPScreenProps> = () => {
   const navigation = useNavigation<any>();
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
   const route = useRoute();
   const { identifier, method } = (route.params as RouteParams) || { identifier: '', method: 'phone' };
 
@@ -193,7 +195,7 @@ const OTPScreen: React.FC<OTPScreenProps> = () => {
 
   return (
     <>
-      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
+      <StatusBar barStyle={theme.colors.statusBarStyle} backgroundColor={theme.colors.surface} />
       <SafeAreaView style={styles.container} edges={['top']}>
         <KeyboardAvoidingView
           style={styles.keyboardContainer}
@@ -276,7 +278,7 @@ const OTPScreen: React.FC<OTPScreenProps> = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.surface,

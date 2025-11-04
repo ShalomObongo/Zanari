@@ -16,7 +16,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useSavingsStore } from '@/store/savingsStore';
 import { useWalletStore } from '@/store/walletStore';
 import { formatCurrency } from '@/utils/formatters';
-import theme from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface GoalWithdrawModalProps {
   visible: boolean;
@@ -31,6 +31,7 @@ const GoalWithdrawModal: React.FC<GoalWithdrawModalProps> = ({
   onClose,
   onSuccess,
 }) => {
+  const { theme } = useTheme();
   const [selectedWallet, setSelectedWallet] = useState<'main' | 'savings'>('main');
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -41,6 +42,7 @@ const GoalWithdrawModal: React.FC<GoalWithdrawModalProps> = ({
   const currentGoal = goalId ? goals.find((g) => g.goal_id === goalId) : null;
   const mainWallet = wallets.find((w) => w.wallet_type === 'main');
   const savingsWallet = wallets.find((w) => w.wallet_type === 'savings');
+  const styles = createStyles(theme);
 
   const handleClose = () => {
     setSelectedWallet('main');
@@ -249,7 +251,7 @@ const GoalWithdrawModal: React.FC<GoalWithdrawModalProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.backgroundLight,

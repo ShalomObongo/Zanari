@@ -18,7 +18,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useWalletStore } from '@/store/walletStore';
 import { formatCurrency, parseCentsFromInput } from '@/utils/formatters';
 import PinVerificationModal from './PinVerificationModal';
-import theme from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface TransferToSavingsWalletModalProps {
   visible: boolean;
@@ -31,6 +31,7 @@ const TransferToSavingsWalletModal: React.FC<TransferToSavingsWalletModalProps> 
   onClose,
   onSuccess,
 }) => {
+  const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const [amount, setAmount] = useState('');
   const [showPinModal, setShowPinModal] = useState(false);
@@ -42,6 +43,7 @@ const TransferToSavingsWalletModal: React.FC<TransferToSavingsWalletModalProps> 
 
   const mainWallet = wallets.find((w) => w.wallet_type === 'main');
   const availableBalance = mainWallet?.available_balance ?? 0;
+  const styles = createStyles(theme);
 
   const handleClose = () => {
     setAmount('');
@@ -274,7 +276,7 @@ const TransferToSavingsWalletModal: React.FC<TransferToSavingsWalletModalProps> 
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.backgroundLight,

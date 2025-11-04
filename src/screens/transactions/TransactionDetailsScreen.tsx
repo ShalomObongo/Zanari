@@ -13,7 +13,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useTransactionStore } from '@/store/transactionStore';
 import { formatCurrency } from '@/utils/formatters';
-import theme from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 
 type TransactionDetailsRouteProp = RouteProp<
   { TransactionDetails: { transactionId: string } },
@@ -21,6 +21,7 @@ type TransactionDetailsRouteProp = RouteProp<
 >;
 
 const TransactionDetailsScreen: React.FC = () => {
+  const { theme } = useTheme();
   const navigation = useNavigation();
   const route = useRoute<TransactionDetailsRouteProp>();
   const { transactionId } = route.params;
@@ -203,9 +204,11 @@ const TransactionDetailsScreen: React.FC = () => {
     Alert.alert('Add File', 'File attachment coming soon');
   };
 
+  const styles = createStyles(theme);
+
   return (
     <>
-      <StatusBar barStyle="light-content" backgroundColor={theme.colors.primary} />
+      <StatusBar barStyle={theme.colors.statusBarStyle} backgroundColor={theme.colors.primary} />
       <SafeAreaView style={styles.container} edges={['top']}>
         {/* Header */}
         <View style={styles.header}>
@@ -366,7 +369,7 @@ const TransactionDetailsScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.surface,

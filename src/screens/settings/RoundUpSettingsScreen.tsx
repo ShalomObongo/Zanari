@@ -16,7 +16,7 @@ import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useRoundUpStore } from '@/store/roundUpStore';
 import { formatCurrency } from '@/utils/formatters';
-import theme from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 
 type IncrementType = '10' | '50' | '100' | 'auto' | 'percentage';
 
@@ -37,6 +37,7 @@ const INCREMENT_OPTIONS: Array<{ value: IncrementType; label: string; descriptio
 ];
 
 const RoundUpSettingsScreen = () => {
+  const { theme } = useTheme();
   const navigation = useNavigation();
   const {
     rule,
@@ -204,6 +205,8 @@ const RoundUpSettingsScreen = () => {
     );
   };
 
+  const styles = createStyles(theme);
+
   if (isLoading && !rule) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
@@ -217,7 +220,7 @@ const RoundUpSettingsScreen = () => {
 
   return (
     <>
-      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
+      <StatusBar barStyle={theme.colors.statusBarStyle} backgroundColor={theme.colors.surface} />
       <SafeAreaView style={styles.container} edges={['top']}>
         {/* Header */}
         <View style={styles.header}>
@@ -335,7 +338,7 @@ const RoundUpSettingsScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.surface,

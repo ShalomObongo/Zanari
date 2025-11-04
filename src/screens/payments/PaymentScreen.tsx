@@ -19,7 +19,7 @@ import PinVerificationModal from '@/components/PinVerificationModal';
 import { useWalletStore } from '@/store/walletStore';
 import { useAuthStore } from '@/store/authStore';
 import { formatCurrency } from '@/utils/formatters';
-import theme from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 import api from '../../services/api';
 
 interface PaymentScreenProps {}
@@ -37,6 +37,8 @@ interface PaymentOption {
 
 const PaymentScreen: React.FC<PaymentScreenProps> = () => {
   const navigation = useNavigation<any>();
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
   const route = useRoute();
   const { mode = 'payment' } = (route.params as RouteParams) || {};
   const { popup } = usePaystack();
@@ -429,7 +431,7 @@ const PaymentScreen: React.FC<PaymentScreenProps> = () => {
 
   return (
     <>
-      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
+      <StatusBar barStyle={theme.colors.statusBarStyle} backgroundColor={theme.colors.surface} />
       <SafeAreaView style={styles.container} edges={['top']}>
         <KeyboardAvoidingView
           style={styles.keyboardContainer}
@@ -608,7 +610,7 @@ const PaymentScreen: React.FC<PaymentScreenProps> = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.surface,

@@ -16,7 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
-import theme from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 import { useAuthStore } from '@/store/authStore';
 import { ApiError } from '@/services/api';
 
@@ -45,6 +45,7 @@ const isValidKenyanPhone = (value: string) => /^254(7[0-9]{8}|1[0-9]{8})$/.test(
 const MIN_NAME_LENGTH = 2;
 
 const EditProfileScreen: React.FC = () => {
+  const { theme } = useTheme();
   const navigation = useNavigation<any>();
   const user = useAuthStore((state) => state.user);
   const updateProfile = useAuthStore((state) => state.updateProfile);
@@ -160,9 +161,11 @@ const EditProfileScreen: React.FC = () => {
     return null;
   }
 
+  const styles = createStyles(theme);
+
   return (
     <>
-      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.backgroundLight} />
+      <StatusBar barStyle={theme.colors.statusBarStyle} backgroundColor={theme.colors.backgroundLight} />
       <SafeAreaView style={styles.container} edges={['top']}>
         <KeyboardAvoidingView
           style={styles.keyboardContainer}
@@ -269,7 +272,7 @@ const EditProfileScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.backgroundLight,

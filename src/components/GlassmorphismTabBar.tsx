@@ -9,7 +9,7 @@ import { BlurView } from 'expo-blur';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import theme from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 
 /**
  * GlassmorphismTabBar - A custom bottom tab bar with Apple-style glassmorphism effect
@@ -25,13 +25,15 @@ export const GlassmorphismTabBar: React.FC<BottomTabBarProps> = ({
   descriptors,
   navigation,
 }) => {
+  const { theme } = useTheme();
   const insets = useSafeAreaInsets();
+  const styles = createStyles(theme);
 
   return (
     <View style={[styles.container, { paddingBottom: insets.bottom }]}>
       <BlurView
-        intensity={Platform.OS === 'ios' ? 80 : 0}
-        tint="light"
+        intensity={Platform.OS === 'ios' ? (theme.isDark ? 100 : 80) : 0}
+        tint={theme.isDark ? 'dark' : 'light'}
         style={styles.blurContainer}
       >
         <View style={styles.innerContainer}>
@@ -114,7 +116,7 @@ export const GlassmorphismTabBar: React.FC<BottomTabBarProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
   container: {
     position: 'absolute',
     bottom: 0,
@@ -126,14 +128,16 @@ const styles = StyleSheet.create({
   blurContainer: {
     borderRadius: 28,
     overflow: 'hidden',
-    backgroundColor: Platform.OS === 'ios' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(255, 255, 255, 0.92)',
+    backgroundColor: Platform.OS === 'ios'
+      ? (theme.isDark ? 'rgba(30, 30, 30, 0.8)' : 'rgba(255, 255, 255, 0.7)')
+      : (theme.isDark ? 'rgba(30, 30, 30, 0.95)' : 'rgba(255, 255, 255, 0.92)'),
     borderWidth: Platform.OS === 'ios' ? 0.5 : 0,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: theme.isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.3)',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.12,
+        shadowOpacity: theme.isDark ? 0.3 : 0.12,
         shadowRadius: 16,
       },
       android: {
@@ -164,6 +168,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   iconContainerActive: {
-    backgroundColor: 'rgba(82, 183, 136, 0.12)',
+    backgroundColor: theme.isDark
+      ? 'rgba(82, 183, 136, 0.2)'
+      : 'rgba(82, 183, 136, 0.12)',
   },
 });

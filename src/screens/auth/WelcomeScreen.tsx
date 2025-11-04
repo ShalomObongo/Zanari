@@ -11,7 +11,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import theme from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -20,28 +20,35 @@ interface FeatureItemProps {
   title: string;
   description: string;
   iconBgColor: string;
+  theme: any;
 }
 
-const FeatureItem: React.FC<FeatureItemProps> = ({ icon, title, description, iconBgColor }) => (
-  <View style={styles.featureItem}>
-    <View style={[styles.iconCircle, { backgroundColor: iconBgColor }]}>
-      <Icon name={icon} size={24} color="#FFFFFF" />
+const FeatureItem: React.FC<FeatureItemProps> = ({ icon, title, description, iconBgColor, theme }) => {
+  const styles = createStyles(theme);
+  return (
+    <View style={styles.featureItem}>
+      <View style={[styles.iconCircle, { backgroundColor: iconBgColor }]}>
+        <Icon name={icon} size={24} color="#FFFFFF" />
+      </View>
+      <View style={styles.featureTextContainer}>
+        <Text style={styles.featureTitle}>{title}</Text>
+        <Text style={styles.featureDescription}>{description}</Text>
+      </View>
     </View>
-    <View style={styles.featureTextContainer}>
-      <Text style={styles.featureTitle}>{title}</Text>
-      <Text style={styles.featureDescription}>{description}</Text>
-    </View>
-  </View>
-);
+  );
+};
 
 interface WelcomeScreenProps {}
 
 const WelcomeScreen: React.FC<WelcomeScreenProps> = () => {
   const navigation = useNavigation<any>();
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
+  const gradientColors = theme.gradients.welcome[theme.isDark ? 'dark' : 'light'];
 
   return (
     <>
-      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.backgroundLight} />
+      <StatusBar barStyle={theme.colors.statusBarStyle} backgroundColor={theme.colors.backgroundLight} />
       <View style={styles.container}>
         <ScrollView
           style={styles.scrollView}
@@ -50,7 +57,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = () => {
         >
           {/* Gradient Header */}
           <LinearGradient
-            colors={['#1B4332', '#2D6A4F', '#52B788', '#B7E4C7', '#f6f8f7']}
+            colors={gradientColors}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.gradientHeader}
@@ -69,24 +76,28 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = () => {
               title="Automated Savings"
               description="Effortlessly save with round-ups on every transaction."
               iconBgColor={theme.colors.accent}
+              theme={theme}
             />
             <FeatureItem
               icon="shield"
               title="Secure Payments"
               description="Your transactions are always protected with top-tier security."
               iconBgColor={theme.colors.accentDarker}
+              theme={theme}
             />
             <FeatureItem
               icon="verified-user"
               title="Quick Verification"
               description="Get verified in minutes with our streamlined KYC process."
               iconBgColor={theme.colors.accentDarkest}
+              theme={theme}
             />
             <FeatureItem
               icon="wifi-off"
               title="Offline Access"
               description="Access your essential account information, even without internet."
               iconBgColor={theme.colors.primary}
+              theme={theme}
             />
           </View>
 
@@ -117,7 +128,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.backgroundLight,

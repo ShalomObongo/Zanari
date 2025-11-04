@@ -10,11 +10,13 @@ import {
   Modal,
   ActivityIndicator,
   RefreshControl,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/store/authStore';
 import { formatAbsoluteDate } from '@/utils/formatters';
 import apiClient from '@/services/api';
+import { useTheme } from '@/contexts/ThemeContext';
 
 // Document types interface
 interface DocumentType {
@@ -67,6 +69,7 @@ interface KYCDocument {
 }
 
 const KYCUploadScreen: React.FC = () => {
+  const { theme } = useTheme();
   // Zustand store
   const user = useAuthStore((state) => state.user);
   const kycStatus = user?.kyc_status || 'not_started';
@@ -346,10 +349,14 @@ const KYCUploadScreen: React.FC = () => {
     );
   };
 
+  const styles = createStyles(theme);
+
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
+    <>
+      <StatusBar barStyle={theme.colors.statusBarStyle} backgroundColor={theme.colors.backgroundLight} />
+      <SafeAreaView style={styles.container} edges={['top']}>
+        {/* Header */}
+        <View style={styles.header}>
         <Text style={styles.headerTitle}>KYC Verification</Text>
         <Text style={styles.headerSubtitle}>Complete your identity verification</Text>
       </View>
@@ -469,53 +476,54 @@ const KYCUploadScreen: React.FC = () => {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+      </SafeAreaView>
+    </>
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: theme.colors.backgroundLight,
   },
   header: {
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#E9ECEF',
+    borderBottomColor: theme.colors.border,
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#1B4332',
+    color: theme.colors.textPrimary,
     marginBottom: 4,
   },
   headerSubtitle: {
     fontSize: 16,
-    color: '#6C757D',
+    color: theme.colors.textSecondary,
   },
   progressContainer: {
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#E9ECEF',
+    borderBottomColor: theme.colors.border,
   },
   progressBar: {
     height: 8,
-    backgroundColor: '#E9ECEF',
+    backgroundColor: theme.colors.gray200,
     borderRadius: 4,
     marginBottom: 8,
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#52B788',
+    backgroundColor: theme.colors.success,
     borderRadius: 4,
   },
   progressText: {
     fontSize: 14,
-    color: '#6C757D',
+    color: theme.colors.textSecondary,
     textAlign: 'center',
   },
   statusBanner: {
@@ -538,7 +546,7 @@ const styles = StyleSheet.create({
     paddingTop: 20,
   },
   infoCard: {
-    backgroundColor: '#E3F2FD',
+    backgroundColor: theme.colors.info + '20',
     padding: 16,
     borderRadius: 12,
     marginBottom: 20,
@@ -546,25 +554,21 @@ const styles = StyleSheet.create({
   infoTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1B4332',
+    color: theme.colors.textPrimary,
     marginBottom: 12,
   },
   infoText: {
     fontSize: 14,
-    color: '#1B4332',
+    color: theme.colors.textPrimary,
     lineHeight: 20,
   },
   documentSection: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.surface,
     marginHorizontal: 20,
     marginBottom: 16,
     borderRadius: 12,
     padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    ...theme.shadows.sm,
   },
   documentHeader: {
     marginBottom: 16,
@@ -589,23 +593,23 @@ const styles = StyleSheet.create({
   documentTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1B4332',
+    color: theme.colors.textPrimary,
     marginRight: 8,
   },
   requiredBadge: {
-    backgroundColor: '#FF6B6B',
+    backgroundColor: theme.colors.error,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 10,
   },
   requiredBadgeText: {
     fontSize: 10,
-    color: '#FFFFFF',
+    color: theme.colors.surface,
     fontWeight: '600',
   },
   documentDescription: {
     fontSize: 14,
-    color: '#6C757D',
+    color: theme.colors.textSecondary,
   },
   examplesContainer: {
     marginBottom: 16,
@@ -614,12 +618,12 @@ const styles = StyleSheet.create({
   examplesTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1B4332',
+    color: theme.colors.textPrimary,
     marginBottom: 8,
   },
   exampleItem: {
     fontSize: 13,
-    color: '#6C757D',
+    color: theme.colors.textSecondary,
     marginBottom: 4,
   },
   uploadedDocumentsContainer: {
@@ -629,13 +633,13 @@ const styles = StyleSheet.create({
   uploadedTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1B4332',
+    color: theme.colors.textPrimary,
     marginBottom: 8,
   },
   uploadedDocument: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F8F9FA',
+    backgroundColor: theme.colors.backgroundLight,
     padding: 12,
     borderRadius: 8,
     marginBottom: 8,
@@ -646,7 +650,7 @@ const styles = StyleSheet.create({
   fileName: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#1B4332',
+    color: theme.colors.textPrimary,
     marginBottom: 4,
   },
   documentMeta: {
@@ -655,12 +659,12 @@ const styles = StyleSheet.create({
   },
   fileSize: {
     fontSize: 12,
-    color: '#6C757D',
+    color: theme.colors.textSecondary,
     marginRight: 16,
   },
   uploadDate: {
     fontSize: 12,
-    color: '#6C757D',
+    color: theme.colors.textSecondary,
   },
   documentActions: {
     flexDirection: 'row',
@@ -683,45 +687,45 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   uploadButton: {
-    backgroundColor: '#52B788',
+    backgroundColor: theme.colors.success,
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
     marginLeft: 36,
   },
   uploadMoreButton: {
-    backgroundColor: '#F8F9FA',
+    backgroundColor: theme.colors.backgroundLight,
     borderWidth: 1,
-    borderColor: '#52B788',
+    borderColor: theme.colors.success,
   },
   uploadButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: theme.colors.surface,
   },
   uploadMoreButtonText: {
-    color: '#52B788',
+    color: theme.colors.success,
   },
   submitSection: {
     paddingHorizontal: 20,
     paddingVertical: 24,
   },
   submitButton: {
-    backgroundColor: '#52B788',
+    backgroundColor: theme.colors.success,
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
   },
   submitButtonDisabled: {
-    backgroundColor: '#E9ECEF',
+    backgroundColor: theme.colors.disabled,
   },
   submitButtonText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: theme.colors.surface,
   },
   submitButtonTextDisabled: {
-    color: '#6C757D',
+    color: theme.colors.textSecondary,
   },
   bottomPadding: {
     height: 40,
@@ -737,7 +741,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingContainer: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.surface,
     paddingHorizontal: 32,
     paddingVertical: 24,
     borderRadius: 12,
@@ -745,7 +749,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: '#1B4332',
+    color: theme.colors.textPrimary,
     marginTop: 16,
     textAlign: 'center',
   },
@@ -757,7 +761,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   modalContent: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.surface,
     borderRadius: 16,
     padding: 24,
     width: '100%',
@@ -766,13 +770,13 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1B4332',
+    color: theme.colors.textPrimary,
     textAlign: 'center',
     marginBottom: 16,
   },
   modalText: {
     fontSize: 16,
-    color: '#6C757D',
+    color: theme.colors.textSecondary,
     textAlign: 'center',
     lineHeight: 24,
     marginBottom: 24,
@@ -783,26 +787,26 @@ const styles = StyleSheet.create({
   },
   modalCancelButton: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: theme.colors.backgroundLight,
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
   },
   modalCancelText: {
     fontSize: 16,
-    color: '#6C757D',
+    color: theme.colors.textSecondary,
     fontWeight: '600',
   },
   modalSubmitButton: {
     flex: 1,
-    backgroundColor: '#52B788',
+    backgroundColor: theme.colors.success,
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
   },
   modalSubmitText: {
     fontSize: 16,
-    color: '#FFFFFF',
+    color: theme.colors.surface,
     fontWeight: '600',
   },
 });

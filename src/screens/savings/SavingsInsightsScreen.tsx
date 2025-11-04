@@ -6,11 +6,12 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useSavingsStore } from '@/store/savingsStore';
 import { useTransactionStore } from '@/store/transactionStore';
 import { formatCurrency } from '@/utils/formatters';
-import theme from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 
 const monthsBack = 6;
 
 const SavingsInsightsScreen: React.FC = () => {
+  const { theme } = useTheme();
   const navigation = useNavigation<any>();
   const goals = useSavingsStore((s) => s.goals);
   const getTotalSavedAmount = useSavingsStore((s) => s.getTotalSavedAmount);
@@ -58,9 +59,11 @@ const SavingsInsightsScreen: React.FC = () => {
   const maxBucket = useMemo(() => Math.max(1, ...historyBuckets.map((b) => b.total)), [historyBuckets]);
   const totalSaved = getTotalSavedAmount();
 
+  const styles = createStyles(theme);
+
   return (
     <>
-      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
+      <StatusBar barStyle={theme.colors.statusBarStyle} backgroundColor={theme.colors.surface} />
       <SafeAreaView style={styles.container} edges={['top']}>
         {/* Header */}
         <View style={styles.header}>
@@ -154,7 +157,7 @@ const SavingsInsightsScreen: React.FC = () => {
   );
 };
 
-  const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.backgroundLight },
   header: {
     flexDirection: 'row',

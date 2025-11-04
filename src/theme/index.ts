@@ -1,9 +1,63 @@
 /**
  * Zanari Design System
- * Centralized theme configuration matching the new UI designs
+ * Centralized theme configuration with light and dark mode support
  */
 
-export const colors = {
+export type ThemeMode = 'light' | 'dark' | 'system';
+
+export interface ColorPalette {
+  // Primary Colors
+  primary: string;
+
+  // Accent Colors
+  accent: string;
+  accentDarker: string;
+  accentDarkest: string;
+  onPrimaryText: string;
+
+  // Text Colors
+  textPrimary: string;
+  textSecondary: string;
+  textTertiary: string;
+
+  // Surface & Background
+  surface: string;
+  background: string;
+  backgroundSecondary: string;
+
+  // Semantic Colors
+  success: string;
+  error: string;
+  warning: string;
+  info: string;
+
+  // Utility Colors
+  border: string;
+  divider: string;
+  disabled: string;
+
+  // Additional Shades
+  gray50: string;
+  gray100: string;
+  gray200: string;
+  gray300: string;
+  gray400: string;
+  gray500: string;
+  gray600: string;
+  gray700: string;
+  gray800: string;
+  gray900: string;
+
+  // Card & surface overlays
+  card: string;
+  overlay: string;
+
+  // Status bar style
+  statusBarStyle: 'light-content' | 'dark-content';
+}
+
+// Light mode color palette
+export const lightColors: ColorPalette = {
   // Primary Colors
   primary: '#1B4332',
 
@@ -20,8 +74,8 @@ export const colors = {
 
   // Surface & Background
   surface: '#FFFFFF',
-  backgroundLight: '#f6f8f7',
-  backgroundDark: '#11211b',
+  background: '#f6f8f7',
+  backgroundSecondary: '#F9FAFB',
 
   // Semantic Colors
   success: '#52B788',
@@ -45,6 +99,65 @@ export const colors = {
   gray700: '#374151',
   gray800: '#1F2937',
   gray900: '#111827',
+
+  // Card & surface overlays
+  card: '#FFFFFF',
+  overlay: 'rgba(0, 0, 0, 0.5)',
+
+  // Status bar style
+  statusBarStyle: 'dark-content',
+};
+
+// Dark mode color palette
+export const darkColors: ColorPalette = {
+  // Primary Colors - brighter in dark mode for better visibility
+  primary: '#2D6A4F',
+
+  // Accent Colors
+  accent: '#52B788',
+  accentDarker: '#74C69D',
+  accentDarkest: '#95D5B2',
+  onPrimaryText: '#D8F3DC',
+
+  // Text Colors - inverted for dark mode
+  textPrimary: '#F3F4F6',
+  textSecondary: '#D1D5DB',
+  textTertiary: '#9CA3AF',
+
+  // Surface & Background
+  surface: '#1F2937',
+  background: '#111827',
+  backgroundSecondary: '#0F1419',
+
+  // Semantic Colors - slightly adjusted for dark mode visibility
+  success: '#52B788',
+  error: '#EF4444',
+  warning: '#FBBF24',
+  info: '#60A5FA',
+
+  // Utility Colors
+  border: '#374151',
+  divider: '#2D3748',
+  disabled: '#4B5563',
+
+  // Additional Shades - inverted
+  gray50: '#1F2937',
+  gray100: '#374151',
+  gray200: '#4B5563',
+  gray300: '#6B7280',
+  gray400: '#9CA3AF',
+  gray500: '#D1D5DB',
+  gray600: '#E5E7EB',
+  gray700: '#F3F4F6',
+  gray800: '#F9FAFB',
+  gray900: '#FFFFFF',
+
+  // Card & surface overlays
+  card: '#1F2937',
+  overlay: 'rgba(0, 0, 0, 0.7)',
+
+  // Status bar style
+  statusBarStyle: 'light-content',
 };
 
 export const fonts = {
@@ -128,7 +241,10 @@ export const shadows = {
 };
 
 export const gradients = {
-  welcome: ['#1B4332', '#2D6A4F', '#f6f8f7'],
+  welcome: {
+    light: ['#1B4332', '#2D6A4F', '#f6f8f7'],
+    dark: ['#0F1419', '#1F2937', '#2D6A4F'],
+  },
 };
 
 // Icon sizes
@@ -147,16 +263,41 @@ export const layout = {
   tabBarBottomPadding: 100, // Extra space for floating glassmorphism tab bar
 };
 
-export const theme = {
-  colors,
-  fonts,
-  fontSizes,
-  spacing,
-  borderRadius,
-  shadows,
-  gradients,
-  iconSizes,
-  layout,
+export interface Theme {
+  colors: ColorPalette;
+  fonts: typeof fonts;
+  fontSizes: typeof fontSizes;
+  spacing: typeof spacing;
+  borderRadius: typeof borderRadius;
+  shadows: typeof shadows;
+  gradients: typeof gradients;
+  iconSizes: typeof iconSizes;
+  layout: typeof layout;
+  isDark: boolean;
+}
+
+/**
+ * Get theme based on mode
+ * @param mode - 'light' or 'dark' (system is resolved before calling this)
+ */
+export const getTheme = (mode: 'light' | 'dark'): Theme => {
+  const colors = mode === 'dark' ? darkColors : lightColors;
+
+  return {
+    colors,
+    fonts,
+    fontSizes,
+    spacing,
+    borderRadius,
+    shadows,
+    gradients,
+    iconSizes,
+    layout,
+    isDark: mode === 'dark',
+  };
 };
+
+// Default light theme for backwards compatibility
+export const theme = getTheme('light');
 
 export default theme;

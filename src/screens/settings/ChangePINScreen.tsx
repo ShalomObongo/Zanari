@@ -16,7 +16,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import PINInput from '@/components/PINInput';
 import { useAuthStore } from '@/store/authStore';
 import { ApiError } from '@/services/api';
-import theme from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 import { evaluatePinSecurity, PinLockError } from '@/utils/pinSecurity';
 
 type ChangePinStep = 'verify' | 'new' | 'confirm';
@@ -39,6 +39,7 @@ const formatRemaining = (seconds: number) => {
 };
 
 const ChangePINScreen: React.FC = () => {
+  const { theme } = useTheme();
   const navigation = useNavigation<any>();
   const verifyPin = useAuthStore((state) => state.verifyPin);
   const setupPin = useAuthStore((state) => state.setupPin);
@@ -210,9 +211,11 @@ const ChangePINScreen: React.FC = () => {
     }
   };
 
+  const styles = createStyles(theme);
+
   return (
     <>
-      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.backgroundLight} />
+      <StatusBar barStyle={theme.colors.statusBarStyle} backgroundColor={theme.colors.backgroundLight} />
       <SafeAreaView style={styles.container} edges={['top']}>
         <KeyboardAvoidingView
           style={styles.keyboardContainer}
@@ -284,7 +287,7 @@ const ChangePINScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.backgroundLight,

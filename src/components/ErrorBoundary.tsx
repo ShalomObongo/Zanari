@@ -1,5 +1,6 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useTheme } from '@/contexts/ThemeContext';
 
 type FallbackRenderParams = {
   error: Error | null;
@@ -16,6 +17,7 @@ export interface ErrorBoundaryProps {
   onReset?: () => void;
   reportError?: (error: Error, info: ErrorInfo) => void;
   resetKeys?: unknown[];
+  theme?: any; // Theme injected from wrapper
 }
 
 interface ErrorBoundaryState {
@@ -65,7 +67,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   };
 
   private renderFallback() {
-    const { fallback, title = 'Something went wrong', description = 'Please try again in a moment.' } = this.props;
+    const { fallback, title = 'Something went wrong', description = 'Please try again in a moment.', theme } = this.props;
     const { error } = this.state;
 
     if (typeof fallback === 'function') {
@@ -75,6 +77,8 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
     if (fallback) {
       return fallback;
     }
+
+    const styles = createStyles(theme);
 
     return (
       <View style={styles.container} accessibilityRole="alert">
@@ -107,14 +111,20 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   }
 }
 
+// Wrapper component to inject theme into ErrorBoundary
+const ErrorBoundaryWithTheme: React.FC<Omit<ErrorBoundaryProps, 'theme'>> = (props) => {
+  const { theme } = useTheme();
+  return <ErrorBoundary {...props} theme={theme} />;
+};
+
 export const withErrorBoundary = <P extends object>(
   WrappedComponent: React.ComponentType<P>,
-  boundaryProps?: Omit<ErrorBoundaryProps, 'children'>,
+  boundaryProps?: Omit<ErrorBoundaryProps, 'children' | 'theme'>,
 ): React.FC<P> => {
   const ComponentWithBoundary: React.FC<P> = (props: P) => (
-    <ErrorBoundary {...boundaryProps}>
+    <ErrorBoundaryWithTheme {...boundaryProps}>
       <WrappedComponent {...props} />
-    </ErrorBoundary>
+    </ErrorBoundaryWithTheme>
   );
 
   ComponentWithBoundary.displayName = `withErrorBoundary(${WrappedComponent.displayName ?? WrappedComponent.name ?? 'Component'})`;
@@ -122,18 +132,18 @@ export const withErrorBoundary = <P extends object>(
   return ComponentWithBoundary;
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: theme?.colors?.backgroundLight || '#F8FAFC',
   },
   card: {
     width: '100%',
     maxWidth: 420,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme?.colors?.surface || '#FFFFFF',
     borderRadius: 20,
     paddingVertical: 32,
     paddingHorizontal: 24,
@@ -144,7 +154,7 @@ const styles = StyleSheet.create({
     shadowRadius: 28,
     elevation: 6,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(10, 92, 90, 0.08)',
+    borderColor: theme?.colors?.border || 'rgba(10, 92, 90, 0.08)',
   },
   icon: {
     fontSize: 40,
@@ -153,20 +163,20 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#0A5C5A',
+    color: theme?.colors?.primary || '#0A5C5A',
     marginBottom: 8,
     textAlign: 'center',
   },
   description: {
     fontSize: 15,
-    color: '#475467',
+    color: theme?.colors?.textSecondary || '#475467',
     textAlign: 'center',
     marginBottom: 20,
     lineHeight: 22,
   },
   debugContainer: {
     width: '100%',
-    backgroundColor: 'rgba(10, 92, 90, 0.08)',
+    backgroundColor: theme?.isDark ? 'rgba(82, 183, 136, 0.1)' : 'rgba(10, 92, 90, 0.08)',
     borderRadius: 12,
     padding: 12,
     marginBottom: 16,
@@ -174,18 +184,18 @@ const styles = StyleSheet.create({
   debugLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#0A5C5A',
+    color: theme?.colors?.primary || '#0A5C5A',
     textTransform: 'uppercase',
     marginBottom: 4,
   },
   debugMessage: {
     fontSize: 13,
-    color: '#0F172A',
+    color: theme?.colors?.textPrimary || '#0F172A',
     lineHeight: 18,
   },
   button: {
     marginTop: 8,
-    backgroundColor: '#0A5C5A',
+    backgroundColor: theme?.colors?.primary || '#0A5C5A',
     borderRadius: 12,
     paddingVertical: 12,
     paddingHorizontal: 28,
@@ -193,8 +203,9 @@ const styles = StyleSheet.create({
   buttonText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: theme?.colors?.surface || '#FFFFFF',
   },
 });
 
-export default ErrorBoundary;
+export default ErrorBoundaryWithTheme;
+export { ErrorBoundary };
