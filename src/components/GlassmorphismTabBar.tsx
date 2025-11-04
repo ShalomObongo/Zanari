@@ -36,6 +36,19 @@ export const GlassmorphismTabBar: React.FC<BottomTabBarProps> = ({
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const useLiquid = Platform.OS === 'ios' && Boolean(Liquid?.isLiquidGlassSupported);
+  const styles = createStyles(theme);
+
+  // Theme-aware glass configuration
+  const blurTint: 'light' | 'dark' | 'default' = theme.isDark ? 'dark' : 'light';
+  const glassTintColor = theme.isDark
+    ? 'rgba(82, 183, 136, 0.18)'
+    : 'rgba(82, 183, 136, 0.22)';
+  const fallbackBGColor = theme.isDark
+    ? 'rgba(31, 41, 55, 0.60)'
+    : 'rgba(255, 255, 255, 0.65)';
+  const fallbackBorderColor = theme.isDark
+    ? 'rgba(255, 255, 255, 0.12)'
+    : 'rgba(255, 255, 255, 0.35)';
 
   const content = (
     <View style={styles.innerContainer}>
@@ -122,15 +135,20 @@ export const GlassmorphismTabBar: React.FC<BottomTabBarProps> = ({
           style={styles.blurContainer}
           interactive
           effect="regular"
-          tintColor="transparent"
+          tintColor={glassTintColor}
+          colorScheme={theme.isDark ? 'dark' : 'light'}
         >
           {content}
         </Liquid.LiquidGlassView>
       ) : (
         <BlurView
-          intensity={Platform.OS === 'ios' ? 80 : 0}
-          tint="light"
-          style={[styles.blurContainer, styles.fallbackGlass]}
+          intensity={Platform.OS === 'ios' ? (theme.isDark ? 60 : 80) : 0}
+          tint={blurTint}
+          style={[
+            styles.blurContainer,
+            styles.fallbackGlass,
+            { backgroundColor: fallbackBGColor, borderColor: fallbackBorderColor },
+          ]}
         >
           {content}
         </BlurView>
