@@ -16,7 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useSavingsStore } from '@/store/savingsStore';
 import { formatCurrency, parseCentsFromInput } from '@/utils/formatters';
-import theme from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface EditGoalModalProps {
   visible: boolean;
@@ -35,6 +35,7 @@ const GOAL_CATEGORIES = {
 };
 
 const EditGoalModal: React.FC<EditGoalModalProps> = ({ visible, goalId, onClose, onSuccess }) => {
+  const { theme } = useTheme();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [goalData, setGoalData] = useState({
     name: '',
@@ -48,6 +49,7 @@ const EditGoalModal: React.FC<EditGoalModalProps> = ({ visible, goalId, onClose,
   const updateGoal = useSavingsStore((state) => state.updateGoal);
 
   const currentGoal = goalId ? goals.find((g) => g.goal_id === goalId) : null;
+  const styles = createStyles(theme);
 
   // Initialize form data when goal changes
   useEffect(() => {
@@ -298,10 +300,10 @@ const EditGoalModal: React.FC<EditGoalModalProps> = ({ visible, goalId, onClose,
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
   },
   content: {
     flex: 1,

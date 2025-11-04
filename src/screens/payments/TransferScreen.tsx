@@ -25,12 +25,14 @@ import { useRoundUpStore } from '@/store/roundUpStore';
 import { formatCurrency, parseCentsFromInput } from '@/utils/formatters';
 import { calculateRoundUp, getRoundUpDescription } from '@/utils/roundUpCalculator';
 import api, { ApiError } from '@/services/api';
-import theme from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface TransferScreenProps {}
 
 const TransferScreen: React.FC<TransferScreenProps> = () => {
   const navigation = useNavigation<any>();
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
   const { popup } = usePaystack();
 
   const [amount, setAmount] = useState('');
@@ -494,7 +496,7 @@ const TransferScreen: React.FC<TransferScreenProps> = () => {
 
   return (
     <>
-      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
+      <StatusBar barStyle={theme.colors.statusBarStyle} backgroundColor={theme.colors.surface} />
       <SafeAreaView style={styles.container} edges={['top']}>
         <KeyboardAvoidingView
           style={styles.keyboardContainer}
@@ -766,7 +768,7 @@ const TransferScreen: React.FC<TransferScreenProps> = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.surface,
@@ -819,7 +821,7 @@ const styles = StyleSheet.create({
   accountSelector: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
     borderRadius: theme.borderRadius.lg,
     borderWidth: 1,
     borderColor: theme.colors.border,
@@ -851,7 +853,7 @@ const styles = StyleSheet.create({
   recipientInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
     borderRadius: theme.borderRadius.lg,
     borderWidth: 1,
     borderColor: theme.colors.border,
@@ -891,7 +893,7 @@ const styles = StyleSheet.create({
   phoneInputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
     borderRadius: theme.borderRadius.lg,
     borderWidth: 1,
     borderColor: theme.colors.border,
@@ -913,7 +915,7 @@ const styles = StyleSheet.create({
   amountInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
     borderRadius: theme.borderRadius.lg,
     borderWidth: 1,
     borderColor: theme.colors.border,
@@ -933,7 +935,7 @@ const styles = StyleSheet.create({
     color: theme.colors.textPrimary,
   },
   referenceInput: {
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
     borderRadius: theme.borderRadius.lg,
     borderWidth: 1,
     borderColor: theme.colors.border,
@@ -1007,7 +1009,7 @@ const styles = StyleSheet.create({
     borderBottomColor: theme.colors.divider,
   },
   previewCard: {
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
     borderRadius: theme.borderRadius.xl,
     padding: theme.spacing.xl,
     marginTop: theme.spacing.lg,

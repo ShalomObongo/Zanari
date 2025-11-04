@@ -15,6 +15,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { biometricAuthService } from '@/services/biometricAuth';
 import { PinLockError } from '@/utils/pinSecurity';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface PinVerificationModalProps {
   visible: boolean;
@@ -37,6 +38,7 @@ const PinVerificationModal: React.FC<PinVerificationModalProps> = ({
   onCancel,
   onPinEntered,
 }) => {
+  const { theme } = useTheme();
   // Auth store
   const user = useAuthStore((state) => state.user);
   const verifyPin = useAuthStore((state) => state.verifyPin);
@@ -60,6 +62,7 @@ const PinVerificationModal: React.FC<PinVerificationModalProps> = ({
   const hasAttemptedBiometric = useRef(false);
 
   const isLocked = getIsPinLocked();
+  const styles = createStyles(theme);
 
   useEffect(() => {
     if (!visible) {
@@ -299,7 +302,7 @@ const PinVerificationModal: React.FC<PinVerificationModalProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
@@ -311,7 +314,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   modalContent: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.surface,
     borderRadius: 16,
     padding: 24,
     shadowColor: '#000',
@@ -323,12 +326,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1B4332',
+    color: theme.colors.textPrimary,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 14,
-    color: '#6C757D',
+    color: theme.colors.textSecondary,
     marginBottom: 24,
   },
   pinInputContainer: {
@@ -338,12 +341,12 @@ const styles = StyleSheet.create({
   verifyingText: {
     marginTop: 12,
     fontSize: 14,
-    color: '#6C757D',
+    color: theme.colors.textSecondary,
   },
   attemptsText: {
     marginTop: 8,
     fontSize: 13,
-    color: '#FF6B6B',
+    color: theme.colors.error,
   },
   buttonRow: {
     flexDirection: 'row',
@@ -360,20 +363,20 @@ const styles = StyleSheet.create({
   biometricButton: {
     flexDirection: 'row',
     gap: 6,
-    backgroundColor: '#D8F3DC',
+    backgroundColor: theme.isDark ? 'rgba(82, 183, 136, 0.2)' : '#D8F3DC',
   },
   biometricButtonText: {
-    color: '#40916C',
+    color: theme.colors.accent,
   },
   cancelButton: {
-    backgroundColor: '#F1F3F5',
+    backgroundColor: theme.isDark ? 'rgba(255, 255, 255, 0.1)' : '#F1F3F5',
   },
   buttonText: {
     fontSize: 15,
     fontWeight: '600',
   },
   cancelButtonText: {
-    color: '#1B4332',
+    color: theme.colors.textPrimary,
   },
 });
 

@@ -18,7 +18,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useTransactionStore } from '@/store/transactionStore';
 import type { TransactionType, TransactionCategory } from '@/store/transactionStore';
 import { formatCurrency, formatRelativeDate, mapTransactionType } from '@/utils/formatters';
-import theme from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface TransactionHistoryScreenProps {}
 
@@ -30,6 +30,8 @@ interface FilterOptions {
 
 const TransactionHistoryScreen: React.FC<TransactionHistoryScreenProps> = () => {
   const navigation = useNavigation<any>();
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
 
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -289,7 +291,7 @@ const TransactionHistoryScreen: React.FC<TransactionHistoryScreenProps> = () => 
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select Category</Text>
               <TouchableOpacity onPress={() => setShowCategoryModal(false)}>
-                <Icon name="close" size={24} color="#333333" />
+                <Icon name="close" size={24} color={theme.colors.textPrimary} />
               </TouchableOpacity>
             </View>
             <View style={styles.modalList}>
@@ -309,7 +311,7 @@ const TransactionHistoryScreen: React.FC<TransactionHistoryScreenProps> = () => 
                     {category === 'all' ? 'All Categories' : category.replace('_', ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
                   </Text>
                   {filters.category === category && (
-                    <Icon name="check" size={20} color="#52B788" />
+                    <Icon name="check" size={20} color={theme.colors.accent} />
                   )}
                 </TouchableOpacity>
               ))}
@@ -341,7 +343,7 @@ const TransactionHistoryScreen: React.FC<TransactionHistoryScreenProps> = () => 
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select Period</Text>
               <TouchableOpacity onPress={() => setShowPeriodModal(false)}>
-                <Icon name="close" size={24} color="#333333" />
+                <Icon name="close" size={24} color={theme.colors.textPrimary} />
               </TouchableOpacity>
             </View>
             <View style={styles.modalList}>
@@ -361,7 +363,7 @@ const TransactionHistoryScreen: React.FC<TransactionHistoryScreenProps> = () => 
                     {period.label}
                   </Text>
                   {filters.period === period.key && (
-                    <Icon name="check" size={20} color="#52B788" />
+                    <Icon name="check" size={20} color={theme.colors.accent} />
                   )}
                 </TouchableOpacity>
               ))}
@@ -378,7 +380,7 @@ const TransactionHistoryScreen: React.FC<TransactionHistoryScreenProps> = () => 
   if (isInitialLoading) {
     return (
       <>
-        <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
+        <StatusBar barStyle={theme.colors.statusBarStyle} backgroundColor={theme.colors.surface} />
         <SafeAreaView style={styles.container} edges={['top']}>
           <View style={styles.header}>
             <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
@@ -435,23 +437,45 @@ const TransactionHistoryScreen: React.FC<TransactionHistoryScreenProps> = () => 
   
   const renderFooter = () => {
     if (!isLoadingMore) return <View style={styles.bottomSpacer} />;
-    
+
     return (
       <View style={styles.loadingMoreContainer}>
-        <ActivityIndicator size="small" color="#52B788" />
+        <ActivityIndicator size="small" color={theme.colors.accent} />
         <Text style={styles.loadingMoreText}>Loading more...</Text>
       </View>
     );
   };
 
+  // Show loading skeleton on initial load
+  if (isInitialLoading) {
+    return (
+      <>
+        <StatusBar barStyle={theme.colors.statusBarStyle} backgroundColor={theme.colors.surface} />
+        <SafeAreaView style={styles.container} edges={['top']}>
+          <View style={styles.header}>
+            <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
+              <Icon name="arrow-back" size={24} color={theme.colors.textPrimary} />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Transactions</Text>
+            <View style={styles.backButton} />
+          </View>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={theme.colors.accent} />
+            <Text style={styles.loadingText}>Loading transactions...</Text>
+          </View>
+        </SafeAreaView>
+      </>
+    );
+  }
+
   return (
     <>
-      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
+      <StatusBar barStyle={theme.colors.statusBarStyle} backgroundColor={theme.colors.surface} />
       <SafeAreaView style={styles.container} edges={['top']}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
-            <Icon name="arrow-back" size={24} color="#333333" />
+            <Icon name="arrow-back" size={24} color={theme.colors.textPrimary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Transactions</Text>
           <View style={styles.backButton} />
@@ -461,17 +485,17 @@ const TransactionHistoryScreen: React.FC<TransactionHistoryScreenProps> = () => 
         <View style={styles.filterSection}>
           {/* Search Bar */}
           <View style={styles.searchContainer}>
-            <Icon name="search" size={20} color="#999999" style={styles.searchIcon} />
+            <Icon name="search" size={20} color={theme.colors.textTertiary} style={styles.searchIcon} />
             <TextInput
               style={styles.searchInput}
               placeholder="Search transactions..."
-              placeholderTextColor="#999999"
+              placeholderTextColor={theme.colors.textTertiary}
               value={searchQuery}
               onChangeText={setSearchQuery}
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <Icon name="close" size={20} color="#999999" />
+                <Icon name="close" size={20} color={theme.colors.textTertiary} />
               </TouchableOpacity>
             )}
           </View>
@@ -553,7 +577,7 @@ const TransactionHistoryScreen: React.FC<TransactionHistoryScreenProps> = () => 
             <RefreshControl
               refreshing={isRefreshing}
               onRefresh={onRefresh}
-              tintColor="#52B788"
+              tintColor={theme.colors.accent}
             />
           }
           onEndReached={handleLoadMore}
@@ -561,7 +585,7 @@ const TransactionHistoryScreen: React.FC<TransactionHistoryScreenProps> = () => 
           ListFooterComponent={renderFooter}
           ListEmptyComponent={
             <View style={styles.emptyState}>
-              <Icon name="receipt-long" size={64} color="#e5e7eb" />
+              <Icon name="receipt-long" size={64} color={theme.colors.border} />
               <Text style={styles.emptyStateText}>No transactions found</Text>
               <Text style={styles.emptyStateSubtext}>
                 {searchQuery || filters.type !== 'all' || filters.category !== 'all' || filters.period !== 'month'
@@ -580,10 +604,10 @@ const TransactionHistoryScreen: React.FC<TransactionHistoryScreenProps> = () => 
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -619,7 +643,7 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
     borderRadius: theme.borderRadius.xl,
     paddingHorizontal: theme.spacing.base,
     paddingVertical: theme.spacing.md,
@@ -641,7 +665,7 @@ const styles = StyleSheet.create({
   },
   filterDropdownButton: {
     flex: 1,
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
     borderRadius: theme.borderRadius.full,
     paddingHorizontal: theme.spacing.base,
     paddingVertical: theme.spacing.sm,
@@ -654,7 +678,7 @@ const styles = StyleSheet.create({
   },
   segmentedControl: {
     flexDirection: 'row',
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
     borderRadius: theme.borderRadius.full,
     padding: 4,
     gap: 4,
@@ -701,7 +725,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
   },
   transactionDetails: {
     flex: 1,
@@ -775,7 +799,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
   },
   loadingText: {
     marginTop: theme.spacing.md,
@@ -792,8 +816,8 @@ const styles = StyleSheet.create({
   loadingMoreText: {
     marginLeft: 8,
     fontSize: 14,
-    color: '#666666',
-    fontFamily: 'System',
+    color: theme.colors.textSecondary,
+    fontFamily: theme.fonts.regular,
   },
   emptyListContent: {
     flexGrow: 1,
@@ -833,7 +857,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: theme.colors.divider,
   },
   modalOptionText: {
     fontSize: theme.fontSizes.base,

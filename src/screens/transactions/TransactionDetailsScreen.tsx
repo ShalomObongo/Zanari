@@ -13,7 +13,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useTransactionStore } from '@/store/transactionStore';
 import { formatCurrency } from '@/utils/formatters';
-import theme from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 
 type TransactionDetailsRouteProp = RouteProp<
   { TransactionDetails: { transactionId: string } },
@@ -21,6 +21,7 @@ type TransactionDetailsRouteProp = RouteProp<
 >;
 
 const TransactionDetailsScreen: React.FC = () => {
+  const { theme } = useTheme();
   const navigation = useNavigation();
   const route = useRoute<TransactionDetailsRouteProp>();
   const { transactionId } = route.params;
@@ -33,6 +34,8 @@ const TransactionDetailsScreen: React.FC = () => {
   // Local state for notes and attachments
   const [notes, setNotes] = useState('Lunch with the team.');
   const [attachments] = useState<string[]>(['receipt.jpg']);
+
+  const styles = createStyles(theme);
 
   if (!transaction) {
     return (
@@ -203,9 +206,11 @@ const TransactionDetailsScreen: React.FC = () => {
     Alert.alert('Add File', 'File attachment coming soon');
   };
 
+  
+
   return (
     <>
-      <StatusBar barStyle="light-content" backgroundColor={theme.colors.primary} />
+      <StatusBar barStyle={theme.colors.statusBarStyle} backgroundColor={theme.colors.primary} />
       <SafeAreaView style={styles.container} edges={['top']}>
         {/* Header */}
         <View style={styles.header}>
@@ -366,7 +371,7 @@ const TransactionDetailsScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.surface,
@@ -428,7 +433,7 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.sm,
   },
   detailsCard: {
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
     borderRadius: theme.borderRadius.xl,
     padding: theme.spacing.base,
   },

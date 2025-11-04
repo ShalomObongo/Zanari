@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
 import { View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { PaystackProvider } from 'react-native-paystack-webview';
@@ -17,6 +16,8 @@ import 'react-native-url-polyfill/auto';
 
 import AppNavigator from '@/navigation/AppNavigator';
 import { PAYSTACK_CONFIG } from '@/config/paystack';
+import { ThemeProvider } from '@/contexts/ThemeContext';
+import { StatusBarManager } from '@/components/StatusBarManager';
 
 // Keep the splash screen visible while we load fonts
 SplashScreen.preventAutoHideAsync();
@@ -58,12 +59,14 @@ export default function App() {
   return (
     <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
       <SafeAreaProvider>
-        <PaystackProvider publicKey={PAYSTACK_CONFIG.publicKey}>
-          <NavigationContainer>
-            <AppNavigator />
-            <StatusBar style="auto" />
-          </NavigationContainer>
-        </PaystackProvider>
+        <ThemeProvider>
+          <StatusBarManager />
+          <PaystackProvider publicKey={PAYSTACK_CONFIG.publicKey}>
+            <NavigationContainer>
+              <AppNavigator />
+            </NavigationContainer>
+          </PaystackProvider>
+        </ThemeProvider>
       </SafeAreaProvider>
     </View>
   );

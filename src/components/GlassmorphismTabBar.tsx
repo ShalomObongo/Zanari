@@ -9,7 +9,7 @@ import { BlurView } from 'expo-blur';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import theme from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 
 /**
  * GlassmorphismTabBar - A custom bottom tab bar with Apple-style glassmorphism effect
@@ -33,6 +33,7 @@ export const GlassmorphismTabBar: React.FC<BottomTabBarProps> = ({
   descriptors,
   navigation,
 }) => {
+  const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const useLiquid = Platform.OS === 'ios' && Boolean(Liquid?.isLiquidGlassSupported);
 
@@ -139,7 +140,7 @@ export const GlassmorphismTabBar: React.FC<BottomTabBarProps> = ({
 };
  
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
   container: {
     position: 'absolute',
     bottom: 0,
@@ -155,12 +156,12 @@ const styles = StyleSheet.create({
     // Fallback BlurView will override via `fallbackGlass` below.
     backgroundColor: 'transparent',
     borderWidth: Platform.OS === 'ios' ? 0.5 : 0,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: theme.isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.3)',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.12,
+        shadowOpacity: theme.isDark ? 0.3 : 0.12,
         shadowRadius: 16,
       },
       android: {
@@ -195,6 +196,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   iconContainerActive: {
-    backgroundColor: 'rgba(82, 183, 136, 0.12)',
+    backgroundColor: theme.isDark
+      ? 'rgba(82, 183, 136, 0.2)'
+      : 'rgba(82, 183, 136, 0.12)',
   },
 });
