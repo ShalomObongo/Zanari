@@ -38,17 +38,8 @@ export const GlassmorphismTabBar: React.FC<BottomTabBarProps> = ({
   const useLiquid = Platform.OS === 'ios' && Boolean(Liquid?.isLiquidGlassSupported);
   const styles = createStyles(theme);
 
-  // Theme-aware glass configuration
-  const blurTint: 'light' | 'dark' | 'default' = theme.isDark ? 'dark' : 'light';
-  const glassTintColor = theme.isDark
-    ? 'rgba(82, 183, 136, 0.18)'
-    : 'rgba(82, 183, 136, 0.22)';
-  const fallbackBGColor = theme.isDark
-    ? 'rgba(31, 41, 55, 0.60)'
-    : 'rgba(255, 255, 255, 0.65)';
-  const fallbackBorderColor = theme.isDark
-    ? 'rgba(255, 255, 255, 0.12)'
-    : 'rgba(255, 255, 255, 0.35)';
+  // No tinting on the glass itself; only icons adapt to theme
+  const blurTint: 'light' | 'dark' | 'default' = 'default';
 
   const content = (
     <View style={styles.innerContainer}>
@@ -134,21 +125,17 @@ export const GlassmorphismTabBar: React.FC<BottomTabBarProps> = ({
         <Liquid.LiquidGlassView
           style={styles.blurContainer}
           interactive
-          effect="regular"
-          tintColor={glassTintColor}
-          colorScheme={theme.isDark ? 'dark' : 'light'}
+          effect="clear"
+          tintColor="transparent"
+          colorScheme="system"
         >
           {content}
         </Liquid.LiquidGlassView>
       ) : (
         <BlurView
-          intensity={Platform.OS === 'ios' ? (theme.isDark ? 60 : 80) : 0}
+          intensity={Platform.OS === 'ios' ? 100 : 0}
           tint={blurTint}
-          style={[
-            styles.blurContainer,
-            styles.fallbackGlass,
-            { backgroundColor: fallbackBGColor, borderColor: fallbackBorderColor },
-          ]}
+          style={[styles.blurContainer, styles.fallbackGlass]}
         >
           {content}
         </BlurView>
@@ -188,8 +175,8 @@ const createStyles = (theme: any) => StyleSheet.create({
     }),
   },
   fallbackGlass: {
-    // When BlurView is used on fallback, we can add a subtle white wash.
-    backgroundColor: Platform.OS === 'ios' ? 'rgba(255, 255, 255, 0.65)' : 'rgba(255, 255, 255, 0.9)',
+    // Keep background transparent to avoid tinting; rely on blur only.
+    backgroundColor: 'transparent',
   },
   innerContainer: {
     flexDirection: 'row',
