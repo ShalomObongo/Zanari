@@ -78,8 +78,9 @@ class NotificationServiceClass {
     const projectId =
       options?.projectId ??
       Constants.expoConfig?.extra?.eas?.projectId ??
-      Constants.easConfig?.projectId ??
-      Constants.manifest2?.extra?.expoClient?.projectId;
+      (Constants as any)?.easConfig?.projectId ??
+      // Cast to any to avoid overly strict Expo type definition on manifest2
+      (Constants.manifest2 as any)?.extra?.expoClient?.projectId;
 
     try {
       const tokenResponse = await Notifications.getExpoPushTokenAsync(
