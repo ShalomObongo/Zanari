@@ -19,7 +19,7 @@ import PinVerificationModal from '@/components/PinVerificationModal';
 import { useWalletStore } from '@/store/walletStore';
 import { useAuthStore } from '@/store/authStore';
 import { formatCurrency } from '@/utils/formatters';
-import theme from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 import api from '../../services/api';
 
 interface PaymentScreenProps {}
@@ -37,6 +37,8 @@ interface PaymentOption {
 
 const PaymentScreen: React.FC<PaymentScreenProps> = () => {
   const navigation = useNavigation<any>();
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
   const route = useRoute();
   const { mode = 'payment' } = (route.params as RouteParams) || {};
   const { popup } = usePaystack();
@@ -429,7 +431,7 @@ const PaymentScreen: React.FC<PaymentScreenProps> = () => {
 
   return (
     <>
-      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
+      <StatusBar barStyle={theme.colors.statusBarStyle} backgroundColor={theme.colors.surface} />
       <SafeAreaView style={styles.container} edges={['top']}>
         <KeyboardAvoidingView
           style={styles.keyboardContainer}
@@ -608,7 +610,7 @@ const PaymentScreen: React.FC<PaymentScreenProps> = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.surface,
@@ -671,7 +673,7 @@ const styles = StyleSheet.create({
   amountInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
     borderRadius: theme.borderRadius.lg,
     borderWidth: 1,
     borderColor: theme.colors.border,
@@ -720,7 +722,7 @@ const styles = StyleSheet.create({
     color: theme.colors.surface,
   },
   merchantInput: {
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
     borderRadius: theme.borderRadius.lg,
     borderWidth: 1,
     borderColor: theme.colors.border,
@@ -732,7 +734,7 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.sm,
   },
   descriptionInput: {
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
     borderRadius: theme.borderRadius.lg,
     borderWidth: 1,
     borderColor: theme.colors.border,
@@ -752,7 +754,7 @@ const styles = StyleSheet.create({
   paymentMethodItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
     borderRadius: theme.borderRadius.lg,
     padding: theme.spacing.base,
     marginBottom: theme.spacing.sm,
@@ -840,7 +842,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   roundUpExample: {
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
     padding: theme.spacing.sm,
     borderRadius: theme.borderRadius.DEFAULT,
   },

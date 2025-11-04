@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface TransactionCardProps {
   id: string;
@@ -32,6 +33,8 @@ const TransactionCard: React.FC<TransactionCardProps> = ({
   onPress,
   showFullDate = false,
 }) => {
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
   // Category icons mapping
   const getCategoryIcon = (category: string, transactionType: string): string => {
     const iconMap: Record<string, string> = {
@@ -153,7 +156,7 @@ const TransactionCard: React.FC<TransactionCardProps> = ({
       <View style={styles.content}>
         {/* Left side - Icon and Transaction Info */}
         <View style={styles.leftSection}>
-          <View style={[styles.iconContainer, { backgroundColor: getCategoryColor(category) }]}>
+          <View style={[styles.iconContainer, { backgroundColor: getCategoryColor(category, theme.isDark) }]}>
             <Text style={styles.icon}>{getCategoryIcon(category, type)}</Text>
           </View>
           
@@ -218,51 +221,81 @@ const TransactionCard: React.FC<TransactionCardProps> = ({
 };
 
 // Helper function to get category background color
-const getCategoryColor = (category: string): string => {
-  const colorMap: Record<string, string> = {
-    // Income categories
-    salary: '#E8F5E8',
-    freelance: '#E3F2FD',
-    investment: '#F3E5F5',
-    refund: '#FFF3E0',
-    gift: '#FCE4EC',
-    // Expense categories
-    food: '#FFE0B2',
-    transport: '#E1F5FE',
-    shopping: '#F8BBD9',
-    entertainment: '#E8EAF6',
-    bills: '#FFECB3',
-    healthcare: '#FFCDD2',
-    education: '#C8E6C9',
-    groceries: '#DCEDC8',
-    fuel: '#FFCCBC',
-    utilities: '#FFF9C4',
-    rent: '#BCAAA4',
-    insurance: '#CFD8DC',
-    // Transfer categories
-    p2p: '#E1BEE7',
-    bank: '#B3E5FC',
-    mobile_money: '#C8E6C9',
-    savings: '#FFAB91',
-    investment_transfer: '#D1C4E9',
-  };
-
-  return colorMap[category.toLowerCase()] || '#F5F5F5';
+const getCategoryColor = (category: string, isDark: boolean): string => {
+  if (isDark) {
+    const colorMap: Record<string, string> = {
+      // Income categories - darker variants
+      salary: 'rgba(82, 183, 136, 0.2)',
+      freelance: 'rgba(66, 165, 245, 0.2)',
+      investment: 'rgba(156, 39, 176, 0.2)',
+      refund: 'rgba(255, 152, 0, 0.2)',
+      gift: 'rgba(233, 30, 99, 0.2)',
+      // Expense categories - darker variants
+      food: 'rgba(255, 152, 0, 0.2)',
+      transport: 'rgba(3, 169, 244, 0.2)',
+      shopping: 'rgba(233, 30, 99, 0.2)',
+      entertainment: 'rgba(63, 81, 181, 0.2)',
+      bills: 'rgba(255, 235, 59, 0.2)',
+      healthcare: 'rgba(244, 67, 54, 0.2)',
+      education: 'rgba(76, 175, 80, 0.2)',
+      groceries: 'rgba(139, 195, 74, 0.2)',
+      fuel: 'rgba(255, 87, 34, 0.2)',
+      utilities: 'rgba(255, 235, 59, 0.2)',
+      rent: 'rgba(121, 85, 72, 0.2)',
+      insurance: 'rgba(96, 125, 139, 0.2)',
+      // Transfer categories - darker variants
+      p2p: 'rgba(156, 39, 176, 0.2)',
+      bank: 'rgba(3, 169, 244, 0.2)',
+      mobile_money: 'rgba(76, 175, 80, 0.2)',
+      savings: 'rgba(255, 87, 34, 0.2)',
+      investment_transfer: 'rgba(103, 58, 183, 0.2)',
+    };
+    return colorMap[category.toLowerCase()] || 'rgba(255, 255, 255, 0.1)';
+  } else {
+    const colorMap: Record<string, string> = {
+      // Income categories
+      salary: '#E8F5E8',
+      freelance: '#E3F2FD',
+      investment: '#F3E5F5',
+      refund: '#FFF3E0',
+      gift: '#FCE4EC',
+      // Expense categories
+      food: '#FFE0B2',
+      transport: '#E1F5FE',
+      shopping: '#F8BBD9',
+      entertainment: '#E8EAF6',
+      bills: '#FFECB3',
+      healthcare: '#FFCDD2',
+      education: '#C8E6C9',
+      groceries: '#DCEDC8',
+      fuel: '#FFCCBC',
+      utilities: '#FFF9C4',
+      rent: '#BCAAA4',
+      insurance: '#CFD8DC',
+      // Transfer categories
+      p2p: '#E1BEE7',
+      bank: '#B3E5FC',
+      mobile_money: '#C8E6C9',
+      savings: '#FFAB91',
+      investment_transfer: '#D1C4E9',
+    };
+    return colorMap[category.toLowerCase()] || '#F5F5F5';
+  }
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
   container: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.surface,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: theme.colors.border,
   },
   pendingContainer: {
-    backgroundColor: '#FFFBF0',
+    backgroundColor: theme.isDark ? 'rgba(255, 165, 0, 0.1)' : '#FFFBF0',
   },
   failedContainer: {
-    backgroundColor: '#FFF5F5',
+    backgroundColor: theme.isDark ? 'rgba(255, 107, 107, 0.1)' : '#FFF5F5',
   },
   content: {
     flexDirection: 'row',
@@ -290,7 +323,7 @@ const styles = StyleSheet.create({
   description: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1B4332',
+    color: theme.colors.textPrimary,
     marginBottom: 2,
   },
   metaInfo: {
@@ -299,7 +332,7 @@ const styles = StyleSheet.create({
   },
   metaText: {
     fontSize: 14,
-    color: '#6C757D',
+    color: theme.colors.textSecondary,
     marginRight: 8,
   },
   rightSection: {
@@ -316,7 +349,7 @@ const styles = StyleSheet.create({
   },
   timestamp: {
     fontSize: 12,
-    color: '#6C757D',
+    color: theme.colors.textSecondary,
     marginRight: 8,
   },
   statusBadge: {
@@ -333,11 +366,11 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
+    borderTopColor: theme.colors.border,
   },
   roundUpText: {
     fontSize: 12,
-    color: '#52B788',
+    color: theme.colors.success,
     fontStyle: 'italic',
   },
 });

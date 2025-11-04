@@ -1,5 +1,6 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
+import { useTheme } from '@/contexts/ThemeContext';
 
 // Auth screens
 import WelcomeScreen from '@/screens/auth/WelcomeScreen';
@@ -28,13 +29,15 @@ export type AuthStackParamList = {
 };
 
 export const AuthNavigator: React.FC = () => {
+  const { theme } = useTheme();
+
   return (
     <Stack.Navigator
       initialRouteName="Welcome"
       screenOptions={{
         headerShown: false,
         gestureEnabled: false, // Security: prevent gesture-based navigation
-        cardStyle: { backgroundColor: '#ffffff' },
+        cardStyle: { backgroundColor: theme.colors.surface },
       }}
     >
       <Stack.Screen 

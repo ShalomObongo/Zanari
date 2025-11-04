@@ -17,7 +17,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 
 import { useAuthStore } from '@/store/authStore';
 import { ApiError } from '@/services/api';
-import theme from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface PINSetupScreenProps {}
 
@@ -27,6 +27,8 @@ interface RouteParams {
 
 const PINSetupScreen: React.FC<PINSetupScreenProps> = () => {
   const navigation = useNavigation<any>();
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
   const route = useRoute();
   const { phoneNumber } = (route.params as RouteParams) || { phoneNumber: '' };
 
@@ -245,7 +247,7 @@ const PINSetupScreen: React.FC<PINSetupScreenProps> = () => {
 
   return (
     <>
-      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.backgroundLight} />
+      <StatusBar barStyle={theme.colors.statusBarStyle} backgroundColor={theme.colors.background} />
       <SafeAreaView style={styles.container} edges={['top']}>
         <KeyboardAvoidingView
           style={styles.keyboardContainer}
@@ -387,10 +389,10 @@ const PINSetupScreen: React.FC<PINSetupScreenProps> = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
   },
   keyboardContainer: {
     flex: 1,

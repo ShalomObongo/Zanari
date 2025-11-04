@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Animated, ViewStyle, TextStyle } from 'react-native';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface ProgressBarProps {
   progress: number; // 0-100
@@ -25,8 +26,8 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
   progress,
   total,
   current,
-  color = '#52B788',
-  backgroundColor = '#E9ECEF',
+  color,
+  backgroundColor,
   height,
   borderRadius,
   showPercentage = false,
@@ -40,8 +41,13 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
   tooltipText,
   style,
 }) => {
+  const { theme } = useTheme();
   const [animatedProgress] = useState(new Animated.Value(0));
   const [displayProgress, setDisplayProgress] = useState(0);
+
+  const defaultColor = color || theme.colors.success;
+  const defaultBg = backgroundColor || theme.colors.gray200;
+  const styles = createStyles(theme);
 
   // Calculate actual progress
   const actualProgress = Math.min(Math.max(progress, 0), 100);
@@ -70,7 +76,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
   // Get variant-specific styles
   const getVariantStyles = () => {
     const sizeStyles = getSizeStyles();
-    
+
     switch (variant) {
       case 'minimal':
         return {
@@ -78,18 +84,18 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
             ...sizeStyles,
             backgroundColor: 'transparent',
             borderBottomWidth: 1,
-            borderBottomColor: backgroundColor,
+            borderBottomColor: defaultBg,
           },
           fill: {
-            backgroundColor: color,
+            backgroundColor: defaultColor,
             borderBottomWidth: 1,
-            borderBottomColor: color,
+            borderBottomColor: defaultColor,
           },
         };
       default:
         return {
           container: sizeStyles,
-          fill: { backgroundColor: color },
+          fill: { backgroundColor: defaultColor },
         };
     }
   };
@@ -130,6 +136,18 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
     return `${displayProgress}%`;
   };
 
+  const getLabelTextStyle = (): TextStyle => ({
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.textPrimary,
+  });
+
+  const getPercentageTextStyle = (): TextStyle => ({
+    fontSize: 14,
+    fontWeight: '500',
+    color: theme.colors.textSecondary,
+  });
+
   const variantStyles = getVariantStyles();
 
   return (
@@ -152,7 +170,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
       <View
         style={[
           styles.container,
-          { backgroundColor },
+          { backgroundColor: defaultBg },
           variantStyles.container,
         ]}
       >
@@ -162,7 +180,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
             styles.fill,
             variantStyles.fill,
             {
-              width: animated 
+              width: animated
                 ? animatedProgress.interpolate({
                     inputRange: [0, 100],
                     outputRange: ['0%', '100%'],
@@ -191,19 +209,6 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
   );
 };
 
-// Helper functions for text styles
-const getLabelTextStyle = (): TextStyle => ({
-  fontSize: 14,
-  fontWeight: '600',
-  color: '#1B4332',
-});
-
-const getPercentageTextStyle = (): TextStyle => ({
-  fontSize: 14,
-  fontWeight: '500',
-  color: '#6C757D',
-});
-
 // Circular Progress Bar Component (simplified for React Native)
 interface CircularProgressBarProps {
   progress: number;
@@ -220,15 +225,20 @@ const CircularProgressBar: React.FC<CircularProgressBarProps> = ({
   progress,
   size = 100,
   strokeWidth = 8,
-  color = '#52B788',
-  backgroundColor = '#E9ECEF',
+  color,
+  backgroundColor,
   showPercentage = true,
   animated = true,
   children,
 }) => {
+  const { theme } = useTheme();
   const [animatedProgress] = useState(new Animated.Value(0));
   const [displayProgress, setDisplayProgress] = useState(0);
-  
+
+  const defaultColor = color || theme.colors.success;
+  const defaultBg = backgroundColor || theme.colors.gray200;
+  const styles = createStyles(theme);
+
   const actualProgress = Math.min(Math.max(progress, 0), 100);
 
   useEffect(() => {
@@ -256,11 +266,11 @@ const CircularProgressBar: React.FC<CircularProgressBarProps> = ({
 
   // Simplified circular progress using nested Views
   const innerSize = size - strokeWidth * 2;
-  
+
   return (
     <View style={[styles.circularContainer, { width: size, height: size }]}>
       {/* Background Circle */}
-      <View 
+      <View
         style={[
           styles.circularBackground,
           {
@@ -268,13 +278,13 @@ const CircularProgressBar: React.FC<CircularProgressBarProps> = ({
             height: size,
             borderRadius: size / 2,
             borderWidth: strokeWidth,
-            borderColor: backgroundColor,
+            borderColor: defaultBg,
           }
         ]}
       />
-      
+
       {/* Progress Indicator (simplified) */}
-      <View 
+      <View
         style={[
           styles.circularProgress,
           {
@@ -283,12 +293,12 @@ const CircularProgressBar: React.FC<CircularProgressBarProps> = ({
             borderRadius: size / 2,
             borderWidth: strokeWidth,
             borderColor: 'transparent',
-            borderTopColor: color,
+            borderTopColor: defaultColor,
             transform: [{ rotate: `${(displayProgress / 100) * 360 - 90}deg` }],
           }
         ]}
       />
-      
+
       {/* Center Content */}
       <View style={[styles.circularContent, { width: innerSize, height: innerSize }]}>
         {children || (showPercentage && (
@@ -323,14 +333,16 @@ const SegmentedProgressBar: React.FC<SegmentedProgressBarProps> = ({
   showLabels = false,
   animated = true,
 }) => {
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
   const totalValue = total || segments.reduce((sum, segment) => sum + segment.value, 0);
-  
+
   return (
     <View style={styles.segmentedWrapper}>
       <View style={[styles.segmentedContainer, { height, borderRadius }]}>
         {segments.map((segment, index) => {
           const percentage = (segment.value / totalValue) * 100;
-          
+
           return (
             <View
               key={index}
@@ -349,7 +361,7 @@ const SegmentedProgressBar: React.FC<SegmentedProgressBarProps> = ({
           );
         })}
       </View>
-      
+
       {showLabels && (
         <View style={styles.segmentLabels}>
           {segments.map((segment, index) => (
@@ -366,7 +378,7 @@ const SegmentedProgressBar: React.FC<SegmentedProgressBarProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
   wrapper: {
     width: '100%',
   },
@@ -392,13 +404,13 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -30,
     right: 0,
-    backgroundColor: '#1B4332',
+    backgroundColor: theme.colors.textPrimary,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 4,
   },
   tooltipText: {
-    color: '#FFFFFF',
+    color: theme.colors.surface,
     fontSize: 12,
     fontWeight: '500',
   },
@@ -427,7 +439,7 @@ const styles = StyleSheet.create({
   },
   circularText: {
     fontWeight: '700',
-    color: '#1B4332',
+    color: theme.colors.textPrimary,
   },
   // Segmented styles
   segmentedWrapper: {
@@ -435,7 +447,7 @@ const styles = StyleSheet.create({
   },
   segmentedContainer: {
     flexDirection: 'row',
-    backgroundColor: '#E9ECEF',
+    backgroundColor: theme.colors.gray200,
     overflow: 'hidden',
   },
   segment: {
@@ -457,7 +469,7 @@ const styles = StyleSheet.create({
   },
   segmentLabelText: {
     fontSize: 12,
-    color: '#6C757D',
+    color: theme.colors.textSecondary,
   },
 });
 

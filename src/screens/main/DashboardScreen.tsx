@@ -18,12 +18,14 @@ import { useTransactionStore } from '@/store/transactionStore';
 import { useSavingsStore } from '@/store/savingsStore';
 import { useRoundUpStore } from '@/store/roundUpStore';
 import { formatCurrency, formatRelativeDate, mapTransactionType, getTimeBasedGreeting } from '@/utils/formatters';
-import theme from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface DashboardScreenProps {}
 
 const DashboardScreen: React.FC<DashboardScreenProps> = () => {
   const navigation = useNavigation<any>();
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
   const [balanceVisible, setBalanceVisible] = useState(true);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   
@@ -369,7 +371,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = () => {
   if (isInitialLoading) {
     return (
       <>
-        <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
+        <StatusBar barStyle={theme.colors.statusBarStyle} backgroundColor={theme.colors.surface} />
         <SafeAreaView style={styles.container} edges={['top']}>
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={theme.colors.accent} />
@@ -384,7 +386,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = () => {
 
   return (
     <>
-      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
+      <StatusBar barStyle={theme.colors.statusBarStyle} backgroundColor={theme.colors.surface} />
       <SafeAreaView style={styles.container} edges={['top']}>
         <ScrollView
           style={styles.scrollContainer}
@@ -469,10 +471,10 @@ const DashboardScreen: React.FC<DashboardScreenProps> = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
   },
   scrollContainer: {
     flex: 1,
@@ -481,7 +483,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
   },
   loadingText: {
     marginTop: theme.spacing.base,

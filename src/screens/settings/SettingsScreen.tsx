@@ -20,9 +20,13 @@ import { useSavingsStore } from '@/store/savingsStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { biometricAuthService } from '@/services/biometricAuth';
 import PinVerificationModal from '@/components/PinVerificationModal';
-import theme from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
+import { ThemeMode } from '@/theme';
 
 const SettingsScreen: React.FC = () => {
+  // Theme
+  const { theme, themeMode, setThemeMode } = useTheme();
+
   // Zustand stores
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
@@ -72,6 +76,46 @@ const SettingsScreen: React.FC = () => {
 
   const getUserEmail = () => {
     return user?.email || 'john.doe@email.com';
+  };
+
+  // Get theme mode label
+  const getThemeModeLabel = (mode: ThemeMode) => {
+    switch (mode) {
+      case 'light':
+        return 'Light Mode';
+      case 'dark':
+        return 'Dark Mode';
+      case 'system':
+        return 'System Default';
+      default:
+        return 'System Default';
+    }
+  };
+
+  // Handle theme mode change
+  const handleThemeModeChange = () => {
+    Alert.alert(
+      'Select Theme',
+      'Choose your preferred theme',
+      [
+        {
+          text: 'Light Mode',
+          onPress: () => setThemeMode('light'),
+        },
+        {
+          text: 'Dark Mode',
+          onPress: () => setThemeMode('dark'),
+        },
+        {
+          text: 'System Default',
+          onPress: () => setThemeMode('system'),
+        },
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+      ]
+    );
   };
 
   // Check biometric capability on mount
@@ -289,9 +333,12 @@ const SettingsScreen: React.FC = () => {
     </TouchableOpacity>
   );
 
+  // Create dynamic styles based on theme
+  const styles = createStyles(theme);
+
   return (
     <>
-      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
+      <StatusBar barStyle={theme.colors.statusBarStyle} backgroundColor={theme.colors.surface} />
       <SafeAreaView style={styles.container} edges={['top']}>
         {/* Header */}
         <View style={styles.header}>
@@ -320,6 +367,19 @@ const SettingsScreen: React.FC = () => {
             >
               <Text style={styles.editProfileText}>Edit Profile</Text>
             </TouchableOpacity>
+          </View>
+
+          {/* Appearance Section */}
+          {renderSectionHeader('Appearance')}
+          <View style={styles.section}>
+            {renderSettingRow(
+              'brightness-6',
+              'Theme',
+              getThemeModeLabel(themeMode),
+              'arrow',
+              undefined,
+              handleThemeModeChange
+            )}
           </View>
 
           {/* Security Section */}
@@ -515,162 +575,163 @@ const SettingsScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.surface,
-  },
-  header: {
-    paddingHorizontal: theme.spacing.base,
-    paddingVertical: theme.spacing.md,
-    backgroundColor: theme.colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray100,
-  },
-  headerTitle: {
-    fontSize: theme.fontSizes.lg,
-    fontFamily: theme.fonts.bold,
-    color: theme.colors.textPrimary,
-    textAlign: 'center',
-    letterSpacing: -0.5,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: theme.spacing.base,
-    paddingTop: theme.spacing.xl,
-    paddingBottom: theme.layout.tabBarBottomPadding,
-  },
-  profileSection: {
-    backgroundColor: theme.colors.surface,
-    padding: theme.spacing.base,
-    marginBottom: theme.spacing['2xl'],
-  },
-  profileRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.base,
-    marginBottom: theme.spacing.base,
-  },
-  avatarContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: `${theme.colors.primary}33`,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    fontSize: theme.fontSizes['2xl'],
-    fontFamily: theme.fonts.bold,
-    color: theme.colors.primary,
-  },
-  profileInfo: {
-    flex: 1,
-  },
-  profileName: {
-    fontSize: theme.fontSizes.base,
-    fontFamily: theme.fonts.medium,
-    color: theme.colors.textPrimary,
-    marginBottom: 4,
-  },
-  profileEmail: {
-    fontSize: theme.fontSizes.sm,
-    fontFamily: theme.fonts.regular,
-    color: theme.colors.textSecondary,
-  },
-  editProfileButton: {
-    alignSelf: 'flex-end',
-  },
-  editProfileText: {
-    fontSize: theme.fontSizes.base,
-    fontFamily: theme.fonts.medium,
-    color: theme.colors.primary,
-  },
-  sectionHeader: {
-    fontSize: theme.fontSizes.lg,
-    fontFamily: theme.fonts.bold,
-    color: theme.colors.textPrimary,
-    marginBottom: theme.spacing.sm,
-    marginTop: theme.spacing.base,
-    letterSpacing: -0.5,
-  },
-  section: {
-    backgroundColor: theme.colors.gray50,
-    borderRadius: theme.borderRadius.lg,
-    overflow: 'hidden',
-    marginBottom: theme.spacing['2xl'],
-  },
-  settingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: theme.spacing.base,
-    paddingVertical: theme.spacing.sm,
-    minHeight: 72,
-  },
-  settingLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    gap: theme.spacing.base,
-  },
-  settingTextContainer: {
-    flex: 1,
-  },
-  settingTitle: {
-    fontSize: theme.fontSizes.base,
-    fontFamily: theme.fonts.medium,
-    color: theme.colors.textPrimary,
-  },
-  settingSubtitle: {
-    fontSize: theme.fontSizes.sm,
-    fontFamily: theme.fonts.regular,
-    color: theme.colors.textSecondary,
-    marginTop: 2,
-  },
-  simpleSettingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: theme.spacing.base,
-    minHeight: 56,
-  },
-  simpleSettingTitle: {
-    fontSize: theme.fontSizes.base,
-    fontFamily: theme.fonts.regular,
-    color: theme.colors.textPrimary,
-    flex: 1,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: theme.colors.gray100,
-    marginHorizontal: theme.spacing.base,
-  },
-  signOutContainer: {
-    marginTop: theme.spacing['2xl'],
-    alignItems: 'center',
-    gap: theme.spacing.base,
-  },
-  signOutButton: {
-    width: '100%',
-    height: 48,
-    borderRadius: theme.borderRadius.lg,
-    backgroundColor: '#FEE2E2',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  signOutText: {
-    fontSize: theme.fontSizes.base,
-    fontFamily: theme.fonts.medium,
-    color: '#EF4444',
-  },
-  versionText: {
-    fontSize: theme.fontSizes.xs,
-    fontFamily: theme.fonts.regular,
-    color: theme.colors.textTertiary,
-  },
-});
+const createStyles = (theme: any) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.colors.surface,
+    },
+    header: {
+      paddingHorizontal: theme.spacing.base,
+      paddingVertical: theme.spacing.md,
+      backgroundColor: theme.colors.surface,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.gray100,
+    },
+    headerTitle: {
+      fontSize: theme.fontSizes.lg,
+      fontFamily: theme.fonts.bold,
+      color: theme.colors.textPrimary,
+      textAlign: 'center',
+      letterSpacing: -0.5,
+    },
+    scrollView: {
+      flex: 1,
+    },
+    scrollContent: {
+      paddingHorizontal: theme.spacing.base,
+      paddingTop: theme.spacing.xl,
+      paddingBottom: theme.layout.tabBarBottomPadding,
+    },
+    profileSection: {
+      backgroundColor: theme.colors.surface,
+      padding: theme.spacing.base,
+      marginBottom: theme.spacing['2xl'],
+    },
+    profileRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.base,
+      marginBottom: theme.spacing.base,
+    },
+    avatarContainer: {
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      backgroundColor: `${theme.colors.primary}33`,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    avatarText: {
+      fontSize: theme.fontSizes['2xl'],
+      fontFamily: theme.fonts.bold,
+      color: theme.colors.primary,
+    },
+    profileInfo: {
+      flex: 1,
+    },
+    profileName: {
+      fontSize: theme.fontSizes.base,
+      fontFamily: theme.fonts.medium,
+      color: theme.colors.textPrimary,
+      marginBottom: 4,
+    },
+    profileEmail: {
+      fontSize: theme.fontSizes.sm,
+      fontFamily: theme.fonts.regular,
+      color: theme.colors.textSecondary,
+    },
+    editProfileButton: {
+      alignSelf: 'flex-end',
+    },
+    editProfileText: {
+      fontSize: theme.fontSizes.base,
+      fontFamily: theme.fonts.medium,
+      color: theme.colors.primary,
+    },
+    sectionHeader: {
+      fontSize: theme.fontSizes.lg,
+      fontFamily: theme.fonts.bold,
+      color: theme.colors.textPrimary,
+      marginBottom: theme.spacing.sm,
+      marginTop: theme.spacing.base,
+      letterSpacing: -0.5,
+    },
+    section: {
+      backgroundColor: theme.colors.gray50,
+      borderRadius: theme.borderRadius.lg,
+      overflow: 'hidden',
+      marginBottom: theme.spacing['2xl'],
+    },
+    settingRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: theme.spacing.base,
+      paddingVertical: theme.spacing.sm,
+      minHeight: 72,
+    },
+    settingLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+      gap: theme.spacing.base,
+    },
+    settingTextContainer: {
+      flex: 1,
+    },
+    settingTitle: {
+      fontSize: theme.fontSizes.base,
+      fontFamily: theme.fonts.medium,
+      color: theme.colors.textPrimary,
+    },
+    settingSubtitle: {
+      fontSize: theme.fontSizes.sm,
+      fontFamily: theme.fonts.regular,
+      color: theme.colors.textSecondary,
+      marginTop: 2,
+    },
+    simpleSettingRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: theme.spacing.base,
+      minHeight: 56,
+    },
+    simpleSettingTitle: {
+      fontSize: theme.fontSizes.base,
+      fontFamily: theme.fonts.regular,
+      color: theme.colors.textPrimary,
+      flex: 1,
+    },
+    divider: {
+      height: 1,
+      backgroundColor: theme.colors.gray100,
+      marginHorizontal: theme.spacing.base,
+    },
+    signOutContainer: {
+      marginTop: theme.spacing['2xl'],
+      alignItems: 'center',
+      gap: theme.spacing.base,
+    },
+    signOutButton: {
+      width: '100%',
+      height: 48,
+      borderRadius: theme.borderRadius.lg,
+      backgroundColor: theme.isDark ? '#7F1D1D' : '#FEE2E2',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    signOutText: {
+      fontSize: theme.fontSizes.base,
+      fontFamily: theme.fonts.medium,
+      color: theme.isDark ? '#FCA5A5' : '#EF4444',
+    },
+    versionText: {
+      fontSize: theme.fontSizes.xs,
+      fontFamily: theme.fonts.regular,
+      color: theme.colors.textTertiary,
+    },
+  });
 
 export default SettingsScreen;

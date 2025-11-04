@@ -9,6 +9,7 @@ import {
   Vibration,
   ViewStyle,
 } from 'react-native';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface PINInputProps {
   length?: 4 | 5 | 6;
@@ -53,6 +54,7 @@ const PINInput: React.FC<PINInputProps> = ({
   style,
   testID = 'pin-input',
 }) => {
+  const { theme } = useTheme();
   const [pin, setPin] = useState(value);
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const [tempValues, setTempValues] = useState<(string | undefined)[]>(Array(length).fill(''));
@@ -61,6 +63,7 @@ const PINInput: React.FC<PINInputProps> = ({
   const scaleAnimations = useRef(
     Array(length).fill(0).map(() => new Animated.Value(1))
   ).current;
+  const styles = createStyles(theme);
 
   // Handle PIN input change
   const handlePinChange = (newPin: string) => {
@@ -330,10 +333,10 @@ const PINInput: React.FC<PINInputProps> = ({
 
   // Get text color
   const getTextColor = () => {
-    if (error) return '#FF6B6B';
-    if (success) return '#52B788';
+    if (error) return theme.colors.error;
+    if (success) return theme.colors.success;
     if (variant === 'dark') return '#ffffff';
-    return '#1B4332';
+    return theme.colors.textPrimary;
   };
 
   // Render individual PIN cell
@@ -489,6 +492,8 @@ const BiometricPINInput: React.FC<BiometricPINInputProps> = ({
   showBiometricPrompt = true,
   ...pinInputProps
 }) => {
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
   const getBiometricIcon = () => {
     switch (biometricType) {
       case 'face':
@@ -537,7 +542,7 @@ const BiometricPINInput: React.FC<BiometricPINInputProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
   container: {
     alignItems: 'center',
     width: '100%',
@@ -561,7 +566,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: 2,
     height: '60%',
-    backgroundColor: '#1B4332',
+    backgroundColor: theme.colors.textPrimary,
   },
   messageContainer: {
     marginTop: 16,
@@ -572,19 +577,19 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   errorMessageContainer: {
-    backgroundColor: '#FFE6E6',
+    backgroundColor: theme.isDark ? 'rgba(255, 107, 107, 0.15)' : '#FFE6E6',
   },
   errorMessage: {
-    color: '#FF6B6B',
+    color: theme.colors.error,
     fontSize: 14,
     fontWeight: '500',
     textAlign: 'center',
   },
   successMessageContainer: {
-    backgroundColor: '#E8F5E8',
+    backgroundColor: theme.isDark ? 'rgba(82, 183, 136, 0.15)' : '#E8F5E8',
   },
   successMessage: {
-    color: '#52B788',
+    color: theme.colors.success,
     fontSize: 14,
     fontWeight: '500',
     textAlign: 'center',
@@ -597,12 +602,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 20,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: theme.isDark ? 'rgba(255, 255, 255, 0.1)' : '#F8F9FA',
     borderWidth: 1,
-    borderColor: '#E9ECEF',
+    borderColor: theme.colors.border,
   },
   clearButtonText: {
-    color: '#6C757D',
+    color: theme.colors.textSecondary,
     fontSize: 14,
     fontWeight: '500',
   },
@@ -625,11 +630,11 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#E9ECEF',
+    backgroundColor: theme.colors.border,
   },
   orText: {
     paddingHorizontal: 16,
-    color: '#6C757D',
+    color: theme.colors.textSecondary,
     fontSize: 14,
     fontWeight: '500',
   },
@@ -638,9 +643,9 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 24,
     borderRadius: 12,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: theme.isDark ? 'rgba(255, 255, 255, 0.05)' : '#F8F9FA',
     borderWidth: 1,
-    borderColor: '#E9ECEF',
+    borderColor: theme.colors.border,
     minWidth: 120,
   },
   biometricIcon: {
@@ -648,7 +653,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   biometricText: {
-    color: '#1B4332',
+    color: theme.colors.textPrimary,
     fontSize: 14,
     fontWeight: '600',
   },

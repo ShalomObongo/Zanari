@@ -26,7 +26,7 @@ import { apiClient } from '@/services/api';
 import TransferToSavingsWalletModal from '@/components/TransferToSavingsWalletModal';
 import EditGoalModal from '@/components/EditGoalModal';
 import GoalWithdrawModal from '@/components/GoalWithdrawModal';
-import theme from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 
 // Category colors for goal cards (left bar indicator)
 const GOAL_COLORS = ['#3b82f6', '#a855f7', '#ef4444', '#f97316', '#10b981', '#ec4899'];
@@ -41,6 +41,7 @@ const GOAL_CATEGORIES = {
 };
 
 const SavingsGoalsScreen: React.FC = () => {
+  const { theme } = useTheme();
   // State management
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -380,11 +381,13 @@ const SavingsGoalsScreen: React.FC = () => {
 
   const navigation = useNavigation<any>();
 
+  const styles = createStyles(theme);
+
   // Show loading on initial load
   if (isInitialLoading) {
     return (
       <>
-        <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
+        <StatusBar barStyle={theme.colors.statusBarStyle} backgroundColor={theme.colors.surface} />
         <SafeAreaView style={styles.container} edges={['top']}>
           <View style={styles.header}>
             <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
@@ -441,7 +444,7 @@ const SavingsGoalsScreen: React.FC = () => {
 
   return (
     <>
-      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
+      <StatusBar barStyle={theme.colors.statusBarStyle} backgroundColor={theme.colors.surface} />
       <SafeAreaView style={styles.container} edges={['top']}>
         {/* Header */}
         <View style={styles.header}>
@@ -937,10 +940,10 @@ const SavingsGoalsScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -1207,7 +1210,7 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.background,
   },
   modalContent: {
     flex: 1,

@@ -18,12 +18,14 @@ import { useAuthStore } from '@/store/authStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { biometricAuthService } from '@/services/biometricAuth';
 import { PinLockError } from '@/utils/pinSecurity';
-import theme from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 
 const LOCK_REFRESH_INTERVAL = 1000;
 
 const PINEntryScreen: React.FC = () => {
   const navigation = useNavigation<any>();
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
 
   // Auth store
   const user = useAuthStore((state) => state.user);
@@ -259,7 +261,7 @@ const PINEntryScreen: React.FC = () => {
 
   return (
     <>
-      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
+      <StatusBar barStyle={theme.colors.statusBarStyle} backgroundColor={theme.colors.surface} />
       <SafeAreaView style={styles.container} edges={['top']}>
         <KeyboardAvoidingView
           style={styles.keyboardContainer}
@@ -348,7 +350,7 @@ const PINEntryScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.surface,

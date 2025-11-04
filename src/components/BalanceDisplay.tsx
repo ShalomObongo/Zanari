@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface BalanceDisplayProps {
   balance: number;
@@ -30,9 +31,11 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
   loading = false,
   animated = true,
 }) => {
+  const { theme } = useTheme();
   const [hidden, setHidden] = useState(isHidden);
   const [displayBalance, setDisplayBalance] = useState(0);
   const animatedValue = new Animated.Value(0);
+  const styles = createStyles(theme);
 
   // Format currency
   const formatCurrency = (amount: number, hiddenMode: boolean = false): string => {
@@ -205,7 +208,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
   container: {
     alignItems: 'center',
   },
@@ -214,13 +217,13 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   secondaryContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: theme.isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.1)',
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 12,
   },
   cardContainer: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.surface,
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderRadius: 16,
@@ -254,16 +257,16 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   primaryLabel: {
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: theme.isDark ? 'rgba(255, 255, 255, 0.6)' : 'rgba(255, 255, 255, 0.8)',
   },
   secondaryLabel: {
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: theme.isDark ? 'rgba(255, 255, 255, 0.8)' : 'rgba(255, 255, 255, 0.9)',
   },
   cardLabel: {
-    color: '#6C757D',
+    color: theme.colors.textSecondary,
   },
   minimalLabel: {
-    color: '#6C757D',
+    color: theme.colors.textSecondary,
   },
   smallLabel: {
     fontSize: 12,
@@ -288,16 +291,16 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   primaryAmount: {
-    color: '#FFFFFF',
+    color: theme.isDark ? '#FFFFFF' : '#FFFFFF',
   },
   secondaryAmount: {
-    color: '#FFFFFF',
+    color: theme.isDark ? '#FFFFFF' : '#FFFFFF',
   },
   cardAmount: {
-    color: '#1B4332',
+    color: theme.colors.textPrimary,
   },
   minimalAmount: {
-    color: '#1B4332',
+    color: theme.colors.textPrimary,
   },
   smallAmount: {
     fontSize: 20,
@@ -315,7 +318,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    backgroundColor: theme.isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.3)',
     marginHorizontal: 4,
     opacity: 0.3,
   },
@@ -332,7 +335,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: theme.isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.1)',
   },
   trendIcon: {
     fontSize: 14,
@@ -343,30 +346,32 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   trendUp: {
-    color: '#52B788',
+    color: theme.colors.success,
   },
   trendDown: {
-    color: '#FF6B6B',
+    color: theme.colors.error,
   },
   cardFooter: {
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
+    borderTopColor: theme.colors.border,
     width: '100%',
   },
   cardFooterText: {
     fontSize: 12,
-    color: '#6C757D',
+    color: theme.colors.textSecondary,
     textAlign: 'center',
   },
 });
 
 // Loading animation component
 const LoadingBalance: React.FC<{ variant?: BalanceDisplayProps['variant'] }> = ({ variant = 'primary' }) => {
+  const { theme } = useTheme();
   const opacity1 = new Animated.Value(0.3);
   const opacity2 = new Animated.Value(0.3);
   const opacity3 = new Animated.Value(0.3);
+  const styles = createStyles(theme);
 
   React.useEffect(() => {
     const createAnimation = (animatedValue: Animated.Value, delay: number) => {
@@ -402,7 +407,7 @@ const LoadingBalance: React.FC<{ variant?: BalanceDisplayProps['variant'] }> = (
     };
   }, []);
 
-  const dotColor = variant === 'card' ? '#6C757D' : 'rgba(255, 255, 255, 0.8)';
+  const dotColor = variant === 'card' ? theme.colors.textSecondary : (theme.isDark ? 'rgba(255, 255, 255, 0.6)' : 'rgba(255, 255, 255, 0.8)');
 
   return (
     <View style={styles.loadingContainer}>
