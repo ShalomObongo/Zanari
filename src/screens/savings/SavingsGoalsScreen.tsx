@@ -568,7 +568,7 @@ const SavingsGoalsScreen: React.FC = () => {
             style={styles.modalContainer}
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           >
-            <SafeAreaView style={styles.modalContent}edges={['top']}>
+            <SafeAreaView style={styles.modalContent} edges={['bottom']}>
               <View style={styles.modalHeader}>
                 <TouchableOpacity
                   style={styles.modalCancelButton}
@@ -690,7 +690,7 @@ const SavingsGoalsScreen: React.FC = () => {
             style={styles.modalContainer}
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           >
-            <SafeAreaView style={styles.modalContent}edges={['top']}>
+            <SafeAreaView style={styles.modalContent} edges={['bottom']}>
               <View style={styles.modalHeader}>
                 <TouchableOpacity
                   style={styles.modalCancelButton}
