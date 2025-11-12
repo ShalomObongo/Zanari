@@ -150,7 +150,7 @@ const EditGoalModal: React.FC<EditGoalModalProps> = ({ visible, goalId, onClose,
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <SafeAreaView style={styles.content}edges={['top']}>
+        <SafeAreaView style={styles.content} edges={['top']}>
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity style={styles.cancelButton} onPress={handleClose}>
