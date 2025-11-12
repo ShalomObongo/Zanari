@@ -141,9 +141,8 @@ const TransferToSavingsWalletModal: React.FC<TransferToSavingsWalletModalProps> 
         <KeyboardAvoidingView
           style={styles.container}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={insets.top}
         >
-          <SafeAreaView style={styles.content} edges={['top', 'bottom']}>
+          <SafeAreaView style={styles.content} edges={['bottom']}>
             {/* Header */}
             <View style={styles.header}>
               <TouchableOpacity style={styles.cancelButton} onPress={handleClose}>
