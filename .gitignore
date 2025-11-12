@@ -73,7 +73,6 @@ reports/
 # --- Optional project-specific files that were previously ignored ---
 # Keep these if you want them ignored; otherwise remove the lines.
 .qoder/
-scripts/
 New Screen designs/
 
 docs/
