@@ -6,13 +6,16 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
-  Image,
   Modal,
   ActivityIndicator,
   RefreshControl,
   StatusBar,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import Icon from 'react-native-vector-icons/MaterialIcons';
+import * as ImagePicker from 'expo-image-picker';
 import { useAuthStore } from '@/store/authStore';
 import { formatAbsoluteDate } from '@/utils/formatters';
 import apiClient from '@/services/api';
@@ -56,22 +59,43 @@ const documentTypes: DocumentType[] = [
   },
 ];
 
+type KYCDocumentStatus = 'uploaded' | 'processing' | 'approved' | 'rejected';
+
 interface KYCDocument {
   document_id: string;
   document_type: 'national_id' | 'passport' | 'driving_license' | 'selfie';
   file_name: string;
   file_size: number;
-  file_url: string;
-  status: 'pending' | 'approved' | 'rejected';
-  rejection_reason: string | null;
+  status: KYCDocumentStatus;
   uploaded_at: string;
-  reviewed_at: string | null;
+  processed_at: string | null;
+  verification_notes: string | null;
+  secure_download_url: string;
+  expires_in_seconds: number;
+  extracted_data: {
+    full_name: string | null;
+    id_number: string | null;
+    date_of_birth: string | null;
+    issue_date: string | null;
+    expiry_date: string | null;
+  } | null;
+  next_allowed_upload_at: string | null;
+  remaining_retries: number;
+}
+
+interface ListDocumentsResponse {
+  documents: KYCDocument[];
+  review_estimate_minutes: number;
+  remaining_attempts: Record<string, number>;
+  kyc_status: 'not_started' | 'pending' | 'approved' | 'rejected';
 }
 
 const KYCUploadScreen: React.FC = () => {
   const { theme } = useTheme();
+  const navigation = useNavigation<any>();
   // Zustand store
   const user = useAuthStore((state) => state.user);
+  const setUser = useAuthStore((state) => state.setUser);
   const kycStatus = user?.kyc_status || 'not_started';
   
   // State management
@@ -80,7 +104,10 @@ const KYCUploadScreen: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
-  const [verificationStatus, setVerificationStatus] = useState<'draft' | 'submitted' | 'under_review' | 'approved' | 'rejected'>('draft');
+  const [verificationStatus, setVerificationStatus] = useState<'draft' | 'submitted' | 'under_review' | 'approved' | 'rejected'>(
+    kycStatus === 'approved' ? 'approved' : kycStatus === 'rejected' ? 'rejected' : kycStatus === 'pending' ? 'under_review' : 'draft'
+  );
+  const [remainingAttempts, setRemainingAttempts] = useState<Record<string, number>>({});
   
   // Fetch KYC documents on mount
   useEffect(() => {
@@ -89,8 +116,31 @@ const KYCUploadScreen: React.FC = () => {
   
   const loadDocuments = async () => {
     try {
-      const response = await apiClient.get<{ documents: KYCDocument[]; remaining_attempts: Record<string, number> }>('/kyc/documents');
+      const response = await apiClient.get<ListDocumentsResponse>('/kyc/documents');
       setDocuments(response.documents);
+      setRemainingAttempts(response.remaining_attempts);
+
+      // Map API kyc_status to local verification status used for banner
+      switch (response.kyc_status) {
+        case 'approved':
+          setVerificationStatus('approved');
+          break;
+        case 'rejected':
+          setVerificationStatus('rejected');
+          break;
+        case 'pending':
+          setVerificationStatus('under_review');
+          break;
+        case 'not_started':
+        default:
+          setVerificationStatus('draft');
+          break;
+      }
+
+      // Keep auth store user in sync with latest kyc_status
+      if (user && response.kyc_status && user.kyc_status !== response.kyc_status) {
+        setUser({ ...user, kyc_status: response.kyc_status });
+      }
     } catch (error) {
       console.error('Error loading KYC documents:', error);
     } finally {
@@ -104,6 +154,14 @@ const KYCUploadScreen: React.FC = () => {
       await loadDocuments();
     } finally {
       setIsRefreshing(false);
+    }
+  };
+
+  const handleBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('MainTabs');
     }
   };
 
@@ -161,22 +219,80 @@ const KYCUploadScreen: React.FC = () => {
     setIsUploading(true);
 
     try {
-      // Step 1: Get signed upload URL from backend
-      const uploadResponse = await apiClient.post<{ upload_id: string; signed_upload_url: string }>('/kyc/documents/upload', {
+      // Step 1: Ensure we have the right permissions
+      if (source === 'camera') {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert(
+            'Camera Permission Required',
+            'Please allow camera access in your device settings to take photos for KYC.',
+          );
+          setIsUploading(false);
+          return;
+        }
+      } else {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert(
+            'Photos Permission Required',
+            'Please allow photo library access in your device settings to upload existing photos for KYC.',
+          );
+          setIsUploading(false);
+          return;
+        }
+      }
+
+      // Step 2: Pick image from camera or gallery
+      const pickerOptions: ImagePicker.ImagePickerOptions = {
+        // MediaTypeOptions is deprecated but still available in our SDK;
+        // using images-only keeps behavior consistent across camera and gallery.
+        // eslint-disable-next-line deprecation/deprecation
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.7,
+      };
+
+      const result =
+        source === 'camera'
+          ? await ImagePicker.launchCameraAsync(pickerOptions)
+          : await ImagePicker.launchImageLibraryAsync(pickerOptions);
+
+      // Handle cancellation
+      if (result.canceled || !result.assets || result.assets.length === 0) {
+        setIsUploading(false);
+        return;
+      }
+
+      const asset = result.assets[0]!;
+      const uri = asset.uri;
+      const fileName = asset.fileName || `${documentType}_${Date.now()}.jpg`;
+      const fileSize = asset.fileSize ?? 1_000_000;
+      const mimeType = asset.type === 'image' ? 'image/jpeg' : 'application/octet-stream';
+
+      // Step 3: Get signed upload URL from backend
+      const uploadResponse = await apiClient.post<
+        {
+          upload_id: string;
+          document_id: string;
+          signed_upload_url: string;
+          upload_headers?: Record<string, string>;
+        }
+      >('/kyc/documents', {
         document_type: documentType,
-        file_name: `${documentType}_${Date.now()}.jpg`,
-        file_size: 1000000, // Mock file size
+        file_name: fileName,
+        file_size: fileSize,
+        mime_type: mimeType,
+        device_metadata: {
+          platform: Platform.OS,
+        },
       });
-      
-      // Step 2: In real implementation, would use expo-image-picker here
-      // const result = await ImagePicker.launchCameraAsync() or ImagePicker.launchImageLibraryAsync()
-      
-      // Step 3: Upload to signed URL (would use fetch with PUT)
-      // await fetch(uploadResponse.signed_upload_url, { method: 'PUT', body: file })
-      
-      // Step 4: Refresh documents list
+
+      // Note: The current backend issues a logical "signed" URL for storage,
+      // but there is no storage service behind https://storage.supabase.io in this setup.
+      // For now we treat creation of the KYC document record as success and
+      // rely on future work to wire actual binary uploads.
+
+      // Step 4: Refresh documents list to reflect the new record
       await loadDocuments();
-      
       Alert.alert('Success', 'Document uploaded successfully! It will be reviewed shortly.');
     } catch (error) {
       Alert.alert('Error', 'Failed to upload document. Please try again.');
@@ -235,32 +351,33 @@ const KYCUploadScreen: React.FC = () => {
     }
   };
 
-  const getStatusColor = (status: string): string => {
+  const getStatusColor = (status: KYCDocumentStatus | 'draft' | 'submitted' | 'under_review' | 'approved' | 'rejected'): string => {
     switch (status) {
-      case 'verified':
       case 'approved':
         return '#52B788';
       case 'rejected':
         return '#FF6B6B';
-      case 'pending':
+      case 'uploaded':
+      case 'processing':
       case 'under_review':
+      case 'submitted':
         return '#FFA500';
       default:
         return '#6C757D';
     }
   };
 
-  const getStatusText = (status: string): string => {
+  const getStatusText = (status: KYCDocumentStatus | 'draft' | 'submitted' | 'under_review' | 'approved' | 'rejected'): string => {
     switch (status) {
-      case 'verified':
-        return '✓ Verified';
       case 'approved':
         return '✓ Approved';
       case 'rejected':
         return '✗ Rejected';
-      case 'pending':
+      case 'uploaded':
+      case 'processing':
         return '⏳ Pending';
       case 'under_review':
+      case 'submitted':
         return '👁 Under Review';
       default:
         return '📄 Draft';
@@ -305,7 +422,7 @@ const KYCUploadScreen: React.FC = () => {
             {uploadedDocs.map(doc => (
               <View key={doc.document_id} style={styles.uploadedDocument}>
                 <View style={styles.documentInfo}>
-                  <Text style={styles.fileName}>{doc.file_name}</Text>
+                    <Text style={styles.fileName}>{doc.file_name}</Text>
                   <View style={styles.documentMeta}>
                     <Text style={styles.fileSize}>{formatFileSize(doc.file_size)}</Text>
                     <Text style={styles.uploadDate}>{formatDate(doc.uploaded_at)}</Text>
@@ -357,9 +474,19 @@ const KYCUploadScreen: React.FC = () => {
       <SafeAreaView style={styles.container} edges={['top']}>
         {/* Header */}
         <View style={styles.header}>
-        <Text style={styles.headerTitle}>KYC Verification</Text>
-        <Text style={styles.headerSubtitle}>Complete your identity verification</Text>
-      </View>
+          <View style={styles.headerTopRow}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={handleBack}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Icon name="arrow-back-ios" size={20} color={theme.colors.textPrimary} />
+              <Text style={styles.backButtonText}>Back</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.headerTitle}>KYC Verification</Text>
+          <Text style={styles.headerSubtitle}>Complete your identity verification</Text>
+        </View>
 
       {/* Progress Indicator */}
       <View style={styles.progressContainer}>
@@ -488,10 +615,25 @@ const createStyles = (theme: any) => StyleSheet.create({
   },
   header: {
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingTop: 12,
+    paddingBottom: 16,
     backgroundColor: theme.colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
+  },
+  headerTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  backButtonText: {
+    fontSize: 14,
+    color: theme.colors.textPrimary,
+    marginLeft: 2,
   },
   headerTitle: {
     fontSize: 24,

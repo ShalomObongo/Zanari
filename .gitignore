@@ -79,3 +79,12 @@ docs/
 # add exception for files in assets
 !assets/android
 !assets/ios
+
+# --- Supabase CLI / local-only files ---
+# Keep schema migrations & seed data, ignore local config/state.
+supabase/config.toml
+supabase/.env
+supabase/.branches/
+supabase/.temp/
+supabase/docker/
+supabase/kong.yml
