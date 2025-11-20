@@ -255,8 +255,7 @@ const LoginScreen: React.FC<LoginScreenProps> = () => {
                     placeholderTextColor={theme.colors.textTertiary}
                     keyboardType={authMethod === 'email' ? 'email-address' : 'phone-pad'}
                     autoCapitalize="none"
-                    returnKeyType="done"
-                    onSubmitEditing={handleContinue}
+                    {...(authMethod === 'email' && { returnKeyType: 'done', onSubmitEditing: handleContinue })}
                     accessibilityLabel={authMethod === 'email' ? 'Email address input' : 'Phone number input'}
                     accessibilityHint={authMethod === 'email' ? 'Enter your email to receive a verification code' : 'Enter your phone number to receive a verification code'}
                   />

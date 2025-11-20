@@ -13,7 +13,7 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuthStore } from '@/store/authStore';
@@ -37,7 +37,7 @@ const documentTypes: DocumentType[] = [
     id: 'national_id',
     title: 'National ID',
     description: 'Government-issued national identification',
-    required: true,
+    required: false,
     icon: '🪪',
     examples: ['National ID Card (front and back)', 'Digital ID'],
   },
@@ -93,6 +93,9 @@ interface ListDocumentsResponse {
 const KYCUploadScreen: React.FC = () => {
   const { theme } = useTheme();
   const navigation = useNavigation<any>();
+  const route = useRoute();
+  const { isOnboarding } = (route.params as { isOnboarding?: boolean }) || {};
+
   // Zustand store
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
@@ -120,8 +123,18 @@ const KYCUploadScreen: React.FC = () => {
       setDocuments(response.documents);
       setRemainingAttempts(response.remaining_attempts);
 
+      const hasSelfieDoc = response.documents.some(doc => doc.document_type === 'selfie');
+      const hasIdOrPassportDoc = response.documents.some(
+        doc => doc.document_type === 'national_id' || doc.document_type === 'passport'
+      );
+      const meetsMinimumDocRequirement = hasSelfieDoc && hasIdOrPassportDoc;
+
+      const derivedKycStatus = !meetsMinimumDocRequirement && response.kyc_status === 'pending'
+        ? 'not_started'
+        : response.kyc_status;
+
       // Map API kyc_status to local verification status used for banner
-      switch (response.kyc_status) {
+      switch (derivedKycStatus) {
         case 'approved':
           setVerificationStatus('approved');
           break;
@@ -138,8 +151,8 @@ const KYCUploadScreen: React.FC = () => {
       }
 
       // Keep auth store user in sync with latest kyc_status
-      if (user && response.kyc_status && user.kyc_status !== response.kyc_status) {
-        setUser({ ...user, kyc_status: response.kyc_status });
+      if (user && derivedKycStatus && user.kyc_status !== derivedKycStatus) {
+        setUser({ ...user, kyc_status: derivedKycStatus });
       }
     } catch (error) {
       console.error('Error loading KYC documents:', error);
@@ -158,6 +171,9 @@ const KYCUploadScreen: React.FC = () => {
   };
 
   const handleBack = () => {
+    if (isOnboarding) {
+      return;
+    }
     if (navigation.canGoBack()) {
       navigation.goBack();
     } else {
@@ -170,18 +186,24 @@ const KYCUploadScreen: React.FC = () => {
     return documents.filter(doc => doc.document_type === type);
   };
 
-  const getRequiredDocumentsCount = (): number => {
-    return documentTypes.filter(doc => doc.required).length;
+  const hasSelfieUploaded = (): boolean => getDocumentsByType('selfie').length > 0;
+
+  const hasIdOrPassportUploaded = (): boolean => {
+    const hasNationalId = getDocumentsByType('national_id').length > 0;
+    const hasPassport = getDocumentsByType('passport').length > 0;
+    return hasNationalId || hasPassport;
   };
 
+  const getRequiredDocumentsCount = (): number => 2;
+
   const getUploadedRequiredDocumentsCount = (): number => {
-    const requiredTypes = documentTypes.filter(doc => doc.required).map(doc => doc.id);
-    const uploadedTypes = new Set(documents.map(doc => doc.document_type));
-    return requiredTypes.filter(type => uploadedTypes.has(type as KYCDocument['document_type'])).length;
+    const selfieCount = hasSelfieUploaded() ? 1 : 0;
+    const idOrPassportCount = hasIdOrPassportUploaded() ? 1 : 0;
+    return selfieCount + idOrPassportCount;
   };
 
   const isSubmissionReady = (): boolean => {
-    return getUploadedRequiredDocumentsCount() === getRequiredDocumentsCount();
+    return hasSelfieUploaded() && hasIdOrPassportUploaded();
   };
 
   const formatFileSize = (bytes: number): string => {
@@ -327,7 +349,10 @@ const KYCUploadScreen: React.FC = () => {
 
   const handleSubmitForReview = async () => {
     if (!isSubmissionReady()) {
-      Alert.alert('Incomplete', 'Please upload all required documents before submitting.');
+      Alert.alert(
+        'Incomplete',
+        'Upload a selfie plus either your national ID or passport before submitting.'
+      );
       return;
     }
 
@@ -339,6 +364,11 @@ const KYCUploadScreen: React.FC = () => {
       await new Promise(resolve => setTimeout(resolve, 3000));
       
       setVerificationStatus('submitted');
+
+      if (user) {
+        setUser({ ...user, kyc_status: 'pending' });
+      }
+
       Alert.alert(
         'Submitted Successfully!',
         'Your documents have been submitted for review. We will notify you within 1-3 business days.',
@@ -475,14 +505,16 @@ const KYCUploadScreen: React.FC = () => {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerTopRow}>
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={handleBack}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Icon name="arrow-back-ios" size={20} color={theme.colors.textPrimary} />
-              <Text style={styles.backButtonText}>Back</Text>
-            </TouchableOpacity>
+            {!isOnboarding && (
+              <TouchableOpacity
+                style={styles.backButton}
+                onPress={handleBack}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Icon name="arrow-back-ios" size={20} color={theme.colors.textPrimary} />
+                <Text style={styles.backButtonText}>Back</Text>
+              </TouchableOpacity>
+            )}
           </View>
           <Text style={styles.headerTitle}>KYC Verification</Text>
           <Text style={styles.headerSubtitle}>Complete your identity verification</Text>
@@ -527,6 +559,7 @@ const KYCUploadScreen: React.FC = () => {
             <Text style={styles.infoText}>
               • All documents must be clear and readable{'\n'}
               • Files should be under 5MB in size{'\n'}
+               • Upload a selfie and either your national ID or passport{'\n'}
               • Accepted formats: JPG, PNG, PDF{'\n'}
               • Documents must be valid and not expired{'\n'}
               • Review process takes 1-3 business days

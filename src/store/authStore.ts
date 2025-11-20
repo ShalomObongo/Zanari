@@ -551,12 +551,16 @@ setUnauthorizedHandler(() => {
 });
 
 export const useAuthStatus = () => {
-  const { isAuthenticated, isPinSet, isPinVerified } = useAuthStore();
+  const { isAuthenticated, isPinSet, isPinVerified, user } = useAuthStore();
+  const isKycCompliant = user?.kyc_status === 'approved' || user?.kyc_status === 'pending';
+  
   return {
     isAuthenticated,
     isPinSet,
     isPinVerified,
-    isFullyAuthenticated: isAuthenticated && isPinSet && isPinVerified,
+    isKycCompliant,
+    kycStatus: user?.kyc_status || 'not_started',
+    isFullyAuthenticated: isAuthenticated && isPinSet && isPinVerified && isKycCompliant,
   };
 };
 

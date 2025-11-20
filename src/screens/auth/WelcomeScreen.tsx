@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   Dimensions,
   StatusBar,
   ScrollView,
+  Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
@@ -46,6 +47,86 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = () => {
   const styles = createStyles(theme);
   const gradientColors = theme.gradients.welcome[theme.isDark ? 'dark' : 'light'];
 
+  // Animated values for wavy water-like gradient animation
+  const wave1 = useRef(new Animated.Value(0)).current;
+  const wave2 = useRef(new Animated.Value(0)).current;
+  const wave3 = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    // Create multiple wave animations with different speeds for organic water effect
+    const createWaveAnimation = (animValue: Animated.Value, duration: number, delay: number) => {
+      return Animated.loop(
+        Animated.sequence([
+          Animated.delay(delay),
+          Animated.timing(animValue, {
+            toValue: 1,
+            duration: duration,
+            useNativeDriver: false,
+          }),
+          Animated.timing(animValue, {
+            toValue: 0,
+            duration: duration,
+            useNativeDriver: false,
+          }),
+        ])
+      );
+    };
+
+    // Start three waves with different timings for layered water effect
+    Animated.parallel([
+      createWaveAnimation(wave1, 4000, 0),
+      createWaveAnimation(wave2, 5000, 1000),
+      createWaveAnimation(wave3, 6000, 2000),
+    ]).start();
+  }, [wave1, wave2, wave3]);
+
+  // Combine multiple waves to create organic, water-like motion
+  const startX = Animated.add(
+    wave1.interpolate({
+      inputRange: [0, 0.5, 1],
+      outputRange: [0, -0.3, 0],
+    }),
+    wave2.interpolate({
+      inputRange: [0, 0.5, 1],
+      outputRange: [0, 0.2, 0],
+    })
+  );
+
+  const startY = Animated.add(
+    wave1.interpolate({
+      inputRange: [0, 0.5, 1],
+      outputRange: [0, 0.3, 0],
+    }),
+    wave3.interpolate({
+      inputRange: [0, 0.5, 1],
+      outputRange: [0, -0.2, 0],
+    })
+  );
+
+  const endX = Animated.add(
+    wave2.interpolate({
+      inputRange: [0, 0.5, 1],
+      outputRange: [1, 1.3, 1],
+    }),
+    wave3.interpolate({
+      inputRange: [0, 0.5, 1],
+      outputRange: [0, -0.2, 0],
+    })
+  );
+
+  const endY = Animated.add(
+    wave1.interpolate({
+      inputRange: [0, 0.5, 1],
+      outputRange: [1, 0.7, 1],
+    }),
+    wave2.interpolate({
+      inputRange: [0, 0.5, 1],
+      outputRange: [0, 0.3, 0],
+    })
+  );
+
+  const AnimatedLinearGradient = Animated.createAnimatedComponent(LinearGradient);
+
   return (
     <>
       <StatusBar barStyle={theme.colors.statusBarStyle} backgroundColor={theme.colors.background} />
@@ -56,10 +137,10 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = () => {
           showsVerticalScrollIndicator={false}
         >
           {/* Gradient Header */}
-          <LinearGradient
+          <AnimatedLinearGradient
             colors={[...gradientColors]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
+            start={{ x: startX, y: startY }}
+            end={{ x: endX, y: endY }}
             style={styles.gradientHeader}
           />
 
