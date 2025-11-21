@@ -451,6 +451,52 @@ class ApiClient {
   }> {
     return this.get('/round-up-rules/auto-analysis', { searchParams: params });
   }
+
+  // Savings Investment Methods (Phase 1)
+  async getSavingsInvestmentSummary(): Promise<SavingsInvestmentSummaryResponse> {
+    return this.get('/investments/savings/summary');
+  }
+
+  async updateSavingsInvestmentPreference(payload: SavingsInvestmentPreferencePayload): Promise<SavingsInvestmentSummaryResponse> {
+    return this.post('/investments/savings/preferences', {
+      auto_invest_enabled: payload.autoInvestEnabled,
+      target_allocation_pct: payload.targetAllocationPct,
+    });
+  }
+
+  async allocateSavingsInvestment(amount: number): Promise<SavingsInvestmentSummaryResponse> {
+    return this.post('/investments/savings/allocate', { amount });
+  }
+
+  async redeemSavingsInvestment(amount: number): Promise<SavingsInvestmentSummaryResponse> {
+    return this.post('/investments/savings/redeem', { amount });
+  }
+
+  async claimSavingsInvestmentInterest(): Promise<SavingsInvestmentSummaryResponse> {
+    return this.post('/investments/savings/claim-interest', {});
+  }
+}
+
+export interface SavingsInvestmentSummaryResponse {
+  summary: {
+    auto_invest_enabled: boolean;
+    target_allocation_pct: number;
+    product_code: string;
+    product_name: string;
+    annual_yield_bps: number;
+    invested_amount: number;
+    accrued_interest: number;
+    projected_monthly_yield: number;
+    savings_cash_balance: number;
+    savings_available_balance: number;
+    total_value: number;
+    last_accrued_at: string | null;
+  };
+}
+
+export interface SavingsInvestmentPreferencePayload {
+  autoInvestEnabled?: boolean;
+  targetAllocationPct?: number;
 }
 
 export const apiClient = new ApiClient();

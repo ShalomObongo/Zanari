@@ -21,12 +21,15 @@ import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useSavingsStore } from '@/store/savingsStore';
 import { useWalletStore } from '@/store/walletStore';
+import { useSavingsInvestmentStore } from '@/store/investmentStore';
 import { formatCurrency, parseCentsFromInput } from '@/utils/formatters';
 import { apiClient } from '@/services/api';
 import TransferToSavingsWalletModal from '@/components/TransferToSavingsWalletModal';
 import EditGoalModal from '@/components/EditGoalModal';
 import GoalWithdrawModal from '@/components/GoalWithdrawModal';
 import { useTheme } from '@/contexts/ThemeContext';
+
+const MS_PER_YEAR = 365 * 24 * 60 * 60 * 1000;
 
 // Category colors for goal cards (left bar indicator)
 const GOAL_COLORS = ['#3b82f6', '#a855f7', '#ef4444', '#f97316', '#10b981', '#ec4899'];
@@ -55,6 +58,7 @@ const SavingsGoalsScreen: React.FC = () => {
   const [withdrawingGoalId, setWithdrawingGoalId] = useState<string | null>(null);
   const [selectedSourceWallet, setSelectedSourceWallet] = useState<'main' | 'savings'>('main');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isInvestmentRefreshing, setIsInvestmentRefreshing] = useState(false);
 
   // Zustand stores
   const goals = useSavingsStore((state) => state.goals);
@@ -67,17 +71,41 @@ const SavingsGoalsScreen: React.FC = () => {
   const getTotalSavedAmount = useSavingsStore((state) => state.getTotalSavedAmount);
   const getTotalAllocatedToGoals = useSavingsStore((state) => state.getTotalAllocatedToGoals);
   // const getActiveGoals = useSavingsStore((state) => state.getActiveGoals);
-  const isRefreshing = useSavingsStore((state) => state.isRefreshing);
+  const isGoalsRefreshing = useSavingsStore((state) => state.isRefreshing);
 
   const wallets = useWalletStore((state) => state.wallets);
   const refreshWallets = useWalletStore((state) => state.refreshWallets);
   const getSavingsWalletSummary = useWalletStore((state) => state.getSavingsWalletSummary);
+
+  const investmentSummary = useSavingsInvestmentStore((state) => state.summary);
+  const fetchInvestmentSummary = useSavingsInvestmentStore((state) => state.fetchSummary);
+  const updateInvestmentPreference = useSavingsInvestmentStore((state) => state.updatePreference);
+  const allocateInvestment = useSavingsInvestmentStore((state) => state.allocate);
+  const redeemInvestment = useSavingsInvestmentStore((state) => state.redeem);
+  const claimInvestmentInterest = useSavingsInvestmentStore((state) => state.claimInterest);
+  const isInvestmentLoading = useSavingsInvestmentStore((state) => state.isLoading);
 
   const mainWallet = wallets.find(w => w.wallet_type === 'main');
   const savingsWallet = wallets.find(w => w.wallet_type === 'savings');
 
   const totalAllocated = getTotalAllocatedToGoals();
   const savingsSummary = getSavingsWalletSummary(totalAllocated);
+  const investedAmount = investmentSummary?.investedAmount ?? 0;
+  const accruedInterest = investmentSummary?.accruedInterest ?? 0;
+  const projectedMonthlyYield = investmentSummary?.projectedMonthlyYield ?? 0;
+  const walletCashAvailable = savingsWallet?.available_balance ?? savingsSummary?.availableBalance ?? 0;
+  const enhancedSavingsSummary = savingsSummary
+    ? {
+        ...savingsSummary,
+        investedAmount,
+        accruedInterest,
+        projectedMonthlyYield,
+        displayTotalBalance: savingsSummary.totalBalance + investedAmount + accruedInterest,
+        availableCash: walletCashAvailable,
+      }
+    : null;
+
+  const isRefreshing = isGoalsRefreshing || isInvestmentRefreshing;
 
   const selectedWallet = selectedSourceWallet === 'main' ? mainWallet : savingsWallet;
   const selectedBalance = selectedWallet?.available_balance ?? 0;
@@ -89,6 +117,7 @@ const SavingsGoalsScreen: React.FC = () => {
         await Promise.all([
           fetchGoals(),
           useWalletStore.getState().fetchWallets(),
+          fetchInvestmentSummary(),
         ]);
       } catch (error) {
         console.error('Error loading savings goals:', error);
@@ -98,7 +127,44 @@ const SavingsGoalsScreen: React.FC = () => {
     };
 
     loadInitialData();
-  }, []);
+  }, [fetchGoals, fetchInvestmentSummary]);
+
+  useEffect(() => {
+    if (!investmentSummary) {
+      setAnimatedInterest(0);
+      return;
+    }
+
+    const { investedAmount: investedCents, accruedInterest: baseAccrued, annualYieldBps = 0 } = investmentSummary;
+    const perMsIncrement = investedCents > 0 && annualYieldBps > 0
+      ? (investedCents * annualYieldBps) / (10000 * MS_PER_YEAR)
+      : 0;
+
+    setAnimatedInterest(baseAccrued);
+
+    if (perMsIncrement === 0) {
+      return;
+    }
+
+    let frameId: number;
+    let start: number | null = null;
+
+    const tick = (timestamp: number) => {
+      if (start === null) {
+        start = timestamp;
+      }
+      const delta = timestamp - start;
+      const incremental = perMsIncrement * delta;
+      setAnimatedInterest(baseAccrued + incremental);
+      frameId = requestAnimationFrame(tick);
+    };
+
+    frameId = requestAnimationFrame(tick);
+
+    return () => {
+      cancelAnimationFrame(frameId);
+    };
+  }, [investmentSummary?.accruedInterest, investmentSummary?.investedAmount, investmentSummary?.annualYieldBps]);
 
   // Form state
   const [newGoal, setNewGoal] = useState({
@@ -110,6 +176,10 @@ const SavingsGoalsScreen: React.FC = () => {
     roundUpEnabled: false,
   });
   const [addAmount, setAddAmount] = useState('');
+  const [investmentAction, setInvestmentAction] = useState<'invest' | 'redeem' | null>(null);
+  const [investmentAmountInput, setInvestmentAmountInput] = useState('');
+  const [isProcessingInvestment, setIsProcessingInvestment] = useState(false);
+  const [animatedInterest, setAnimatedInterest] = useState(0);
 
   // Refs
   const scrollViewRef = useRef<ScrollView>(null); // kept for minimal diff; no longer used by SectionList
@@ -143,13 +213,66 @@ const SavingsGoalsScreen: React.FC = () => {
 
   // Event handlers
   const handleRefresh = async () => {
+    setIsInvestmentRefreshing(true);
     try {
       await Promise.all([
         refreshGoals(),
         refreshWallets(),
+        fetchInvestmentSummary(),
       ]);
     } catch (error) {
       console.error('Error refreshing data:', error);
+    } finally {
+      setIsInvestmentRefreshing(false);
+    }
+  };
+
+  const handleToggleAutoInvest = async (enabled: boolean) => {
+    try {
+      await updateInvestmentPreference({ autoInvestEnabled: enabled });
+      await fetchInvestmentSummary();
+    } catch (error) {
+      Alert.alert('Unable to update preference', (error as Error).message ?? 'Please try again later.');
+    }
+  };
+
+  const openInvestmentModal = (action: 'invest' | 'redeem') => {
+    setInvestmentAction(action);
+    setInvestmentAmountInput('');
+  };
+
+  const handleInvestmentSubmit = async () => {
+    if (!investmentAction) return;
+    const cents = parseCentsFromInput(investmentAmountInput);
+    if (cents <= 0) {
+      Alert.alert('Invalid amount', 'Enter an amount greater than zero.');
+      return;
+    }
+
+    setIsProcessingInvestment(true);
+    try {
+      if (investmentAction === 'invest') {
+        await allocateInvestment(cents);
+      } else {
+        await redeemInvestment(cents);
+      }
+      await Promise.all([refreshWallets(), fetchInvestmentSummary()]);
+      setInvestmentAction(null);
+      setInvestmentAmountInput('');
+    } catch (error) {
+      Alert.alert('Investment error', (error as Error).message ?? 'Unable to process investment.');
+    } finally {
+      setIsProcessingInvestment(false);
+    }
+  };
+
+  const handleClaimInterest = async () => {
+    try {
+      await claimInvestmentInterest();
+      await Promise.all([refreshWallets(), fetchInvestmentSummary()]);
+      Alert.alert('Success', 'Interest credited to your savings wallet');
+    } catch (error) {
+      Alert.alert('Unable to claim interest', (error as Error).message ?? 'Please try again later.');
     }
   };
 
@@ -379,6 +502,79 @@ const SavingsGoalsScreen: React.FC = () => {
     );
   };
 
+  const currentInterestCents = investmentSummary
+    ? Math.max(animatedInterest, investmentSummary.accruedInterest)
+    : 0;
+
+  const renderInvestmentCard = () => {
+    if (!investmentSummary) {
+      return null;
+    }
+
+    const longInterestDisplay = (currentInterestCents / 100).toFixed(6);
+
+    return (
+      <View style={styles.investmentCard}>
+        <View style={styles.investmentHeader}>
+          <View>
+            <Text style={styles.walletTitle}>Invested Savings</Text>
+            <Text style={styles.investmentSubTitle}>{(investmentSummary.annualYieldBps / 100).toFixed(2)}% APY</Text>
+          </View>
+          <View style={styles.autoInvestToggle}>
+            <Text style={styles.breakdownLabel}>Auto-Invest</Text>
+            <Switch
+              value={investmentSummary.autoInvestEnabled}
+              onValueChange={handleToggleAutoInvest}
+              disabled={isInvestmentLoading}
+              trackColor={{ true: theme.colors.accent, false: theme.colors.border }}
+              thumbColor={theme.colors.surface}
+            />
+          </View>
+        </View>
+
+        <View style={styles.interestHighlightCard}>
+          <Text style={styles.breakdownLabel}>Interest (KES)</Text>
+          <Text style={styles.interestAmount}>{longInterestDisplay}</Text>
+        </View>
+
+        <View style={styles.investmentStatsRow}>
+          <View style={styles.investmentStat}>
+            <Text style={styles.breakdownLabel}>Invested</Text>
+            <Text style={styles.breakdownAmount}>{formatCurrency(investmentSummary.investedAmount)}</Text>
+          </View>
+          <View style={styles.investmentStat}>
+            <Text style={styles.breakdownLabel}>Monthly Yield</Text>
+            <Text style={styles.breakdownAmount}>{formatCurrency(investmentSummary.projectedMonthlyYield)}</Text>
+          </View>
+        </View>
+
+        <View style={styles.investmentActionsRow}>
+          <TouchableOpacity
+            style={styles.investButton}
+            onPress={() => openInvestmentModal('invest')}
+            disabled={isInvestmentLoading}
+          >
+            <Text style={styles.investButtonText}>Invest</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.redeemButton}
+            onPress={() => openInvestmentModal('redeem')}
+            disabled={isInvestmentLoading || investmentSummary.investedAmount === 0}
+          >
+            <Text style={styles.redeemButtonText}>Redeem</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.claimButton}
+            onPress={handleClaimInterest}
+            disabled={isInvestmentLoading || investmentSummary.accruedInterest === 0}
+          >
+            <Text style={styles.claimButtonText}>Claim</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
   const navigation = useNavigation<any>();
 
   const styles = createStyles(theme);
@@ -514,49 +710,51 @@ const SavingsGoalsScreen: React.FC = () => {
             <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor={theme.colors.accent} />
           }
           ListHeaderComponent={
-            savingsSummary ? (
-              <View style={styles.savingsWalletCard}>
-                <View style={styles.walletHeader}>
-                  <Icon name="account-balance-wallet" size={24} color={theme.colors.accent} />
-                  <Text style={styles.walletTitle}>Savings Wallet</Text>
-                </View>
+            enhancedSavingsSummary ? (
+              <View>
+                <View style={styles.savingsWalletCard}>
+                  <View style={styles.walletHeader}>
+                    <Icon name="account-balance-wallet" size={24} color={theme.colors.accent} />
+                    <Text style={styles.walletTitle}>Savings Wallet</Text>
+                  </View>
 
                 <View style={styles.walletBalanceRow}>
-                  <Text style={styles.walletMainBalance}>{formatCurrency(savingsSummary.totalBalance)}</Text>
+                  <Text style={styles.walletMainBalance}>{formatCurrency(enhancedSavingsSummary.displayTotalBalance)}</Text>
                 </View>
 
-                <View style={styles.walletBreakdown}>
-                  <View style={styles.breakdownRow}>
-                    <Text style={styles.breakdownLabel}>Allocated to Goals</Text>
-                    <Text style={styles.breakdownAmount}>{formatCurrency(savingsSummary.allocatedToGoals)}</Text>
+                  <View style={styles.walletBreakdown}>
+                    <View style={styles.breakdownRow}>
+                      <Text style={styles.breakdownLabel}>Allocated to Goals</Text>
+                      <Text style={styles.breakdownAmount}>{formatCurrency(enhancedSavingsSummary.allocatedToGoals)}</Text>
+                    </View>
+                    <View style={styles.breakdownRow}>
+                      <Text style={styles.breakdownLabel}>Available Cash</Text>
+                      <Text style={[styles.breakdownAmount, styles.availableAmount]}>{formatCurrency(enhancedSavingsSummary.availableCash)}</Text>
+                    </View>
+                    <View style={styles.breakdownRow}>
+                      <Text style={styles.breakdownLabel}>Invested</Text>
+                      <Text style={styles.breakdownAmount}>{formatCurrency(enhancedSavingsSummary.investedAmount)}</Text>
+                    </View>
+                    <View style={styles.breakdownRow}>
+                      <Text style={styles.breakdownLabel}>Pending Interest</Text>
+                      <Text style={styles.breakdownAmount}>{formatCurrency(enhancedSavingsSummary.accruedInterest)}</Text>
+                    </View>
                   </View>
-                  <View style={styles.breakdownRow}>
-                    <Text style={styles.breakdownLabel}>Available</Text>
-                    <Text style={[styles.breakdownAmount, styles.availableAmount]}>{formatCurrency(savingsSummary.availableBalance)}</Text>
-                  </View>
+
+                  <TouchableOpacity
+                    style={styles.transferToSavingsButton}
+                    onPress={() => setShowTransferModal(true)}
+                  >
+                    <Icon name="add-circle-outline" size={20} color={theme.colors.surface} />
+                    <Text style={styles.transferButtonText}>Transfer to Savings</Text>
+                  </TouchableOpacity>
                 </View>
 
-                <TouchableOpacity
-                  style={styles.transferToSavingsButton}
-                  onPress={() => setShowTransferModal(true)}
-                >
-                  <Icon name="add-circle-outline" size={20} color={theme.colors.surface} />
-                  <Text style={styles.transferButtonText}>Transfer to Savings</Text>
-                </TouchableOpacity>
+                {renderInvestmentCard()}
               </View>
             ) : null
           }
         />
-
-        {/* Floating Action Button */}
-        <TouchableOpacity
-          style={styles.fab}
-          onPress={() => setShowCreateModal(true)}
-          activeOpacity={0.8}
-        >
-          <Icon name="add" size={32} color={theme.colors.surface} />
-        </TouchableOpacity>
-
         {/* Modals remain the same */}
         {/* Create Goal Modal */}
         <Modal
@@ -911,6 +1109,46 @@ const SavingsGoalsScreen: React.FC = () => {
           }}
         />
 
+        <Modal
+          visible={investmentAction !== null}
+          animationType="fade"
+          transparent
+          onRequestClose={() => setInvestmentAction(null)}
+        >
+          <View style={styles.investmentModalBackdrop}>
+            <View style={styles.investmentModalContent}>
+              <Text style={styles.modalTitle}>
+                {investmentAction === 'invest' ? 'Invest from Savings' : 'Redeem Investment'}
+              </Text>
+              <Text style={styles.modalDescription}>
+                Enter the amount in Kenyan Shillings you want to {investmentAction === 'invest' ? 'invest' : 'redeem'}.
+              </Text>
+              <TextInput
+                style={styles.formInput}
+                placeholder="Amount (KES)"
+                placeholderTextColor={theme.colors.textSecondary}
+                keyboardType="numeric"
+                value={investmentAmountInput}
+                onChangeText={setInvestmentAmountInput}
+              />
+              <View style={styles.modalButtonRow}>
+                <TouchableOpacity style={styles.modalActionSecondary} onPress={() => setInvestmentAction(null)}>
+                  <Text style={styles.modalActionSecondaryText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.modalActionPrimary}
+                  onPress={handleInvestmentSubmit}
+                  disabled={isProcessingInvestment}
+                >
+                  <Text style={styles.modalActionPrimaryText}>
+                    {isProcessingInvestment ? 'Processing...' : investmentAction === 'invest' ? 'Invest' : 'Redeem'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
         {/* Edit Goal Modal */}
         <EditGoalModal
           visible={showEditModal}
@@ -1151,18 +1389,6 @@ const createStyles = (theme: any) => StyleSheet.create({
     fontFamily: theme.fonts.bold,
     color: theme.colors.surface,
   },
-  fab: {
-    position: 'absolute',
-    bottom: theme.spacing.xl,
-    right: theme.spacing.xl,
-    width: 64,
-    height: 64,
-    borderRadius: theme.borderRadius.full,
-    backgroundColor: theme.colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...theme.shadows.lg,
-  },
   emptyState: {
     alignItems: 'center',
     paddingVertical: theme.spacing['3xl'],
@@ -1249,6 +1475,59 @@ const createStyles = (theme: any) => StyleSheet.create({
   modalForm: {
     flex: 1,
     paddingHorizontal: theme.spacing.lg,
+  },
+  investmentModalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: theme.spacing.lg,
+  },
+  investmentModalContent: {
+    width: '100%',
+    maxWidth: 420,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius['2xl'],
+    padding: theme.spacing.xl,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  modalDescription: {
+    fontSize: theme.fontSizes.sm,
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.textSecondary,
+    marginTop: theme.spacing.xs,
+    marginBottom: theme.spacing.md,
+  },
+  modalButtonRow: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.lg,
+  },
+  modalActionSecondary: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.borderRadius.lg,
+    paddingVertical: theme.spacing.md,
+    alignItems: 'center',
+  },
+  modalActionSecondaryText: {
+    fontSize: theme.fontSizes.base,
+    fontFamily: theme.fonts.semiBold,
+    color: theme.colors.textPrimary,
+  },
+  modalActionPrimary: {
+    flex: 1,
+    backgroundColor: theme.colors.accent,
+    borderRadius: theme.borderRadius.lg,
+    paddingVertical: theme.spacing.md,
+    alignItems: 'center',
+  },
+  modalActionPrimaryText: {
+    fontSize: theme.fontSizes.base,
+    fontFamily: theme.fonts.semiBold,
+    color: theme.colors.surface,
   },
   formGroup: {
     marginTop: theme.spacing.xl,
@@ -1512,6 +1791,16 @@ const createStyles = (theme: any) => StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border,
   },
+  investmentCard: {
+    marginHorizontal: theme.spacing.base,
+    marginTop: -theme.spacing.sm,
+    marginBottom: theme.spacing.lg,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.xl,
+    padding: theme.spacing.xl,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
   walletHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1537,6 +1826,23 @@ const createStyles = (theme: any) => StyleSheet.create({
     gap: theme.spacing.sm,
     marginBottom: theme.spacing.base,
   },
+  investmentHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing.base,
+  },
+  investmentSubTitle: {
+    fontSize: theme.fontSizes.sm,
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.textSecondary,
+    marginTop: theme.spacing.xs / 2,
+  },
+  autoInvestToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
   breakdownRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1555,6 +1861,33 @@ const createStyles = (theme: any) => StyleSheet.create({
   availableAmount: {
     color: theme.colors.success,
   },
+  investmentStatsRow: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.base,
+  },
+  interestHighlightCard: {
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+    borderRadius: theme.borderRadius.lg,
+    backgroundColor: `${theme.colors.accent}12`,
+    borderWidth: 1,
+    borderColor: `${theme.colors.accent}40`,
+    marginTop: theme.spacing.base,
+  },
+  interestAmount: {
+    fontSize: theme.fontSizes['2xl'],
+    fontFamily: theme.fonts.bold,
+    color: theme.colors.accent,
+    letterSpacing: 1,
+    marginTop: theme.spacing.xs,
+  },
+  investmentStat: {
+    flex: 1,
+    padding: theme.spacing.sm,
+    backgroundColor: theme.colors.background,
+    borderRadius: theme.borderRadius.lg,
+  },
   transferToSavingsButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1569,6 +1902,51 @@ const createStyles = (theme: any) => StyleSheet.create({
     fontSize: theme.fontSizes.base,
     fontFamily: theme.fonts.bold,
     color: theme.colors.surface,
+  },
+  investmentActionsRow: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.lg,
+  },
+  investButton: {
+    flex: 1,
+    backgroundColor: theme.colors.accent,
+    borderRadius: theme.borderRadius.lg,
+    paddingVertical: theme.spacing.md,
+    alignItems: 'center',
+  },
+  investButtonText: {
+    fontSize: theme.fontSizes.base,
+    fontFamily: theme.fonts.semiBold,
+    color: theme.colors.surface,
+  },
+  redeemButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.borderRadius.lg,
+    paddingVertical: theme.spacing.md,
+    alignItems: 'center',
+    backgroundColor: theme.colors.surface,
+  },
+  redeemButtonText: {
+    fontSize: theme.fontSizes.base,
+    fontFamily: theme.fonts.semiBold,
+    color: theme.colors.textPrimary,
+  },
+  claimButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: theme.colors.accent,
+    borderRadius: theme.borderRadius.lg,
+    paddingVertical: theme.spacing.md,
+    alignItems: 'center',
+    backgroundColor: `${theme.colors.accent}15`,
+  },
+  claimButtonText: {
+    fontSize: theme.fontSizes.base,
+    fontFamily: theme.fonts.semiBold,
+    color: theme.colors.accent,
   },
   // Wallet Selector
   walletSelectorRow: {

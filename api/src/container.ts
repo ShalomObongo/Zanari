@@ -3,6 +3,8 @@ import { SupabaseAuthSessionRepository } from './repositories/SupabaseAuthSessio
 import { SupabaseKYCDocumentRepository } from './repositories/SupabaseKYCDocumentRepository';
 import { SupabaseRoundUpRuleRepository } from './repositories/SupabaseRoundUpRuleRepository';
 import { SupabaseSavingsGoalRepository } from './repositories/SupabaseSavingsGoalRepository';
+import { SupabaseSavingsInvestmentPreferenceRepository } from './repositories/SupabaseSavingsInvestmentPreferenceRepository';
+import { SupabaseSavingsInvestmentPositionRepository } from './repositories/SupabaseSavingsInvestmentPositionRepository';
 import { SupabaseTransactionRepository } from './repositories/SupabaseTransactionRepository';
 import { SupabaseUserRepository } from './repositories/SupabaseUserRepository';
 import { SupabaseWalletRepository } from './repositories/SupabaseWalletRepository';
@@ -15,6 +17,7 @@ import { KYCService } from './services/KYCService';
 import { PaymentService } from './services/PaymentService';
 import { RandomTokenService } from './services/RandomTokenService';
 import { SavingsGoalService } from './services/SavingsGoalService';
+import { SavingsInvestmentService } from './services/SavingsInvestmentService';
 import { SupabasePinTokenService } from './services/SupabasePinTokenService';
 import { SupabaseRetryQueue } from './services/SupabaseRetryQueue';
 import { TransactionService } from './services/TransactionService';
@@ -32,6 +35,7 @@ import { createWalletRoutes } from './routes/wallets';
 import { createTransactionRoutes } from './routes/transactions';
 import { createRoundUpRuleRoutes } from './routes/round-up-rules';
 import { createSavingsGoalRoutes } from './routes/savings-goals';
+import { createSavingsInvestmentRoutes } from './routes/savings-investments';
 import { createKYCRoutes } from './routes/kyc';
 import { createWebhookRoutes } from './routes/webhooks';
 import { createInMemoryAppContainer, InMemoryPaystackClient, logInMemoryStartup } from './dev/inMemoryAppContainer';
@@ -59,6 +63,8 @@ export function createAppContainer() {
   const transactionRepository = new SupabaseTransactionRepository(supabase);
   const savingsGoalRepository = new SupabaseSavingsGoalRepository(supabase);
   const roundUpRuleRepository = new SupabaseRoundUpRuleRepository(supabase);
+  const savingsInvestmentPreferenceRepository = new SupabaseSavingsInvestmentPreferenceRepository(supabase);
+  const savingsInvestmentPositionRepository = new SupabaseSavingsInvestmentPositionRepository(supabase);
   const kycDocumentRepository = new SupabaseKYCDocumentRepository(supabase);
   const authSessionRepository = new SupabaseAuthSessionRepository(supabase);
   const pinTokenService = new SupabasePinTokenService(supabase);
@@ -119,6 +125,12 @@ export function createAppContainer() {
   const savingsGoalService = new SavingsGoalService({
     repository: savingsGoalRepository,
     notificationService,
+    logger,
+  });
+  const savingsInvestmentService = new SavingsInvestmentService({
+    walletService,
+    preferenceRepository: savingsInvestmentPreferenceRepository,
+    positionRepository: savingsInvestmentPositionRepository,
     logger,
   });
 
@@ -196,6 +208,7 @@ export function createAppContainer() {
     logger,
   });
   const savingsRoutes = createSavingsGoalRoutes({ savingsGoalService, walletService, logger });
+  const savingsInvestmentRoutes = createSavingsInvestmentRoutes({ savingsInvestmentService, logger });
   const kycRoutes = createKYCRoutes({ kycService, logger });
   const webhookRoutes = createWebhookRoutes({ logger });
 
@@ -208,6 +221,8 @@ export function createAppContainer() {
       roundUpRuleRepository,
       kycDocumentRepository,
       authSessionRepository,
+      savingsInvestmentPreferenceRepository,
+      savingsInvestmentPositionRepository,
     },
     services: {
       authService,
@@ -219,6 +234,7 @@ export function createAppContainer() {
       kycService,
       categorizationService,
       autoAnalyzeService,
+      savingsInvestmentService,
     },
     routes: {
       auth: authRoutes,
@@ -228,6 +244,7 @@ export function createAppContainer() {
       transactions: transactionRoutes,
       roundUp: roundUpRoutes,
       savings: savingsRoutes,
+      investments: savingsInvestmentRoutes,
       kyc: kycRoutes,
       webhooks: webhookRoutes,
     },

@@ -113,6 +113,7 @@ When configured, the API uses `SmtpOtpSender` to deliver OTP emails and continue
 ## Key Features
 
 - Automated round-up savings with customizable rules and auto-analysis.
+- Yield-earning savings (Phase 1) built on top of the existing savings wallet, documented in `docs/SAVINGS_INVESTMENTS_PHASE1.md`.
 - Paystack-backed merchant payments, P2P transfers, and bill payments.
 - PIN security with progressive delays and biometric authentication support.
 - Offline-ready wallet & transaction browsing with sync service.
