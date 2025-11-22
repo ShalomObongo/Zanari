@@ -20,7 +20,7 @@ import { serializeTransaction } from './serializers';
 import { HttpRequest } from './types';
 import { requireString } from './validation';
 
-const TRANSACTION_ID_REGEX = /^txn_[a-zA-Z0-9]+$/;
+const TRANSACTION_ID_REGEX = /^(txn_[a-zA-Z0-9]+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$/;
 const CATEGORY_SET = new Set<TransactionCategory>([
   'airtime',
   'groceries',
@@ -29,6 +29,7 @@ const CATEGORY_SET = new Set<TransactionCategory>([
   'transport',
   'entertainment',
   'savings',
+  'investment',
   'transfer',
   'other',
 ]);
@@ -40,6 +41,9 @@ const TYPE_SET = new Set<TransactionType>([
   'bill_payment',
   'withdrawal',
   'deposit',
+  'investment_allocation',
+  'investment_redemption',
+  'interest_payout',
 ]);
 
 const CATEGORY_CONFIG: Record<TransactionCategory, { displayName: string; description: string; icon: string; color: string; defaultIncrement: number; alignments: string[] }> = {
@@ -98,6 +102,14 @@ const CATEGORY_CONFIG: Record<TransactionCategory, { displayName: string; descri
     color: '#8BC34A',
     defaultIncrement: 100,
     alignments: ['Savings Boost'],
+  },
+  investment: {
+    displayName: 'Investments',
+    description: 'Allocations to investment pools and returns',
+    icon: 'trending-up-outline',
+    color: '#673AB7',
+    defaultIncrement: 500,
+    alignments: ['Wealth Building'],
   },
   transfer: {
     displayName: 'Transfers & P2P',
@@ -182,23 +194,28 @@ export function createTransactionRoutes({
       const typeFilter = parseTransactionType(request.query.type);
       const categoryFilter = parseTransactionCategory(request.query.category, 'query');
 
-      const result = await transactionService.list({
-        userId: request.userId,
-        limit,
-        offset,
-        type: typeFilter,
-        category: categoryFilter,
-      });
+      try {
+        const result = await transactionService.list({
+          userId: request.userId,
+          limit,
+          offset,
+          type: typeFilter,
+          category: categoryFilter,
+        });
 
-      return ok({
-        transactions: result.transactions.map(serializeTransaction),
-        pagination: {
-          total: result.pagination.total,
-          limit: result.pagination.limit,
-          offset: result.pagination.offset,
-          has_more: result.pagination.hasMore,
-        },
-      });
+        return ok({
+          transactions: result.transactions.map(serializeTransaction),
+          pagination: {
+            total: result.pagination.total,
+            limit: result.pagination.limit,
+            offset: result.pagination.offset,
+            has_more: result.pagination.hasMore,
+          },
+        });
+      } catch (error) {
+        logger.error('Failed to list transactions', { error, userId: request.userId, query: request.query });
+        throw error;
+      }
     },
 
     getTransaction: async (request: HttpRequest<unknown, { transactionId: string }>) => {

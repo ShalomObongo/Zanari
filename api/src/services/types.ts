@@ -7,6 +7,8 @@ import { User } from '../models/User';
 import { Wallet, WalletType } from '../models/Wallet';
 import { Transaction, TransactionCategory, TransactionType } from '../models/Transaction';
 import { SavingsGoal } from '../models/SavingsGoal';
+import { SavingsInvestmentPreference } from '../models/SavingsInvestmentPreference';
+import { SavingsInvestmentPosition } from '../models/SavingsInvestmentPosition';
 import { RoundUpRule } from '../models/RoundUpRule';
 import { KYCDocument, KYCDocumentType } from '../models/KYCDocument';
 import { UUID } from '../models/base';
@@ -68,6 +70,17 @@ export interface SavingsGoalRepository {
   findById(goalId: UUID): Promise<SavingsGoal | null>;
   save(goal: SavingsGoal): Promise<SavingsGoal>;
   delete(goalId: UUID): Promise<void>;
+}
+
+export interface SavingsInvestmentPreferenceRepository {
+  findByUserId(userId: UUID): Promise<SavingsInvestmentPreference | null>;
+  save(preference: SavingsInvestmentPreference): Promise<SavingsInvestmentPreference>;
+  getOrCreateDefault(userId: UUID): Promise<SavingsInvestmentPreference>;
+}
+
+export interface SavingsInvestmentPositionRepository {
+  findByUserId(userId: UUID): Promise<SavingsInvestmentPosition | null>;
+  save(position: SavingsInvestmentPosition): Promise<SavingsInvestmentPosition>;
 }
 
 export interface RoundUpRuleRepository {

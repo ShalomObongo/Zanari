@@ -16,6 +16,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useWalletStore } from '@/store/walletStore';
 import { useTransactionStore } from '@/store/transactionStore';
 import { useSavingsStore } from '@/store/savingsStore';
+import { useSavingsInvestmentStore } from '@/store/investmentStore';
 import { useRoundUpStore } from '@/store/roundUpStore';
 import { formatCurrency, formatRelativeDate, mapTransactionType, getTimeBasedGreeting } from '@/utils/formatters';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -28,6 +29,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = () => {
   const styles = createStyles(theme);
   const [balanceVisible, setBalanceVisible] = useState(true);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isInvestmentRefreshing, setIsInvestmentRefreshing] = useState(false);
   
   // Zustand stores
   const user = useAuthStore((state) => state.user);
@@ -49,11 +51,15 @@ const DashboardScreen: React.FC<DashboardScreenProps> = () => {
   const roundUpRule = useRoundUpStore((state) => state.rule);
   const fetchRoundUpRule = useRoundUpStore((state) => state.fetchRule);
 
-  const isRefreshing = isRefreshingWallets || isRefreshingTransactions || isRefreshingGoals;
+  const investmentSummary = useSavingsInvestmentStore((state) => state.summary);
+  const fetchInvestmentSummary = useSavingsInvestmentStore((state) => state.fetchSummary);
+
+  const isRefreshing = isRefreshingWallets || isRefreshingTransactions || isRefreshingGoals || isInvestmentRefreshing;
   
   // Initial data fetch on mount
   useEffect(() => {
     const loadInitialData = async () => {
+      setIsInitialLoading(true);
       try {
         await Promise.all([
           fetchWallets(),
@@ -63,6 +69,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = () => {
             // Silently fail if round-up rule doesn't exist yet
             console.log('Round-up rule not found - user may not have set it up yet');
           }),
+          fetchInvestmentSummary(),
         ]);
       } catch (error) {
         console.error('Error loading dashboard data:', error);
@@ -72,7 +79,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = () => {
     };
 
     loadInitialData();
-  }, []);
+  }, [fetchGoals, fetchInvestmentSummary, fetchRoundUpRule, fetchTransactions, fetchWallets]);
 
   // Get wallet balances
   const mainWallet = wallets.find(w => w.wallet_type === 'main');
@@ -80,6 +87,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = () => {
   
   const mainBalance = mainWallet?.balance ?? 0;
   const savingsBalance = savingsWallet?.balance ?? 0;
+  const investedAmount = investmentSummary?.investedAmount ?? 0;
+  const accruedInterest = investmentSummary?.accruedInterest ?? 0;
+  const savingsDisplayBalance = savingsBalance + investedAmount + accruedInterest;
   
   // Calculate round-up balance from active goals with lock-in enabled
   const roundUpBalance = goals
@@ -87,7 +97,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = () => {
     .reduce((sum, g) => sum + g.current_amount, 0);
   
   const getTotalBalance = (): number => {
-    return mainBalance + savingsBalance;
+    return mainBalance + savingsDisplayBalance;
   };
   
   // Get recent transactions (limit to 3, completed only)
@@ -146,14 +156,18 @@ const DashboardScreen: React.FC<DashboardScreenProps> = () => {
   };
 
   const onRefresh = async () => {
+    setIsInvestmentRefreshing(true);
     try {
       await Promise.all([
         refreshWallets(),
         refreshTransactions(),
         refreshGoals(),
+        fetchInvestmentSummary(),
       ]);
     } catch (error) {
       console.error('Error refreshing dashboard data:', error);
+    } finally {
+      setIsInvestmentRefreshing(false);
     }
   };
 
@@ -445,7 +459,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = () => {
               <View style={styles.walletCard}>
                 <Text style={styles.walletLabel}>Savings Wallet</Text>
                 <Text style={styles.walletAmount}>
-                  {balanceVisible ? formatCurrency(savingsBalance) : '••••'}
+                  {balanceVisible ? formatCurrency(savingsDisplayBalance) : '••••'}
                 </Text>
               </View>
             </View>

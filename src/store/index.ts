@@ -8,12 +8,14 @@ import { useAuthStore } from './authStore';
 import { useWalletStore } from './walletStore';
 import { useTransactionStore } from './transactionStore';
 import { useSavingsStore } from './savingsStore';
+import { useSavingsInvestmentStore } from './investmentStore';
 
 export { useAuthStore } from './authStore';
 export { useAuthStatus, usePinLockStatus } from './authStore';
 export { useWalletStore } from './walletStore';
 export { useTransactionStore } from './transactionStore';
 export { useSavingsStore } from './savingsStore';
+export { useSavingsInvestmentStore } from './investmentStore';
 
 // Store configuration and middleware
 export const STORE_CONFIG = {
@@ -37,4 +39,5 @@ export const resetAllStores = () => {
   useWalletStore.getState().reset();
   useTransactionStore.getState().resetTransactions();
   useSavingsStore.getState().resetGoals();
+  useSavingsInvestmentStore.setState({ summary: null, isLoading: false, error: null });
 };

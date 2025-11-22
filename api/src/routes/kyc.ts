@@ -165,12 +165,18 @@ export function createKYCRoutes({
             body: {
               upload_id: uploadId,
               document_id: createdDoc.id,
+              signed_upload_url: uploadUrl,
+              upload_headers: {
+                'x-upsert': 'true',
+                'Content-Type': parsed.mimeType,
+              },
               status: 'processing' as const,
               queued_at: now.toISOString(),
               estimated_completion_minutes: 90,
               next_status_check_after_seconds: STATUS_POLL_SECONDS,
               remaining_attempts: remainingAttempts,
               manual_review_threshold: MAX_ATTEMPTS_PER_TYPE,
+              ...(auditTrail ? { audit_trail: auditTrail } : {}),
             },
           };
         }
@@ -303,6 +309,8 @@ function serializeDocument(document: KYCDocument, attempts: AttemptRecord | unde
   return {
     document_id: document.id,
     document_type: document.documentType,
+    file_name: document.fileName,
+    file_size: document.fileSize,
     status: document.status,
     uploaded_at: document.uploadedAt.toISOString(),
     processed_at: document.processedAt ? document.processedAt.toISOString() : null,

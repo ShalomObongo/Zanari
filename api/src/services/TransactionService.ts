@@ -24,6 +24,9 @@ export interface CreateTransactionOptions {
   category: Transaction['category'];
   autoCategorized?: boolean;
   metadata?: Partial<Transaction>;
+  skipLimits?: boolean;
+  description?: string;
+  status?: TransactionStatus;
 }
 
 export interface ListTransactionsOptions {
@@ -60,13 +63,15 @@ export class TransactionService {
   }
 
   async create(options: CreateTransactionOptions): Promise<Transaction> {
-    this.assertWithinSingleLimit(options.amount);
+    if (!options.skipLimits) {
+      this.assertWithinSingleLimit(options.amount);
 
-    const now = this.clock.now();
-    const dayStart = this.startOfDay(now);
-    const dayTotal = await this.transactionRepository.sumUserTransactionsForDay(options.userId, dayStart);
-    if (dayTotal + options.amount > DAILY_TRANSACTION_LIMIT) {
-      throw new Error('Daily transaction limit exceeded');
+      const now = this.clock.now();
+      const dayStart = this.startOfDay(now);
+      const dayTotal = await this.transactionRepository.sumUserTransactionsForDay(options.userId, dayStart);
+      if (dayTotal + options.amount > DAILY_TRANSACTION_LIMIT) {
+        throw new Error('Daily transaction limit exceeded');
+      }
     }
 
     const transaction = createTransaction({
@@ -76,6 +81,7 @@ export class TransactionService {
       amount: options.amount,
       category: options.category,
       autoCategorized: options.autoCategorized ?? true,
+      status: options.status,
       ...options.metadata,
     });
 

@@ -1,48 +1,56 @@
+# --- General ---
+*.log
+*.tsbuildinfo
+.DS_Store
+Thumbs.db
+.history/
 
 # --- Node ---
 node_modules/
-
-# --- Expo / React Native ---
-.expo/
-.expo-shared/
-android/
-ios/
-android/app/build/
-android/.gradle/
-ios/Pods/
-ios/build/
-
-# --- Build outputs ---
-build/
-dist/
-lib/
-*.tsbuildinfo
-
-# --- Caches ---
-.gradle/
-.next/
-.cache/
-.parcel-cache/
-
-# --- Logs ---
-*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# --- Coverage ---
-coverage/
-.nyc_output/
+# --- Expo / React Native ---
+.expo/
+.expo-shared/
+web-build/
+dist/
 
-# --- Environment files (local secrets) ---
+# --- Generated Native Projects (Expo Prebuild) ---
+# Note: If you have custom native code that you want to track in git, 
+# comment out the following two lines (android/ and ios/).
+android/
+ios/
+
+# --- Native Build Artifacts ---
+# These apply if you choose to track the android/ios folders above
+*/build/
+*.apk
+*.aab
+*.ipa
+ios/Pods/
+ios/DerivedData/
+android/.gradle/
+android/app/build/
+
+# --- Backend / API ---
+api/dist/
+api/build/
+api/coverage/
+
+# --- Supabase ---
+supabase/.temp/
+supabase/.env
+supabase/supabase/.temp/
+# We track config.toml and migrations, but ignore local secrets
+# supabase/config.toml
+
+# --- Environment Variables ---
 .env
-.env.local
-.env.production.local
-.env.development.local
-
-# --- Local config ---
-local.properties
+.env.*
+!.env.example
 
 # --- Editors / IDEs ---
 .vscode/
@@ -52,28 +60,40 @@ local.properties
 *.njsproj
 *.sln
 *.iml
-.github/
+*.swp
+*.swo
 
-# --- macOS ---
-.DS_Store
+# --- Temporary / Cache ---
+downloads/
+.cache/
+.parcel-cache/
+.gradle/
+.next/
+coverage/
+.nyc_output/
 
-# --- Windows ---
-Thumbs.db
+# --- AI / Tooling Caches ---
+.qoder/
+.factory/
+.serena/
+.specify/
+.claude/
 
-# --- Keystores / credentials ---
+# --- Design Assets (Large files) ---
+New Screen designs/
+
+# --- Misc ---
+reports/
+local.properties
+
+# --- Keystores / Credentials ---
 *.jks
 *.keystore
 *.pem
 *.key
 *.crt
 
-# --- Misc / Reports ---
-reports/
-
-# --- Optional project-specific files that were previously ignored ---
-# Keep these if you want them ignored; otherwise remove the lines.
-.qoder/
-scripts/
-New Screen designs/
-
-docs/
+# --- Assets Exceptions ---
+# Ensure assets are tracked even if they look like build artifacts
+!assets/android
+!assets/ios

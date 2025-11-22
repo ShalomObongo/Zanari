@@ -9,6 +9,7 @@ import LoginScreen from '@/screens/auth/LoginScreen';
 import OTPScreen from '@/screens/auth/OTPScreen';
 import PINSetupScreen from '@/screens/auth/PINSetupScreen';
 import PINEntryScreen from '@/screens/auth/PINEntryScreen';
+import KYCUploadScreen from '@/screens/kyc/KYCUploadScreen';
 
 const Stack = createStackNavigator();
 
@@ -26,6 +27,9 @@ export type AuthStackParamList = {
   PINEntry: {
     returnScreen?: keyof AuthStackParamList;
   } | undefined;
+  KYCUpload: {
+    isOnboarding: boolean;
+  };
 };
 
 export const AuthNavigator: React.FC = () => {
@@ -83,6 +87,14 @@ export const AuthNavigator: React.FC = () => {
         options={{
           title: 'Enter PIN',
           gestureEnabled: false, // Security: must enter PIN
+        }}
+      />
+      <Stack.Screen 
+        name="KYCUpload" 
+        component={KYCUploadScreen}
+        options={{
+          title: 'Verify Identity',
+          gestureEnabled: false, // Must complete KYC
         }}
       />
     </Stack.Navigator>

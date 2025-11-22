@@ -66,7 +66,7 @@ describe('Integration: Payment with Round-up (T027)', () => {
     });
 
     expect(paymentResult.status).toBe('pending');
-    expect(paymentResult.roundUpAmount).toBe(2_000); // KES 20.00 saved
+    expect(paymentResult.roundUpAmount).toBe(5_000); // KES 50.00 saved (minIncrement)
     expect(paymentResult.totalCharged).toBe(paymentAmount + paymentResult.roundUpAmount);
     expect(paymentResult.roundUpTransaction).not.toBeNull();
 
@@ -84,23 +84,21 @@ describe('Integration: Payment with Round-up (T027)', () => {
     const roundUpTransaction = transactions.find((tx) => tx.type === 'round_up');
 
     expect(paymentTransaction).toBeDefined();
-  expect(paymentTransaction?.status).toBe('pending');
-    expect(paymentTransaction?.roundUpDetails?.roundUpAmount).toBe(2_000);
+    expect(paymentTransaction?.status).toBe('pending');
+    expect(paymentTransaction?.roundUpDetails?.roundUpAmount).toBe(5_000);
     expect(paymentTransaction?.merchantInfo?.name).toBe('Java House');
     expect(paymentTransaction?.roundUpDetails?.relatedTransactionId).toBe(roundUpTransaction?.id);
 
     expect(roundUpTransaction).toBeDefined();
-    expect(roundUpTransaction?.amount).toBe(2_000);
+    expect(roundUpTransaction?.amount).toBe(5_000);
     expect(roundUpTransaction?.category).toBe('savings');
 
     // Verify Paystack received the correct payload.
     expect(stubs.paystackClient.charges).toHaveLength(1);
     const paystackCharge = stubs.paystackClient.charges[0]!;
     expect(paystackCharge.amount).toBe(paymentAmount);
-    expect(paystackCharge.metadata.roundUpAmount).toBe(2_000);
-    expect(paystackCharge.metadata.merchant).toMatchObject({ name: 'Java House', tillNumber: '123456' });
-
-    // Round-up rule persists the auto configuration for subsequent payments.
+    expect(paystackCharge.metadata.roundUpAmount).toBe(5_000);
+    expect(paystackCharge.metadata.merchant).toMatchObject({ name: 'Java House', tillNumber: '123456' });    // Round-up rule persists the auto configuration for subsequent payments.
     const updatedRule = await repositories.roundUpRuleRepository.findByUserId(user.id);
     expect(updatedRule?.incrementType).toBe('auto');
     expect(updatedRule?.autoSettings?.maxIncrement).toBe(5_000);

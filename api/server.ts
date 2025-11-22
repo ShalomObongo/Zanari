@@ -174,6 +174,13 @@ app.post('/savings-goals/:goalId/deposit', adaptRoute(container.routes.savings.d
 app.post('/savings-goals/:goalId/withdraw', adaptRoute(container.routes.savings.withdrawFromGoal));
 app.post('/savings-goals/:goalId/cancel', adaptRoute(container.routes.savings.cancelGoal));
 
+// Savings investments (Phase 1 yield-on-savings)
+app.get('/investments/savings/summary', adaptRoute(container.routes.investments.getSummary));
+app.post('/investments/savings/preferences', adaptRoute(container.routes.investments.updatePreference));
+app.post('/investments/savings/allocate', adaptRoute(container.routes.investments.allocate));
+app.post('/investments/savings/redeem', adaptRoute(container.routes.investments.redeem));
+app.post('/investments/savings/claim-interest', adaptRoute(container.routes.investments.claimInterest));
+
 // Round-up rules
 app.get('/round-up-rules', adaptRoute(container.routes.roundUp.getRule));
 app.put('/round-up-rules', adaptRoute(container.routes.roundUp.updateRule));

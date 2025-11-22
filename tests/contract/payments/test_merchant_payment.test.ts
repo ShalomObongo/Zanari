@@ -87,12 +87,16 @@ describe('POST /payments/merchant Contract Tests', () => {
       });
     });
 
-    it('should handle minimum payment amount with round-up', async () => {
-      await ctx.integration.helpers.topUpMainWallet(10_000);
+    it('should handle payment with round-up satisfying validation rules', async () => {
+      await ctx.integration.helpers.topUpMainWallet(20_000);
       const pinToken = await issuePinToken();
 
+      // Amount must be >= roundUpAmount due to Transaction model validation
+      // With increment '100' (10000 cents), target is next 10000.
+      // If amount = 5000, target = 10000, roundUp = 5000. 5000 <= 5000. OK.
+      const amount = 5000;
       const response = await payMerchant({
-        amount: 110,
+        amount,
         pin_token: pinToken,
         merchant_info: {
           name: 'Small Vendor',
@@ -101,9 +105,9 @@ describe('POST /payments/merchant Contract Tests', () => {
       });
 
       expect(response.status).toBe(200);
-      expect(response.body.total_charged).toBeGreaterThan(110);
+      expect(response.body.total_charged).toBeGreaterThan(amount);
       expect(response.body.round_up_amount).toBeGreaterThan(0);
-      expect(response.body.total_charged).toBe(response.body.round_up_amount + 110);
+      expect(response.body.total_charged).toBe(response.body.round_up_amount + amount);
     });
 
     it('should handle maximum single payment amount without round-up', async () => {

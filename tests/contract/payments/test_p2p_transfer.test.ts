@@ -12,14 +12,38 @@ import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { randomUUID } from 'node:crypto';
 
 import { createTransaction } from '../../../api/src/models/Transaction';
+import { createUser } from '../../../api/src/models/User';
+import { createWallet } from '../../../api/src/models/Wallet';
 import { ContractTestEnvironment, createContractTestEnvironment } from '../helpers/environment';
 
 describe('POST /payments/transfer Contract Tests', () => {
   let ctx: ContractTestEnvironment;
+  let recipientId: string;
 
   beforeEach(async () => {
     ctx = await createContractTestEnvironment();
     await ctx.integration.helpers.setRoundUpIncrement('100');
+
+    // Create a recipient user for testing
+    recipientId = randomUUID();
+    const recipientUser = createUser({
+      id: recipientId,
+      email: 'recipient@zanari.app',
+      phone: '254711223344',
+      firstName: 'John',
+      lastName: 'Doe',
+    });
+    await ctx.integration.repositories.userRepository.create(recipientUser);
+    
+    // Create wallet for recipient
+    const recipientWallet = createWallet({
+      id: randomUUID(),
+      userId: recipientId,
+      walletType: 'main',
+      balance: 0,
+      availableBalance: 0,
+    });
+    await ctx.integration.repositories.walletRepository.insert(recipientWallet);
   });
 
   async function issuePinToken(pin = '1234') {
@@ -47,7 +71,7 @@ describe('POST /payments/transfer Contract Tests', () => {
   }
 
   describe('Successful transfers', () => {
-    it('should process transfer to phone number with round-up', async () => {
+    it('should process internal transfer to another user with round-up', async () => {
       const startingBalance = 150_000;
       await ctx.integration.helpers.topUpMainWallet(startingBalance);
       const pinToken = await issuePinToken();
@@ -55,23 +79,18 @@ describe('POST /payments/transfer Contract Tests', () => {
       const response = await transferPeer({
         amount: 50_050,
         pin_token: pinToken,
-        recipient: { phone: '254712345679' },
+        recipient_user_id: recipientId,
         description: 'Money for textbooks',
       });
 
       expect(response.status).toBe(200);
-  expect(response.body.transfer_transaction_id).toMatch(/^transfer_[a-zA-Z0-9]+$/);
+      expect(response.body.transfer_transaction_id).toMatch(/^[0-9a-f-]{36}$/);
       expect(response.body.round_up_transaction_id).toMatch(/^[0-9a-f-]{36}$/);
       expect(response.body.round_up_amount).toBeGreaterThan(0);
       expect(response.body.total_charged).toBe(50_050 + response.body.round_up_amount);
-  expect(response.body.paystack_transfer_reference).toMatch(/^TRF_[a-zA-Z0-9_-]+$/);
-  expect(response.body.paystack_recipient_code).toMatch(/^RCP_[a-zA-Z0-9_-]+$/);
-      expect(
-    response.body.estimated_completion === null || typeof response.body.estimated_completion === 'string',
-      ).toBe(true);
-      expect(response.body.round_up_skipped).toBe(false);
-      expect(response.body.round_up_skip_reason).toBeNull();
-      expect(response.body.recipient_created).toBe(false);
+      expect(response.body.payment_method).toBe('wallet');
+      expect(response.body.transfer_type).toBe('internal');
+      expect(response.body.fee).toBe(0);
 
       const mainWallet = await ctx.integration.helpers.refreshWallet('main');
       expect(mainWallet.availableBalance).toBe(startingBalance - response.body.total_charged);
@@ -79,12 +98,10 @@ describe('POST /payments/transfer Contract Tests', () => {
       const savingsWallet = await ctx.integration.helpers.refreshWallet('savings');
       expect(savingsWallet.balance).toBe(response.body.round_up_amount);
       expect(savingsWallet.availableBalance).toBe(response.body.round_up_amount);
-
-      expect(ctx.integration.stubs.paystackClient.transfers).toHaveLength(1);
-      expect(ctx.integration.stubs.paystackClient.transfers[0]).toMatchObject({
-        amount: 50_050,
-        reference: response.body.transfer_transaction_id,
-      });
+      
+      // Verify recipient received funds
+      const recipientWallet = await ctx.integration.repositories.walletRepository.findByUserAndType(recipientId, 'main');
+      expect(recipientWallet?.availableBalance).toBe(50_050);
     });
 
     it('should handle transfer with no round-up when amount is already rounded', async () => {
@@ -94,50 +111,14 @@ describe('POST /payments/transfer Contract Tests', () => {
       const response = await transferPeer({
         amount: 100_000,
         pin_token: pinToken,
-        recipient: { phone: '254722345678' },
+        recipient_user_id: recipientId,
         description: 'School fees payment',
       });
 
       expect(response.status).toBe(200);
       expect(response.body.round_up_amount).toBe(0);
       expect(response.body.round_up_transaction_id).toBeNull();
-      expect(response.body.round_up_skipped).toBe(false);
-      expect(response.body.round_up_skip_reason).toBeNull();
       expect(response.body.total_charged).toBe(100_000);
-    });
-
-    it('should process transfer to email address', async () => {
-      await ctx.integration.helpers.topUpMainWallet(120_000);
-      const pinToken = await issuePinToken();
-
-      const response = await transferPeer({
-        amount: 75_050,
-        pin_token: pinToken,
-        recipient: { email: 'friend@example.com' },
-        description: 'Birthday gift',
-      });
-
-      expect(response.status).toBe(200);
-  expect(response.body.transfer_transaction_id).toMatch(/^transfer_[a-zA-Z0-9]+$/);
-  expect(response.body.paystack_recipient_code).toMatch(/^RCP_[a-zA-Z0-9_-]+$/);
-      expect(response.body.total_charged).toBe(75_050 + response.body.round_up_amount);
-      expect(response.body.recipient_created).toBe(false);
-    });
-
-    it('should flag new recipient when phone number is unseen', async () => {
-      await ctx.integration.helpers.topUpMainWallet(120_000);
-      const pinToken = await issuePinToken();
-
-      const response = await transferPeer({
-        amount: 60_050,
-        pin_token: pinToken,
-        recipient: { phone: '254799999999' },
-        description: 'First transfer to this number',
-      });
-
-      expect(response.status).toBe(200);
-  expect(response.body.recipient_created).toBe(true);
-  expect(response.body.paystack_recipient_code).toMatch(/^RCP_[a-zA-Z0-9_-]+$/);
     });
   });
 
@@ -147,7 +128,7 @@ describe('POST /payments/transfer Contract Tests', () => {
       const response = await transferPeer({
         amount: 50,
         pin_token: pinToken,
-        recipient: { phone: '254712345678' },
+        recipient_user_id: recipientId,
       });
 
       expectErrorResponse(response, 400, 'AMOUNT_TOO_LOW');
@@ -158,7 +139,7 @@ describe('POST /payments/transfer Contract Tests', () => {
       const response = await transferPeer({
         amount: 600_000,
         pin_token: pinToken,
-        recipient: { phone: '254712345678' },
+        recipient_user_id: recipientId,
       });
 
       expectErrorResponse(response, 400, 'AMOUNT_TOO_HIGH');
@@ -171,7 +152,7 @@ describe('POST /payments/transfer Contract Tests', () => {
         const response = await transferPeer({
           amount,
           pin_token: pinToken,
-          recipient: { phone: '254712345678' },
+          recipient_user_id: recipientId,
         });
         expectErrorResponse(response, 400, 'INVALID_AMOUNT_FORMAT');
       }
@@ -179,7 +160,7 @@ describe('POST /payments/transfer Contract Tests', () => {
       const decimalResponse = await transferPeer({
         amount: 123.45,
         pin_token: pinToken,
-        recipient: { phone: '254712345678' },
+        recipient_user_id: recipientId,
       });
       expectErrorResponse(decimalResponse, 400, 'INVALID_AMOUNT_FORMAT');
     });
@@ -200,7 +181,7 @@ describe('POST /payments/transfer Contract Tests', () => {
       const response = await transferPeer({
         amount: 200_000,
         pin_token: pinToken,
-        recipient: { phone: '254733444555' },
+        recipient_user_id: recipientId,
       });
 
       expectErrorResponse(response, 400, 'DAILY_LIMIT_EXCEEDED');
@@ -211,59 +192,33 @@ describe('POST /payments/transfer Contract Tests', () => {
   });
 
   describe('Recipient validation', () => {
-    it('should require recipient information', async () => {
+    it('should require recipient user ID', async () => {
       const pinToken = await issuePinToken();
       const response = await transferPeer({
         amount: 50_000,
         pin_token: pinToken,
       });
 
-      expectErrorResponse(response, 400, 'MISSING_RECIPIENT');
+      expectErrorResponse(response, 400, 'MISSING_RECIPIENT_USER_ID');
     });
 
-    it('should reject recipient with both phone and email', async () => {
+    it('should reject non-existent recipient', async () => {
       const pinToken = await issuePinToken();
       const response = await transferPeer({
         amount: 50_000,
         pin_token: pinToken,
-        recipient: { phone: '254712345678', email: 'friend@example.com' },
+        recipient_user_id: randomUUID(),
       });
 
-      expectErrorResponse(response, 400, 'CONFLICTING_RECIPIENT_INFO');
+      expectErrorResponse(response, 400, 'RECIPIENT_NOT_FOUND');
     });
 
-    it('should validate Kenyan phone number format', async () => {
-      const pinToken = await issuePinToken();
-      const invalidPhones = ['712345678', '0712345678', '255712345678', '25471234567'];
-      for (const phone of invalidPhones) {
-        const response = await transferPeer({
-          amount: 50_000,
-          pin_token: pinToken,
-          recipient: { phone },
-        });
-        expectErrorResponse(response, 400, 'INVALID_PHONE');
-      }
-    });
-
-    it('should validate email format', async () => {
-      const pinToken = await issuePinToken();
-      const invalidEmails = ['notanemail', 'invalid@', '@example.com'];
-      for (const email of invalidEmails) {
-        const response = await transferPeer({
-          amount: 50_000,
-          pin_token: pinToken,
-          recipient: { email },
-        });
-        expectErrorResponse(response, 400, 'INVALID_EMAIL');
-      }
-    });
-
-    it('should prevent self-transfer by phone', async () => {
+    it('should prevent self-transfer by user ID', async () => {
       const pinToken = await issuePinToken();
       const response = await transferPeer({
         amount: 40_000,
         pin_token: pinToken,
-        recipient: { phone: ctx.integration.user.phone },
+        recipient_user_id: ctx.userId,
       });
 
       expectErrorResponse(response, 400, 'SELF_TRANSFER_NOT_ALLOWED');
@@ -274,7 +229,7 @@ describe('POST /payments/transfer Contract Tests', () => {
     it('should require PIN token', async () => {
       const response = await transferPeer({
         amount: 50_000,
-        recipient: { phone: '254712345679' },
+        recipient_user_id: recipientId,
       });
 
       expectErrorResponse(response, 400, 'MISSING_PIN_TOKEN');
@@ -285,7 +240,7 @@ describe('POST /payments/transfer Contract Tests', () => {
       const response = await transferPeer({
         amount: 50_000,
         pin_token: 'bad_token',
-        recipient: { phone: '254712345679' },
+        recipient_user_id: recipientId,
       });
 
       expectErrorResponse(response, 400, 'INVALID_PIN_TOKEN_FORMAT');
@@ -296,7 +251,7 @@ describe('POST /payments/transfer Contract Tests', () => {
       const response = await transferPeer({
         amount: 50_000,
         pin_token: 'txn_expiredtoken',
-        recipient: { phone: '254712345679' },
+        recipient_user_id: recipientId,
       });
 
       expectErrorResponse(response, 401, 'PIN_TOKEN_EXPIRED');
@@ -311,12 +266,12 @@ describe('POST /payments/transfer Contract Tests', () => {
       const response = await transferPeer({
         amount: 20_000,
         pin_token: pinToken,
-        recipient: { phone: '254712345679' },
+        recipient_user_id: recipientId,
       });
 
       expectErrorResponse(response, 402, 'INSUFFICIENT_FUNDS');
       expect(response.body.available_balance).toBe(10_000);
-      expect(response.body.round_up_skipped).toBe(false);
+      // round_up_skipped is not returned in transferPeer error
     });
 
     it('should skip round-up when funds cover only the transfer amount', async () => {
@@ -326,60 +281,13 @@ describe('POST /payments/transfer Contract Tests', () => {
       const response = await transferPeer({
         amount: 49_950,
         pin_token: pinToken,
-        recipient: { phone: '254712345679' },
+        recipient_user_id: recipientId,
       });
 
       expect(response.status).toBe(200);
       expect(response.body.round_up_amount).toBe(0);
       expect(response.body.round_up_transaction_id).toBeNull();
-      expect(response.body.round_up_skipped).toBe(true);
-      expect(response.body.round_up_skip_reason).toBe('Insufficient funds for round-up');
-    });
-  });
-
-  describe('Paystack integration', () => {
-    it('should handle Paystack transfer service failure', async () => {
-      await ctx.integration.helpers.topUpMainWallet(80_000);
-      const pinToken = await issuePinToken();
-
-      jest
-        .spyOn(ctx.integration.stubs.paystackClient, 'initiateTransfer')
-        .mockResolvedValueOnce({
-          status: 'failed',
-          transferCode: 'TRF_failure_123',
-          reference: 'transfer_failure_ref',
-          raw: {},
-        });
-
-      const response = await transferPeer({
-        amount: 50_000,
-        pin_token: pinToken,
-        recipient: { phone: '254712345679' },
-      });
-
-      expectErrorResponse(response, 503, 'PAYSTACK_TRANSFER_UNAVAILABLE');
-      expect(response.body.retry_after).toBeGreaterThan(0);
-
-      const wallet = await ctx.integration.helpers.refreshWallet('main');
-      expect(wallet.availableBalance).toBe(80_000);
-    });
-
-    it('should include Paystack metadata on success', async () => {
-      await ctx.integration.helpers.topUpMainWallet(80_000);
-      const pinToken = await issuePinToken();
-
-      const response = await transferPeer({
-        amount: 30_050,
-        pin_token: pinToken,
-        recipient: { phone: '254701234567' },
-      });
-
-  expect(response.status).toBe(200);
-  expect(response.body.paystack_transfer_reference).toMatch(/^TRF_/);
-  expect(response.body.paystack_recipient_code).toMatch(/^RCP_/);
-  expect(
-	response.body.estimated_completion === null || typeof response.body.estimated_completion === 'string',
-  ).toBe(true);
+      // round_up_skipped is not returned in transferPeer success response
     });
   });
 
@@ -389,7 +297,7 @@ describe('POST /payments/transfer Contract Tests', () => {
       const response = await transferPeer({
         amount: 20_000,
         pin_token: pinToken,
-        recipient: { phone: '254733444555' },
+        recipient_user_id: recipientId,
       }, { authenticated: false });
 
       expectErrorResponse(response, 401, 'AUTH_REQUIRED');
@@ -404,7 +312,7 @@ describe('POST /payments/transfer Contract Tests', () => {
       const response = await transferPeer({
         amount: 50_050,
         pin_token: pinToken,
-        recipient: { phone: '254711000111' },
+        recipient_user_id: recipientId,
         description: 'Schema validation transfer',
       });
 
@@ -414,11 +322,8 @@ describe('POST /payments/transfer Contract Tests', () => {
       expect(typeof body.round_up_transaction_id === 'string' || body.round_up_transaction_id === null).toBeTruthy();
       expect(typeof body.total_charged).toBe('number');
       expect(typeof body.round_up_amount).toBe('number');
-    expect(typeof body.paystack_transfer_reference === 'string' || body.paystack_transfer_reference === null).toBeTruthy();
-    expect(typeof body.paystack_recipient_code === 'string' || body.paystack_recipient_code === null).toBeTruthy();
-      expect(typeof body.estimated_completion === 'string' || body.estimated_completion === null).toBeTruthy();
-      expect(typeof body.round_up_skipped).toBe('boolean');
-      expect(typeof body.recipient_created).toBe('boolean');
+      expect(body.payment_method).toBe('wallet');
+      expect(body.transfer_type).toBe('internal');
       expect(body.total_charged).toBe(body.round_up_amount + 50_050);
       expect(Number.isInteger(body.total_charged)).toBe(true);
       expect(Number.isInteger(body.round_up_amount)).toBe(true);

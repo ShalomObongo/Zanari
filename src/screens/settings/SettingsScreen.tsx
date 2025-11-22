@@ -78,6 +78,21 @@ const SettingsScreen: React.FC = () => {
     return user?.email || 'john.doe@email.com';
   };
 
+  const getKycStatusLabel = () => {
+    const status = user?.kyc_status || 'not_started';
+    switch (status) {
+      case 'approved':
+        return 'Verified';
+      case 'pending':
+        return 'Pending review';
+      case 'rejected':
+        return 'Action required';
+      case 'not_started':
+      default:
+        return 'Not started';
+    }
+  };
+
   // Get theme mode label
   const getThemeModeLabel = (mode: ThemeMode) => {
     switch (mode) {
@@ -392,6 +407,15 @@ const SettingsScreen: React.FC = () => {
               'arrow',
               undefined,
               () => navigation.navigate('ChangePIN')
+            )}
+            <View style={styles.divider} />
+            {renderSettingRow(
+              'verified-user',
+              'Identity Verification',
+              getKycStatusLabel(),
+              'arrow',
+              undefined,
+              () => navigation.navigate('KYCUpload')
             )}
             <View style={styles.divider} />
             {renderSettingRow(

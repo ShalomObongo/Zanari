@@ -8,6 +8,8 @@ import { createKYCDocument, KYCDocument } from '../models/KYCDocument';
 import { createAuthSession, AuthSession } from '../models/AuthSession';
 import { Transaction } from '../models/Transaction';
 import { UUID } from '../models/base';
+import { createDefaultPreference, SavingsInvestmentPreference } from '../models/SavingsInvestmentPreference';
+import { createSavingsInvestmentPosition, SavingsInvestmentPosition } from '../models/SavingsInvestmentPosition';
 import { AuthService } from '../services/AuthService';
 import { WalletService } from '../services/WalletService';
 import { TransactionService } from '../services/TransactionService';
@@ -27,6 +29,7 @@ import { RegistrationService } from '../services/RegistrationService';
 import { InMemoryIdentityProvider } from '../services/IdentityProvider';
 import {
   AuthSessionRepository,
+  IdentityProvider,
   KYCDocumentRepository,
   Logger,
   NotificationService,
@@ -38,7 +41,8 @@ import {
   RetryQueue,
   RoundUpRuleRepository,
   SavingsGoalRepository,
-  IdentityProvider,
+  SavingsInvestmentPositionRepository,
+  SavingsInvestmentPreferenceRepository,
   TokenService,
   TransactionRepository,
   UserRepository,
@@ -53,6 +57,8 @@ import { createRoundUpRuleRoutes } from '../routes/round-up-rules';
 import { createKYCRoutes } from '../routes/kyc';
 import { createTransactionRoutes } from '../routes/transactions';
 import { createWebhookRoutes } from '../routes/webhooks';
+import { SavingsInvestmentService } from '../services/SavingsInvestmentService';
+import { createSavingsInvestmentRoutes } from '../routes/savings-investments';
 
 interface CloneOptions<T> {
   transform?: (value: T) => T;
@@ -124,6 +130,23 @@ function cloneRule(rule: RoundUpRule): RoundUpRule {
           lastAnalysisAt: cloneDate(rule.autoSettings.lastAnalysisAt),
         }
       : null,
+  };
+}
+
+function clonePreference(preference: SavingsInvestmentPreference): SavingsInvestmentPreference {
+  return {
+    ...preference,
+    createdAt: cloneDate(preference.createdAt)!,
+    updatedAt: cloneDate(preference.updatedAt)!,
+  };
+}
+
+function clonePosition(position: SavingsInvestmentPosition): SavingsInvestmentPosition {
+  return {
+    ...position,
+    createdAt: cloneDate(position.createdAt)!,
+    updatedAt: cloneDate(position.updatedAt)!,
+    lastAccruedAt: cloneDate(position.lastAccruedAt),
   };
 }
 
@@ -341,6 +364,62 @@ class InMemorySavingsGoalRepository implements SavingsGoalRepository {
     const copy = cloneGoal(goal);
     this.goals.set(copy.id, copy);
     return cloneGoal(copy);
+  }
+
+  async delete(goalId: UUID): Promise<void> {
+    this.goals.delete(goalId);
+  }
+}
+
+class InMemorySavingsInvestmentPreferenceRepository implements SavingsInvestmentPreferenceRepository {
+  private readonly store = new Map<UUID, SavingsInvestmentPreference>();
+
+  constructor(initial: SavingsInvestmentPreference[] = []) {
+    initial.forEach((pref) => {
+      this.store.set(pref.userId, clonePreference(pref));
+    });
+  }
+
+  async findByUserId(userId: UUID): Promise<SavingsInvestmentPreference | null> {
+    const preference = this.store.get(userId);
+    return preference ? clonePreference(preference) : null;
+  }
+
+  async save(preference: SavingsInvestmentPreference): Promise<SavingsInvestmentPreference> {
+    const copy = clonePreference(preference);
+    this.store.set(copy.userId, copy);
+    return clonePreference(copy);
+  }
+
+  async getOrCreateDefault(userId: UUID): Promise<SavingsInvestmentPreference> {
+    const existing = await this.findByUserId(userId);
+    if (existing) {
+      return existing;
+    }
+    const created = createDefaultPreference(userId);
+    await this.save(created);
+    return created;
+  }
+}
+
+class InMemorySavingsInvestmentPositionRepository implements SavingsInvestmentPositionRepository {
+  private readonly store = new Map<UUID, SavingsInvestmentPosition>();
+
+  constructor(initial: SavingsInvestmentPosition[] = []) {
+    initial.forEach((position) => {
+      this.store.set(position.userId, clonePosition(position));
+    });
+  }
+
+  async findByUserId(userId: UUID): Promise<SavingsInvestmentPosition | null> {
+    const position = this.store.get(userId);
+    return position ? clonePosition(position) : null;
+  }
+
+  async save(position: SavingsInvestmentPosition): Promise<SavingsInvestmentPosition> {
+    const copy = clonePosition(position);
+    this.store.set(copy.userId, copy);
+    return clonePosition(copy);
   }
 }
 
@@ -636,6 +715,8 @@ export function createInMemoryAppContainer({ logger }: InMemoryContainerOptions)
   const roundUpRuleRepository = new InMemoryRoundUpRuleRepository([roundUpRule]);
   const kycDocumentRepository = new InMemoryKYCDocumentRepository();
   const authSessionRepository = new InMemoryAuthSessionRepository();
+  const savingsInvestmentPreferenceRepository = new InMemorySavingsInvestmentPreferenceRepository();
+  const savingsInvestmentPositionRepository = new InMemorySavingsInvestmentPositionRepository();
 
   const authService = new AuthService({
     userRepository,
@@ -666,13 +747,26 @@ export function createInMemoryAppContainer({ logger }: InMemoryContainerOptions)
     logger,
   });
   const savingsGoalService = new SavingsGoalService({ repository: savingsGoalRepository, notificationService, logger });
+  const savingsInvestmentService = new SavingsInvestmentService({
+    walletService,
+    transactionService,
+    preferenceRepository: savingsInvestmentPreferenceRepository,
+    positionRepository: savingsInvestmentPositionRepository,
+    logger,
+  });
   const autoAnalyzeService = new AutoAnalyzeService({ transactionRepository, roundUpRuleRepository, logger });
   const categorizationService = new CategorizationService({ transactionRepository, logger });
   const kycService = new KYCService({ repository: kycDocumentRepository, notificationService, logger });
 
   const authRoutes = createAuthRoutes({ authService, registrationService });
   const userRoutes = createUserRoutes({ userRepository, logger });
-  const walletRoutes = createWalletRoutes({ walletService, transactionService, authService, logger });
+  const walletRoutes = createWalletRoutes({
+    walletService,
+    transactionService,
+    authService,
+    savingsInvestmentService,
+    logger,
+  });
   const paymentRoutes = createPaymentRoutes({
     paymentService,
     authService,
@@ -683,6 +777,7 @@ export function createInMemoryAppContainer({ logger }: InMemoryContainerOptions)
     logger,
   });
   const savingsRoutes = createSavingsGoalRoutes({ savingsGoalService, walletService, logger });
+  const savingsInvestmentRoutes = createSavingsInvestmentRoutes({ savingsInvestmentService, logger });
   const roundUpRoutes = createRoundUpRuleRoutes({
     roundUpRuleRepository,
     transactionRepository,
@@ -711,6 +806,8 @@ export function createInMemoryAppContainer({ logger }: InMemoryContainerOptions)
       roundUpRuleRepository,
       kycDocumentRepository,
       authSessionRepository,
+      savingsInvestmentPreferenceRepository,
+      savingsInvestmentPositionRepository,
     },
     services: {
       authService,
@@ -722,6 +819,7 @@ export function createInMemoryAppContainer({ logger }: InMemoryContainerOptions)
       autoAnalyzeService,
       categorizationService,
       kycService,
+      savingsInvestmentService,
     },
     routes: {
       auth: authRoutes,
@@ -729,6 +827,7 @@ export function createInMemoryAppContainer({ logger }: InMemoryContainerOptions)
       wallets: walletRoutes,
       payments: paymentRoutes,
       savings: savingsRoutes,
+      investments: savingsInvestmentRoutes,
       roundUp: roundUpRoutes,
       kyc: kycRoutes,
       transactions: transactionRoutes,

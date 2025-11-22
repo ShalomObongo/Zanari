@@ -251,7 +251,7 @@ const PINSetupScreen: React.FC<PINSetupScreenProps> = () => {
       <SafeAreaView style={styles.container} edges={['top']}>
         <KeyboardAvoidingView
           style={styles.keyboardContainer}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
         >
           <View style={styles.header}>
             <TouchableOpacity
@@ -266,20 +266,20 @@ const PINSetupScreen: React.FC<PINSetupScreenProps> = () => {
             <View style={styles.headerSpacer} />
           </View>
 
-          <View style={styles.content}>
-            <View style={styles.infoWrapper}>
-              <ScrollView
-                style={styles.infoScroll}
-                contentContainerStyle={styles.infoScrollContent}
-                showsVerticalScrollIndicator={false}
-                bounces={false}
-              >
+          <ScrollView
+            style={styles.scrollContainer}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+          >
+            <View style={styles.content}>
+              <View style={styles.infoWrapper}>
                 <View style={styles.infoCard}>
                   <View style={styles.heroSection}>
                     <View style={styles.heroIcon}>
                       <Icon
                         name={step === 'create' ? 'lock-outline' : 'verified-user'}
-                        size={32}
+                        size={28}
                         color={theme.colors.primary}
                       />
                     </View>
@@ -324,10 +324,9 @@ const PINSetupScreen: React.FC<PINSetupScreenProps> = () => {
                     </View>
                   </View>
                 )}
-              </ScrollView>
-            </View>
+              </View>
 
-            <View style={styles.keypadCard}>
+              <View style={styles.keypadCard}>
               <View style={styles.pinSection}>
                 <Text style={styles.pinSectionLabel}>Your PIN</Text>
                 {renderPinDots()}
@@ -337,7 +336,7 @@ const PINSetupScreen: React.FC<PINSetupScreenProps> = () => {
                     : 'Re-enter the PIN you chose so we can double-check it.'}
                 </Text>
 
-                {step === 'create' && pin.length > 0 && (
+                {step === 'create' && pin.length === 4 && (
                   <View
                     style={[
                       styles.securityIndicator,
@@ -363,6 +362,33 @@ const PINSetupScreen: React.FC<PINSetupScreenProps> = () => {
                     </Text>
                   </View>
                 )}
+
+                {step === 'confirm' && confirmPin.length === 4 && (
+                  <View
+                    style={[
+                      styles.securityIndicator,
+                      pin === confirmPin ? styles.securityIndicatorPositive : styles.securityIndicatorWarning,
+                    ]}
+                  >
+                    <Icon
+                      name={pin === confirmPin ? 'verified' : 'error'}
+                      size={18}
+                      color={pin === confirmPin ? theme.colors.success : theme.colors.error}
+                    />
+                    <Text
+                      style={[
+                        styles.securityIndicatorText,
+                        pin === confirmPin
+                          ? styles.securityIndicatorTextPositive
+                          : styles.securityIndicatorTextWarning,
+                      ]}
+                    >
+                      {pin === confirmPin
+                        ? 'Perfect! Your PINs match.'
+                        : 'PINs don\'t match. Please try again.'}
+                    </Text>
+                  </View>
+                )}
               </View>
 
               <View style={styles.keypadSection}>{renderKeypad()}</View>
@@ -370,10 +396,10 @@ const PINSetupScreen: React.FC<PINSetupScreenProps> = () => {
               <TouchableOpacity
                 style={[
                   styles.continueButton,
-                  (currentPin.length !== 4 || isBusy) && styles.continueButtonDisabled,
+                  (currentPin.length !== 4 || isBusy || (step === 'confirm' && pin !== confirmPin)) && styles.continueButtonDisabled,
                 ]}
                 onPress={handleContinue}
-                disabled={currentPin.length !== 4 || isBusy}
+                disabled={currentPin.length !== 4 || isBusy || (step === 'confirm' && pin !== confirmPin)}
                 accessibilityRole="button"
                 accessibilityLabel={step === 'create' ? 'Continue to confirm PIN' : 'Complete PIN setup'}
               >
@@ -382,7 +408,8 @@ const PINSetupScreen: React.FC<PINSetupScreenProps> = () => {
                 </Text>
               </TouchableOpacity>
             </View>
-          </View>
+            </View>
+          </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
     </>
@@ -421,28 +448,26 @@ const createStyles = (theme: any) => StyleSheet.create({
   headerSpacer: {
     width: 48,
   },
+  scrollContainer: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+  },
   content: {
     flex: 1,
     paddingHorizontal: theme.spacing.base,
-    paddingBottom: theme.spacing['2xl'],
+    paddingBottom: theme.spacing.base,
     gap: theme.spacing.lg,
-    justifyContent: 'space-between',
   },
   infoWrapper: {
-    flexShrink: 1,
-  },
-  infoScroll: {
-    flexGrow: 0,
-  },
-  infoScrollContent: {
-    gap: theme.spacing.lg,
-    paddingBottom: theme.spacing.lg,
+    gap: theme.spacing.md,
   },
   infoCard: {
     backgroundColor: theme.colors.surface,
     borderRadius: theme.borderRadius['2xl'],
-    padding: theme.spacing.xl,
-    gap: theme.spacing.lg,
+    padding: theme.spacing.lg,
+    gap: theme.spacing.md,
     ...theme.shadows.sm,
   },
   heroSection: {
@@ -451,9 +476,9 @@ const createStyles = (theme: any) => StyleSheet.create({
     gap: theme.spacing.md,
   },
   heroIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: theme.colors.gray100,
     justifyContent: 'center',
     alignItems: 'center',
@@ -463,7 +488,7 @@ const createStyles = (theme: any) => StyleSheet.create({
     gap: theme.spacing.xs,
   },
   heroLabel: {
-    fontSize: theme.fontSizes.xl,
+    fontSize: theme.fontSizes.lg,
     fontFamily: theme.fonts.bold,
     color: theme.colors.textPrimary,
     letterSpacing: -0.2,
@@ -487,29 +512,29 @@ const createStyles = (theme: any) => StyleSheet.create({
     gap: theme.spacing.sm,
   },
   stepLabel: {
-    fontSize: theme.fontSizes.sm,
-    fontFamily: theme.fonts.medium,
-    color: theme.colors.accentDarker,
+    fontSize: theme.fontSizes.base,
+    fontFamily: theme.fonts.bold,
+    color: theme.colors.primary,
     textTransform: 'uppercase',
-    letterSpacing: 1,
+    letterSpacing: 1.2,
   },
   title: {
-    fontSize: theme.fontSizes['4xl'],
+    fontSize: theme.fontSizes['3xl'],
     fontFamily: theme.fonts.bold,
     color: theme.colors.textPrimary,
     letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: theme.fontSizes.base,
+    fontSize: theme.fontSizes.sm,
     fontFamily: theme.fonts.regular,
     color: theme.colors.textSecondary,
-    lineHeight: 24,
+    lineHeight: 20,
   },
   tipsCard: {
     backgroundColor: theme.colors.surface,
     borderRadius: theme.borderRadius['2xl'],
-    padding: theme.spacing.lg,
-    gap: theme.spacing.sm,
+    padding: theme.spacing.md,
+    gap: theme.spacing.xs,
     borderWidth: 1,
     borderColor: theme.colors.gray200,
   },
@@ -538,10 +563,12 @@ const createStyles = (theme: any) => StyleSheet.create({
     lineHeight: 20,
   },
   keypadCard: {
+    flexShrink: 0,
     backgroundColor: theme.colors.surface,
     borderRadius: theme.borderRadius['2xl'],
-    padding: theme.spacing.xl,
-    gap: theme.spacing.lg,
+    padding: theme.spacing.lg,
+    paddingBottom: theme.spacing.xl,
+    gap: theme.spacing.md,
     ...theme.shadows.sm,
   },
   pinSection: {
@@ -607,20 +634,20 @@ const createStyles = (theme: any) => StyleSheet.create({
   },
   keypadSection: {
     alignItems: 'center',
-    marginTop: theme.spacing.lg,
+    marginTop: theme.spacing.md,
   },
   keypadContainer: {
     alignSelf: 'center',
-    gap: theme.spacing.md,
+    gap: theme.spacing.sm,
   },
   keypadRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: theme.spacing.md,
+    gap: theme.spacing.sm,
   },
   keypadButton: {
-    width: 78,
-    height: 78,
+    width: 72,
+    height: 72,
     borderRadius: theme.borderRadius.full,
     backgroundColor: theme.colors.surface,
     borderWidth: 1,
@@ -641,12 +668,12 @@ const createStyles = (theme: any) => StyleSheet.create({
     opacity: 0.4,
   },
   keypadButtonText: {
-    fontSize: theme.fontSizes['3xl'],
+    fontSize: theme.fontSizes['2xl'],
     fontFamily: theme.fonts.bold,
     color: theme.colors.textPrimary,
   },
   continueButton: {
-    marginTop: theme.spacing['2xl'],
+    marginTop: theme.spacing.lg,
     height: 56,
     width: '100%',
     borderRadius: theme.borderRadius.xl,

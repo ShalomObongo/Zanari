@@ -1,17 +1,10 @@
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { fireEvent, render, waitFor } from '../test-utils';
 import { Alert } from 'react-native';
 
 import EditProfileScreen from '@/screens/settings/EditProfileScreen';
 
 const mockUpdateProfile = jest.fn();
 const mockGoBack = jest.fn();
-
-jest.mock('@react-navigation/native', () => ({
-  useNavigation: () => ({
-    goBack: mockGoBack,
-    navigate: jest.fn(),
-  }),
-}));
 
 jest.mock('@/store/authStore', () => {
   const actual = jest.requireActual('@/store/authStore');

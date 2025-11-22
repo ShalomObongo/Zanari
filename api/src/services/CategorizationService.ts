@@ -22,6 +22,7 @@ const KEYWORD_CATEGORY_MAP: Record<TransactionCategory, string[]> = {
   transport: ['uber', 'bolt', 'fuel', 'matatu', 'transport'],
   entertainment: ['movie', 'cinema', 'netflix', 'spotify', 'entertainment'],
   savings: ['savings', 'round-up', 'roundup'],
+  investment: ['investment', 'yield', 'pool', 'interest', 'allocation', 'redemption'],
   transfer: ['transfer', 'send money', 'p2p'],
   other: [],
 };
