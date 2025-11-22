@@ -365,6 +365,10 @@ class InMemorySavingsGoalRepository implements SavingsGoalRepository {
     this.goals.set(copy.id, copy);
     return cloneGoal(copy);
   }
+
+  async delete(goalId: UUID): Promise<void> {
+    this.goals.delete(goalId);
+  }
 }
 
 class InMemorySavingsInvestmentPreferenceRepository implements SavingsInvestmentPreferenceRepository {
