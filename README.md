@@ -1,150 +1,128 @@
-# Zanari Cross-Platform Savings & Payments App
+# Zanari
 
-A React Native + Expo application with Supabase backend integrations that powers automated round-up savings, M-Pesa payments via Paystack, and student-friendly personal finance tools.
+<div align="center">
 
-## 🚀 Setup Status
+  ![Zanari Banner](https://via.placeholder.com/1200x300/4F46E5/FFFFFF?text=Zanari+Financial+Wellness)
 
-**Infrastructure:** ✅ READY  
-**Database:** ✅ Migrated and configured  
-**Storage:** ✅ KYC bucket created  
-**Paystack:** ✅ Callback-based integration (no webhooks needed)  
+  **Next-Gen Personal Finance for Africa**
+  
+  *Empowering financial growth through automated savings, seamless payments, and intelligent insights.*
 
-**Next Steps:** See [`docs/PAYSTACK_CALLBACK_FLOW.md`](docs/PAYSTACK_CALLBACK_FLOW.md) for:
-- Payment implementation guide (callback-based)
-- Testing procedures
-- Optional: Paystack dashboard configuration (10-15 min)
-- Optional: Supabase storage RLS policies (5-10 min)
+  [![React Native](https://img.shields.io/badge/React_Native-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://reactnative.dev/)
+  [![Expo](https://img.shields.io/badge/Expo-000020?style=for-the-badge&logo=expo&logoColor=white)](https://expo.dev/)
+  [![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com/)
+  [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 
-## Prerequisites
+</div>
 
-- Node.js 18+
-- npm 9+
-- Expo CLI (`npm install -g expo-cli`)
-- iOS Simulator (Xcode) or Android Emulator
-- Supabase project with schema from `api/migrations/001_initial_schema.sql`
-- Paystack test account with Mobile Money sandbox credentials
+---
 
-## Environment Setup
+## 🌟 Overview
 
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
-2. Copy `.env.example` to `.env` (or configure Expo secrets) with:
-   - `EXPO_PUBLIC_SUPABASE_URL`
-   - `EXPO_PUBLIC_SUPABASE_ANON_KEY`
-   - Paystack public/secret keys for sandbox
-3. Start the Expo development server:
-   ```bash
-   npm run start
-   ```
-4. Launch on a device or simulator:
-   - iOS: `npm run ios`
-   - Android: `npm run android`
+Zanari is a cutting-edge fintech application designed to simplify personal finance for the African market. By combining automated savings tools with robust payment infrastructure, Zanari helps users build wealth effortlessly while managing their day-to-day transactions.
 
-## API Services
+Built with an **Offline-First** architecture, Zanari ensures a seamless experience even in low-connectivity environments, syncing data intelligently when connectivity is restored.
 
-Backend handlers live in `api/src` and are now fully wired to Supabase repositories and the Paystack HTTP client. The development server expects credentials in the repository root `.env`:
+## ✨ Key Features
 
-```
-SUPABASE_URL="https://your-project.supabase.co"
-SUPABASE_SERVICE_ROLE_KEY="service_role_key"
-PAYSTACK_SECRET_KEY="psk_test_..."
-PAYSTACK_BASE_URL="https://api.paystack.co"            # optional, defaults to Paystack production
-PAYSTACK_WEBHOOK_SECRET="psk_webhook_secret"           # optional, falls back to PAYSTACK_SECRET_KEY
-API_PORT=3000                                           # optional
-```
+### 🤖 Smart Automation & Savings
+-   **AI-Powered Round-Ups**: Our "Smart Auto" mode analyzes spending patterns to automatically round up transactions and save the spare change.
+-   **Goal-Based Savings**: Create custom targets (e.g., "New Laptop", "Emergency Fund") and track progress visually.
+-   **High-Yield Investments**: (Phase 1) Integrated investment portfolios allow savings to earn competitive returns.
 
-Run the server with hot-reload:
+### 💳 Payments & Transactions
+-   **M-Pesa Integration**: Seamless mobile money payments via Paystack.
+-   **P2P Transfers**: Instant peer-to-peer transfers between Zanari users.
+-   **Bill Payments**: Pay merchants and utility bills directly from the app.
+-   **Auto-Categorization**: Intelligent transaction tagging for better spending analytics.
+
+### 🔒 Enterprise-Grade Security
+-   **Biometric Authentication**: Secure access via FaceID and TouchID.
+-   **PIN Protection**: Custom 4-digit PIN with progressive lockout delays to prevent brute-force attacks.
+-   **Digital KYC**: Streamlined identity verification workflow with document upload and status tracking.
+-   **Data Privacy**: Strict RLS (Row Level Security) policies ensure users only access their own data.
+
+### ⚡️ Technical Excellence
+-   **Offline-First Engine**: A robust synchronization queue (`syncService`) handles data persistence and background syncing.
+-   **Dark Mode Support**: Fully adaptive UI for comfortable viewing in any lighting condition.
+-   **Real-time Notifications**: Instant alerts for transactions, milestones, and security events.
+
+## 📚 Documentation
+
+We maintain comprehensive documentation for developers in the [`dev-docs/`](./dev-docs) directory.
+
+| Section | Description |
+|---------|-------------|
+| [**Architecture**](./dev-docs/README.md) | System design, backend services, and frontend structure. |
+| [**User Journeys**](./dev-docs/README.md#🚀-modules-user-journeys) | Detailed guides for Auth, KYC, Payments, Savings, and more. |
+| [**Database Schema**](./dev-docs/database-schema.md) | Supabase tables, relationships, and policies. |
+
+## 🚀 Quick Start
+
+### Prerequisites
+-   **Node.js** 18+
+-   **npm** 9+
+-   **Expo CLI**
+-   **Supabase Project** (or use local sandbox mode)
+-   **Paystack Test Account**
+
+### Installation
+
+1.  **Clone the repository**
+    ```bash
+    git clone www.github.com/ShalomObongo/Zanari.git
+    cd Zanari
+    ```
+
+2.  **Install dependencies**
+    ```bash
+    npm install
+    ```
+
+3.  **Configure Environment**
+    Copy the example configuration:
+    ```bash
+    cp .env.example .env
+    ```
+    *Tip: The app runs in "Sandbox Mode" with in-memory data if Supabase/Paystack keys are missing, perfect for quick testing.*
+
+4.  **Launch the Application**
+    ```bash
+    # Terminal 1: Start the Mobile App
+    npm start
+
+    # Terminal 2: Start the Backend API
+    npm run dev:api
+    ```
+
+## 🏗 Architecture Stack
+
+-   **Frontend**: React Native (Expo), Zustand (State), React Navigation.
+-   **Backend**: Node.js, Express.js, TypeScript.
+-   **Database**: Supabase (PostgreSQL), Supabase Auth, Supabase Storage.
+-   **Payments**: Paystack API.
+-   **Testing**: Jest, Testing Library, Supertest.
+
+## 🧪 Testing & Quality
+
+We maintain high code quality standards through rigorous testing.
 
 ```bash
-npm run dev:api
+# Run Unit Tests
+npm test
+
+# Run Integration Tests
+npm run test:integration
+
+# Run Performance Benchmarks
+npm test -- tests/performance/performance_benchmarks.test.ts
+
+# Type Checking
+npm run type-check
 ```
 
-Apply database migrations (`api/migrations/*.sql`) to your Supabase instance before starting the server. The API expects bearer tokens issued by the login flow (`access-<userId>-<uuid>`); during manual testing you can also set the `X-User-Id` header to impersonate a user.
+---
 
-### Developing without Supabase credentials
-
-If `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY` (or `PAYSTACK_SECRET_KEY`) are missing, the API automatically boots in an **in-memory sandbox mode**:
-
-- Data is stored in memory only and resets on each restart.
-- A demo user is pre-seeded (`sarah.test@zanari.app` / `254712345678`).
-- Requesting `/auth/login` for the seed user prints OTPs to the terminal, letting you complete the auth flow end-to-end.
-- Paystack calls are simulated, so you can exercise payment flows without external network calls.
-
-This helps you work on the mobile app or API logic before wiring up real infrastructure. Once you're ready for Supabase/Paystack, add the environment variables above and restart the server.
-
-### OTP Email Delivery (SMTP)
-
-To send OTP codes to users via email, configure SMTP environment variables. If these are not set, the API falls back to logging OTPs to the console.
-
-```
-SMTP_HOST=smtp.mailtrap.io
-SMTP_PORT=587
-SMTP_SECURE=false             # true for port 465
-SMTP_USER=your_smtp_username
-SMTP_PASS=your_smtp_password
-SMTP_FROM=no-reply@zanari.app
-```
-
-When configured, the API uses `SmtpOtpSender` to deliver OTP emails and continues using console logs for SMS until an SMS provider is integrated.
-
-## Testing
-
-- Unit & integration tests:
-  ```bash
-  npm test
-  ```
-- Linting & type checks:
-  ```bash
-  npm run lint
-  npm run type-check
-  ```
-- Performance benchmarks:
-  ```bash
-  npm test -- tests/performance/performance_benchmarks.test.ts
-  ```
-- Contract tests (
-  REST endpoints):
-  ```bash
-  npm test -- tests/contract
-  ```
-
-## Key Features
-
-- Automated round-up savings with customizable rules and auto-analysis.
-- Yield-earning savings (Phase 1) built on top of the existing savings wallet, documented in `docs/SAVINGS_INVESTMENTS_PHASE1.md`.
-- Paystack-backed merchant payments, P2P transfers, and bill payments.
-- PIN security with progressive delays and biometric authentication support.
-- Offline-ready wallet & transaction browsing with sync service.
-- End-to-end quickstart scenarios documented in `specs/001-build-a-cross/quickstart.md`.
-
-## Project Structure
-
-```
-.
-├── App.tsx
-├── api/                 # Supabase/Paystack services
-├── src/                 # React Native app (components, screens, stores)
-├── tests/               # Contract, integration, unit, performance suites
-└── specs/001-build-a-cross/  # Feature specs, data model, tasks, research
-```
-
-## Helpful Commands
-
-| Command | Description |
-|---------|-------------|
-| `npm run start` | Start Expo dev server |
-| `npm run lint` | Run ESLint checks |
-| `npm run type-check` | TypeScript project validation |
-| `npm test` | Run Jest test suites |
-| `npm test -- tests/performance/performance_benchmarks.test.ts` | Performance benchmarks |
-
-## Troubleshooting
-
-- **DevMenu TurboModule errors**: Ensure you run tests with project-wide setup `tests/setup.ts`.
-- **Expo push token issues**: Confirm `extra.eas.projectId` is configured in `app.json`.
-- **Paystack errors**: Check sandbox credentials and Paystack status dashboard.
-- **Supabase access**: Confirm Row Level Security policies and service keys are correctly set.
-
-For full quickstart validation, follow the scenarios in `specs/001-build-a-cross/quickstart.md` (Task T098).
+<div align="center">
+  <sub>Built by the Zanari Team/Shalom</sub>
+</div>
