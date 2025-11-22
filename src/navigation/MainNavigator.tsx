@@ -34,6 +34,7 @@ export type MainStackParamList = {
   Payment: undefined;
   Transfer: undefined;
   TransactionDetails: { transactionId: string };
+  InvestmentHistory: undefined;
   KYCUpload: undefined;
   ChangePIN: undefined;
   EditProfile: undefined;
@@ -178,6 +179,13 @@ export const MainNavigator: React.FC = () => {
         options={{
           headerShown: false,
           presentation: 'modal',
+        }}
+      />
+      <Stack.Screen
+        name="InvestmentHistory"
+        component={require('@/screens/savings/InvestmentHistoryScreen').default}
+        options={{
+          headerShown: false,
         }}
       />
     </Stack.Navigator>

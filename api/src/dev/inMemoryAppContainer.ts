@@ -745,6 +745,7 @@ export function createInMemoryAppContainer({ logger }: InMemoryContainerOptions)
   const savingsGoalService = new SavingsGoalService({ repository: savingsGoalRepository, notificationService, logger });
   const savingsInvestmentService = new SavingsInvestmentService({
     walletService,
+    transactionService,
     preferenceRepository: savingsInvestmentPreferenceRepository,
     positionRepository: savingsInvestmentPositionRepository,
     logger,
@@ -755,7 +756,13 @@ export function createInMemoryAppContainer({ logger }: InMemoryContainerOptions)
 
   const authRoutes = createAuthRoutes({ authService, registrationService });
   const userRoutes = createUserRoutes({ userRepository, logger });
-  const walletRoutes = createWalletRoutes({ walletService, transactionService, authService, logger });
+  const walletRoutes = createWalletRoutes({
+    walletService,
+    transactionService,
+    authService,
+    savingsInvestmentService,
+    logger,
+  });
   const paymentRoutes = createPaymentRoutes({
     paymentService,
     authService,

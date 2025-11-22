@@ -71,6 +71,7 @@ export async function createContractTestEnvironment(): Promise<ContractTestEnvir
       walletService: integration.services.walletService,
       transactionService: integration.services.transactionService,
       authService: integration.services.authService,
+      savingsInvestmentService: integration.services.savingsInvestmentService,
     }),
     payments: createPaymentRoutes({
       paymentService: integration.services.paymentService,

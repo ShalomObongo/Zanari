@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,11 +7,13 @@ import {
   TouchableOpacity,
   StatusBar,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { useTransactionStore } from '@/store/transactionStore';
+import { useTransactionStore, Transaction } from '@/store/transactionStore';
+import { apiClient } from '@/services/api';
 import { formatCurrency } from '@/utils/formatters';
 import { useTheme } from '@/contexts/ThemeContext';
 
@@ -27,9 +29,33 @@ const TransactionDetailsScreen: React.FC = () => {
   const { transactionId } = route.params;
 
   // Get transaction from store
-  const transaction = useTransactionStore((state) =>
+  const storeTransaction = useTransactionStore((state) =>
     state.transactions.find((t) => t.id === transactionId)
   );
+
+  const [fetchedTransaction, setFetchedTransaction] = useState<Transaction | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const transaction = storeTransaction || fetchedTransaction;
+
+  useEffect(() => {
+    if (!storeTransaction && transactionId) {
+      const loadTransaction = async () => {
+        setIsLoading(true);
+        try {
+          const data = await apiClient.get<Transaction>(`/transactions/${transactionId}`);
+          setFetchedTransaction(data);
+        } catch (err) {
+          console.error('Failed to load transaction details:', err);
+          setError('Failed to load transaction details');
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      loadTransaction();
+    }
+  }, [storeTransaction, transactionId]);
 
   // Local state for notes and attachments
   const [notes, setNotes] = useState('Lunch with the team.');
@@ -37,11 +63,41 @@ const TransactionDetailsScreen: React.FC = () => {
 
   const styles = createStyles(theme);
 
-  if (!transaction) {
+  if (isLoading) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Icon name="arrow-back" size={24} color={theme.colors.surface} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Transaction Details</Text>
+          <View style={styles.backButton} />
+        </View>
         <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>Transaction not found</Text>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error || !transaction) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Icon name="arrow-back" size={24} color={theme.colors.surface} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Transaction Details</Text>
+          <View style={styles.backButton} />
+        </View>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error || 'Transaction not found'}</Text>
         </View>
       </SafeAreaView>
     );

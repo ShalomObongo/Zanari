@@ -517,7 +517,15 @@ const SavingsGoalsScreen: React.FC = () => {
       <View style={styles.investmentCard}>
         <View style={styles.investmentHeader}>
           <View>
-            <Text style={styles.walletTitle}>Invested Savings</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={styles.walletTitle}>Invested Savings</Text>
+              <TouchableOpacity 
+                onPress={() => navigation.navigate('InvestmentHistory')}
+                style={{ padding: 4 }}
+              >
+                <Icon name="history" size={20} color={theme.colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
             <Text style={styles.investmentSubTitle}>{(investmentSummary.annualYieldBps / 100).toFixed(2)}% APY</Text>
           </View>
           <View style={styles.autoInvestToggle}>

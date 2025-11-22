@@ -15,6 +15,8 @@ import { createKYCDocument, KYCDocument } from '../../../api/src/models/KYCDocum
 import { AuthSession } from '../../../api/src/models/AuthSession';
 import { Transaction } from '../../../api/src/models/Transaction';
 import { UUID } from '../../../api/src/models/base';
+import { createDefaultPreference, SavingsInvestmentPreference } from '../../../api/src/models/SavingsInvestmentPreference';
+import { createSavingsInvestmentPosition, SavingsInvestmentPosition } from '../../../api/src/models/SavingsInvestmentPosition';
 import {
   AuthSessionRepository,
   CategorizationRule,
@@ -28,6 +30,8 @@ import {
   SavingsGoalRepository,
   RoundUpRuleRepository,
   KYCDocumentRepository,
+  SavingsInvestmentPreferenceRepository,
+  SavingsInvestmentPositionRepository,
   TokenService,
   TransactionClassificationInput,
   TransactionRepository,
@@ -37,6 +41,7 @@ import {
 } from '../../../api/src/services/types';
 import { RegistrationService } from '../../../api/src/services/RegistrationService';
 import { InMemoryIdentityProvider } from '../../../api/src/services/IdentityProvider';
+import { SavingsInvestmentService } from '../../../api/src/services/SavingsInvestmentService';
 
 interface CloneOptions<T> {
   transform?: (value: T) => T;
@@ -105,6 +110,23 @@ function cloneRule(rule: RoundUpRule): RoundUpRule {
           lastAnalysisAt: cloneDate(rule.autoSettings.lastAnalysisAt),
         }
       : null,
+  };
+}
+
+function clonePreference(preference: SavingsInvestmentPreference): SavingsInvestmentPreference {
+  return {
+    ...preference,
+    createdAt: cloneDate(preference.createdAt)!,
+    updatedAt: cloneDate(preference.updatedAt)!,
+  };
+}
+
+function clonePosition(position: SavingsInvestmentPosition): SavingsInvestmentPosition {
+  return {
+    ...position,
+    createdAt: cloneDate(position.createdAt)!,
+    updatedAt: cloneDate(position.updatedAt)!,
+    lastAccruedAt: cloneDate(position.lastAccruedAt),
   };
 }
 
@@ -317,6 +339,58 @@ class InMemoryRoundUpRuleRepository implements RoundUpRuleRepository {
   async findByUserId(userId: UUID): Promise<RoundUpRule | null> {
     const rule = this.rules.get(userId);
     return rule ? cloneRule(rule) : null;
+  }
+}
+
+class InMemorySavingsInvestmentPreferenceRepository implements SavingsInvestmentPreferenceRepository {
+  private readonly store = new Map<UUID, SavingsInvestmentPreference>();
+
+  constructor(initial: SavingsInvestmentPreference[] = []) {
+    initial.forEach((pref) => {
+      this.store.set(pref.userId, clonePreference(pref));
+    });
+  }
+
+  async findByUserId(userId: UUID): Promise<SavingsInvestmentPreference | null> {
+    const preference = this.store.get(userId);
+    return preference ? clonePreference(preference) : null;
+  }
+
+  async save(preference: SavingsInvestmentPreference): Promise<SavingsInvestmentPreference> {
+    const copy = clonePreference(preference);
+    this.store.set(copy.userId, copy);
+    return clonePreference(copy);
+  }
+
+  async getOrCreateDefault(userId: UUID): Promise<SavingsInvestmentPreference> {
+    const existing = await this.findByUserId(userId);
+    if (existing) {
+      return existing;
+    }
+    const created = createDefaultPreference(userId);
+    await this.save(created);
+    return created;
+  }
+}
+
+class InMemorySavingsInvestmentPositionRepository implements SavingsInvestmentPositionRepository {
+  private readonly store = new Map<UUID, SavingsInvestmentPosition>();
+
+  constructor(initial: SavingsInvestmentPosition[] = []) {
+    initial.forEach((position) => {
+      this.store.set(position.userId, clonePosition(position));
+    });
+  }
+
+  async findByUserId(userId: UUID): Promise<SavingsInvestmentPosition | null> {
+    const position = this.store.get(userId);
+    return position ? clonePosition(position) : null;
+  }
+
+  async save(position: SavingsInvestmentPosition): Promise<SavingsInvestmentPosition> {
+    const copy = clonePosition(position);
+    this.store.set(copy.userId, copy);
+    return clonePosition(copy);
   }
 }
 
@@ -666,6 +740,8 @@ export interface IntegrationTestEnvironment {
     roundUpRuleRepository: InMemoryRoundUpRuleRepository;
     kycDocumentRepository: InMemoryKYCDocumentRepository;
     authSessionRepository: InMemoryAuthSessionRepository;
+    savingsInvestmentPreferenceRepository: InMemorySavingsInvestmentPreferenceRepository;
+    savingsInvestmentPositionRepository: InMemorySavingsInvestmentPositionRepository;
   };
   services: {
     authService: AuthService;
@@ -677,6 +753,7 @@ export interface IntegrationTestEnvironment {
     autoAnalyzeService: AutoAnalyzeService;
     categorizationService: CategorizationService;
     kycService: KYCService;
+    savingsInvestmentService: SavingsInvestmentService;
   };
   stubs: {
     otpSender: TestOtpSender;
@@ -715,6 +792,8 @@ export async function createIntegrationTestEnvironment(): Promise<IntegrationTes
   const roundUpRuleRepository = new InMemoryRoundUpRuleRepository();
   const kycDocumentRepository = new InMemoryKYCDocumentRepository();
   const authSessionRepository = new InMemoryAuthSessionRepository();
+  const savingsInvestmentPreferenceRepository = new InMemorySavingsInvestmentPreferenceRepository();
+  const savingsInvestmentPositionRepository = new InMemorySavingsInvestmentPositionRepository();
 
   const otpSender = new TestOtpSender();
   const tokenService = new TestTokenService();
@@ -756,6 +835,12 @@ export async function createIntegrationTestEnvironment(): Promise<IntegrationTes
   const autoAnalyzeService = new AutoAnalyzeService({ transactionRepository, roundUpRuleRepository });
   const categorizationService = new CategorizationService({ transactionRepository });
   const kycService = new KYCService({ repository: kycDocumentRepository, notificationService });
+  const savingsInvestmentService = new SavingsInvestmentService({
+    walletService,
+    transactionService,
+    preferenceRepository: savingsInvestmentPreferenceRepository,
+    positionRepository: savingsInvestmentPositionRepository,
+  });
 
   const userId = randomUUID();
   const baseUser = createUser({
@@ -795,6 +880,8 @@ export async function createIntegrationTestEnvironment(): Promise<IntegrationTes
       roundUpRuleRepository,
       kycDocumentRepository,
       authSessionRepository,
+      savingsInvestmentPreferenceRepository,
+      savingsInvestmentPositionRepository,
     },
     services: {
       authService,
@@ -806,6 +893,7 @@ export async function createIntegrationTestEnvironment(): Promise<IntegrationTes
       autoAnalyzeService,
       categorizationService,
       kycService,
+      savingsInvestmentService,
     },
     stubs: {
       otpSender,

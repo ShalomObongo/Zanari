@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { SavingsInvestmentPreference, createDefaultPreference } from '../models/SavingsInvestmentPreference';
 import { SavingsInvestmentPosition, createSavingsInvestmentPosition } from '../models/SavingsInvestmentPosition';
 import { WalletService } from './WalletService';
+import { TransactionService } from './TransactionService';
 import {
   Clock,
   Logger,
@@ -34,6 +35,7 @@ export interface SavingsInvestmentSummary {
 
 interface SavingsInvestmentServiceOptions {
   walletService: WalletService;
+  transactionService: TransactionService;
   preferenceRepository: SavingsInvestmentPreferenceRepository;
   positionRepository: SavingsInvestmentPositionRepository;
   logger?: Logger;
@@ -44,6 +46,7 @@ interface SavingsInvestmentServiceOptions {
 
 export class SavingsInvestmentService {
   private readonly walletService: WalletService;
+  private readonly transactionService: TransactionService;
   private readonly preferenceRepository: SavingsInvestmentPreferenceRepository;
   private readonly positionRepository: SavingsInvestmentPositionRepository;
   private readonly logger: Logger;
@@ -53,6 +56,7 @@ export class SavingsInvestmentService {
 
   constructor(options: SavingsInvestmentServiceOptions) {
     this.walletService = options.walletService;
+    this.transactionService = options.transactionService;
     this.preferenceRepository = options.preferenceRepository;
     this.positionRepository = options.positionRepository;
     this.logger = options.logger ?? NullLogger;
@@ -92,6 +96,17 @@ export class SavingsInvestmentService {
 
     await this.walletService.debit({ userId, walletType: 'savings', amount });
 
+    await this.transactionService.create({
+      id: randomUUID(),
+      userId,
+      type: 'investment_allocation',
+      amount,
+      category: 'investment',
+      description: 'Allocation to Zanari Yield Pool',
+      status: 'completed',
+      skipLimits: true,
+    });
+
     const position = await this.ensurePosition(userId);
     const updatedPosition: SavingsInvestmentPosition = {
       ...position,
@@ -118,6 +133,18 @@ export class SavingsInvestmentService {
     await this.positionRepository.save(updatedPosition);
 
     await this.walletService.credit({ userId, walletType: 'savings', amount });
+
+    await this.transactionService.create({
+      id: randomUUID(),
+      userId,
+      type: 'investment_redemption',
+      amount,
+      category: 'investment',
+      description: 'Redemption from Zanari Yield Pool',
+      status: 'completed',
+      skipLimits: true,
+    });
+
     this.logger.info('Redeemed investment back to savings', { userId, amount });
     return this.getSummary(userId);
   }
@@ -142,6 +169,18 @@ export class SavingsInvestmentService {
     };
     await this.positionRepository.save(updatedPosition);
     await this.walletService.credit({ userId, walletType: 'savings', amount: payout });
+
+    await this.transactionService.create({
+      id: randomUUID(),
+      userId,
+      type: 'interest_payout',
+      amount: payout,
+      category: 'investment',
+      description: 'Interest Payout from Zanari Yield Pool',
+      status: 'completed',
+      skipLimits: true,
+    });
+
     this.logger.info('Credited accrued interest to savings wallet', { userId, payout });
     return this.getSummary(userId);
   }

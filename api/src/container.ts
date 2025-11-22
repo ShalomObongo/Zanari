@@ -129,6 +129,7 @@ export function createAppContainer() {
   });
   const savingsInvestmentService = new SavingsInvestmentService({
     walletService,
+    transactionService,
     preferenceRepository: savingsInvestmentPreferenceRepository,
     positionRepository: savingsInvestmentPositionRepository,
     logger,
@@ -194,7 +195,13 @@ export function createAppContainer() {
     roundUpRuleRepository,
     logger,
   });
-  const walletRoutes = createWalletRoutes({ walletService, transactionService, authService, logger });
+  const walletRoutes = createWalletRoutes({
+    walletService,
+    transactionService,
+    authService,
+    savingsInvestmentService,
+    logger,
+  });
   const transactionRoutes = createTransactionRoutes({
     transactionService,
     categorizationService,

@@ -11,7 +11,10 @@ export type TransactionType =
   | 'round_up'
   | 'bill_payment'
   | 'withdrawal'
-  | 'deposit';
+  | 'deposit'
+  | 'investment_allocation'
+  | 'investment_redemption'
+  | 'interest_payout';
 
 export type TransactionStatus = 'pending' | 'completed' | 'failed' | 'cancelled';
 
@@ -23,6 +26,7 @@ export type TransactionCategory =
   | 'transport'
   | 'entertainment'
   | 'savings'
+  | 'investment'
   | 'transfer'
   | 'other';
 

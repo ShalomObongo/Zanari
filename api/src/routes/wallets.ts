@@ -9,6 +9,7 @@ import { Transaction } from '../models/Transaction';
 import { AuthService } from '../services/AuthService';
 import { TransactionService } from '../services/TransactionService';
 import { WalletService } from '../services/WalletService';
+import { SavingsInvestmentService } from '../services/SavingsInvestmentService';
 import { Clock, Logger, NullLogger, SystemClock } from '../services/types';
 import { HttpError, badRequest, fromValidationError, notFound } from './errors';
 import { ensureAuthenticated } from './handler';
@@ -32,6 +33,7 @@ export interface WalletRouteDependencies {
   walletService: WalletService;
   transactionService: TransactionService;
   authService: AuthService;
+  savingsInvestmentService: SavingsInvestmentService;
   clock?: Clock;
   logger?: Logger;
 }
@@ -42,6 +44,7 @@ export function createWalletRoutes({
   walletService,
   transactionService,
   authService,
+  savingsInvestmentService,
   clock = new SystemClock(),
   logger = NullLogger,
 }: WalletRouteDependencies) {
@@ -115,7 +118,7 @@ export function createWalletRoutes({
       try {
         await walletService.debit({ userId: request.userId, walletType: wallet.walletType, amount: rawAmount });
 
-        const transactionId = `txn_${randomUUID().replace(/-/g, '')}`;
+        const transactionId = randomUUID();
         const transaction = await transactionService.create({
           id: transactionId,
           userId: request.userId,
@@ -223,6 +226,14 @@ export function createWalletRoutes({
           amount: rawAmount,
           transactionId: transaction.id,
         });
+
+        // Trigger auto-invest check
+        try {
+          await savingsInvestmentService.autoAllocateSurplus(request.userId);
+        } catch (error) {
+          // Log but don't fail the transfer if auto-invest fails
+          logger.error('Auto-invest trigger failed after transfer', { userId: request.userId, error });
+        }
 
         return ok({
           transaction_id: transaction.id,
