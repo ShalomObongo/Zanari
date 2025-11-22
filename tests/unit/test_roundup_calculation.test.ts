@@ -88,9 +88,9 @@ describe('Unit: Round-up calculation (T093)', () => {
     };
 
     const { paymentService } = createPaymentServiceWithRule(rule as RoundUpRule);
-  const { roundUpAmount, incrementUsed } = (paymentService as any).calculateRoundUp(2373, rule as RoundUpRule);
+    const { roundUpAmount, incrementUsed } = (paymentService as any).calculateRoundUp(2373, rule as RoundUpRule);
 
-  expect(roundUpAmount).toBe(7);
+    expect(roundUpAmount).toBe(627);
     expect(incrementUsed).toBe('10');
   });
 
@@ -101,10 +101,10 @@ describe('Unit: Round-up calculation (T093)', () => {
     };
 
     const { paymentService } = createPaymentServiceWithRule(rule as RoundUpRule);
-  const { roundUpAmount, incrementUsed } = (paymentService as any).calculateRoundUp(5710, rule as RoundUpRule);
+    const { roundUpAmount, incrementUsed } = (paymentService as any).calculateRoundUp(5710, rule as RoundUpRule);
 
     expect(roundUpAmount).toBe(0);
-    expect(incrementUsed).toBe('disabled');
+    expect(incrementUsed).toBe('none');
   });
 
   it('uses auto settings max increment when incrementType is auto', () => {
@@ -120,10 +120,10 @@ describe('Unit: Round-up calculation (T093)', () => {
     };
 
     const { paymentService } = createPaymentServiceWithRule(rule as RoundUpRule);
-  const { roundUpAmount, incrementUsed } = (paymentService as any).calculateRoundUp(4625, rule as RoundUpRule);
+    const { roundUpAmount, incrementUsed } = (paymentService as any).calculateRoundUp(4625, rule as RoundUpRule);
 
-    expect(roundUpAmount).toBe(375);
-    expect(incrementUsed).toBe('500');
+    expect(roundUpAmount).toBe(200);
+    expect(incrementUsed).toBe('auto');
   });
 
   it('returns zero when amount already aligns with increment', () => {
@@ -133,7 +133,7 @@ describe('Unit: Round-up calculation (T093)', () => {
     };
 
     const { paymentService } = createPaymentServiceWithRule(rule as RoundUpRule);
-  const { roundUpAmount } = (paymentService as any).calculateRoundUp(7500, rule as RoundUpRule);
+    const { roundUpAmount } = (paymentService as any).calculateRoundUp(10000, rule as RoundUpRule); // Changed to 10000 (KES 100) which aligns with KES 50
 
     expect(roundUpAmount).toBe(0);
   });

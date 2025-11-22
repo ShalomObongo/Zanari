@@ -36,13 +36,25 @@ Orchestrates complex payment flows involving external providers.
     -   If round-up applies, triggers `walletService.transferRoundUp` and creates a `round_up` transaction.
     -   **Failure Handling**: Reverses wallet debits if Paystack initialization fails.
 
--   **`transferPeer(request)`** (External):
+-   **`transferPeer(request)`** (External Payout):
+    -   *Note: Currently used for Wallet -> External M-Pesa/Bank transfers (if exposed).*
     -   Creates a Paystack Transfer Recipient.
     -   Debits Main wallet.
     -   Initiates Paystack Transfer.
     -   Records `transfer_out` transaction.
 
--   **`transferPeerInternal(request)`** (Internal):
+-   **`initializeDepositToRecipient(request)`** (External Source P2P):
+    -   **Source**: M-Pesa or Card.
+    -   **Destination**: Another Zanari User's Wallet.
+    -   Initializes a Paystack Checkout session for the sender.
+    -   Calculates **Round-Up** on (Amount + Fee).
+    -   Total Charged = Amount + Fee + RoundUp.
+    -   Creates pending `transfer_out` for sender.
+    -   On success (webhook), credits recipient and processes round-up.
+
+-   **`transferPeerInternal(request)`** (Internal P2P):
+    -   **Source**: Main Wallet.
+    -   **Destination**: Another Zanari User's Wallet.
     -   **Zero Fees**.
     -   Atomic transaction: Debit Sender -> Credit Recipient.
     -   Creates linked `transfer_out` (Sender) and `transfer_in` (Recipient) records.
@@ -90,5 +102,6 @@ The `useWalletStore` manages local wallet state and optimistic updates.
 -   `POST /wallets/transfer-to-savings`: Internal move.
 -   `POST /wallets/transfer-from-savings`: Internal move.
 -   `POST /payments/merchant`: Pay Bill/Till.
--   `POST /payments/transfer`: P2P Transfer.
+-   `POST /payments/transfer`: P2P Transfer (Wallet or External Source).
+-   `POST /payments/transfer/preview`: Calculate fees and round-ups before transfer.
 -   `POST /payments/topup`: Fund wallet.

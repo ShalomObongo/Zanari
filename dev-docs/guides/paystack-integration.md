@@ -33,7 +33,7 @@ Zanari2 uses the **simplified callback-based approach** recommended for React Na
 - 🔐 **Extra security** - Double verification (callback + webhook)
 - 💸 **Refunds/disputes** - Notification when payment is reversed
 
-**For Zanari2's use case (immediate merchant payments)**, webhooks are optional.
+**For Zanari2's use case (immediate merchant payments, top-ups, and external transfers)**, webhooks are optional.
 
 ---
 
@@ -41,7 +41,12 @@ Zanari2 uses the **simplified callback-based approach** recommended for React Na
 
 ### 1. Backend Payment Initialization
 
-**Endpoint:** `POST /payments/merchant`
+This pattern applies to:
+- **Merchant Payments**: `POST /payments/merchant`
+- **Wallet Top-ups**: `POST /payments/topup`
+- **External P2P Transfers**: `POST /payments/transfer` (when payment_method is mpesa/card)
+
+**Example Endpoint:** `POST /payments/merchant`
 
 **Request:**
 ```json

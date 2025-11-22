@@ -33,7 +33,7 @@ describe('POST /wallets/{walletId}/withdraw Contract Tests', () => {
     });
 
     expect(response.status).toBe(200);
-    expect(response.body.transaction_id).toMatch(/^txn_[a-zA-Z0-9-]+$/);
+    expect(response.body.transaction_id).toMatch(/^[a-f0-9-]{36}$/);
     expect(typeof response.body.settlement_delay_minutes).toBe('number');
     expect(typeof response.body.estimated_completion).toBe('string');
 

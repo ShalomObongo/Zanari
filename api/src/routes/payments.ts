@@ -7,6 +7,7 @@ import { randomUUID } from 'node:crypto';
 import { ValidationError } from '../models/base';
 import { AuthService } from '../services/AuthService';
 import { PaymentService } from '../services/PaymentService';
+import { calculateRoundUp } from '../services/RoundUpService';
 import { WalletService } from '../services/WalletService';
 import {
   Clock,
@@ -126,9 +127,9 @@ export function createPaymentRoutes({
       // Get user's round-up rule
       const roundUpRule = await roundUpRuleRepository.findByUserId(request.userId);
 
-      // Import and use the calculateRoundUp function
-      const { calculateRoundUp } = await import('../services/RoundUpService');
-      const roundUpCalc = calculateRoundUp(amount, roundUpRule);
+      // Calculate round-up on the total amount the user pays (amount + fee)
+      // This matches PaymentService.initializeDepositToRecipient logic
+      const roundUpCalc = calculateRoundUp(amount + fee, roundUpRule);
 
       const total = amount + fee + roundUpCalc.roundUpAmount;
 

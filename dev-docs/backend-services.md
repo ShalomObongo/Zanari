@@ -22,9 +22,11 @@ This document outlines the key services in the backend and their responsibilitie
 ### PaymentService
 -   **Responsibility**: Orchestrates money movement and external payment processing.
 -   **Key Functions**:
+    -   `payMerchant`: Processes payments to external merchants (Till/Paybill).
     -   `previewTransfer`: Calculates fees and final amounts.
     -   `verifyPayment`: Verifies Paystack transactions.
-    -   `transferPeer`: Handles P2P transfers between users.
+    -   `transferPeer`: Handles P2P transfers (Internal & External Payouts).
+    -   `initializeDepositToRecipient`: Handles External Source P2P transfers.
     -   `topUpWallet`: Handles wallet funding.
 -   **Dependencies**: `PaystackClient`, `WalletService`, `TransactionService`.
 

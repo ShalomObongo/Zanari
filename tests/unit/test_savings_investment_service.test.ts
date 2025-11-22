@@ -374,4 +374,96 @@ describe('SavingsInvestmentService', () => {
       expect(walletService.debit).not.toHaveBeenCalled();
     });
   });
+
+  describe('claimAccruedInterest', () => {
+    it('should claim accrued interest and credit savings wallet', async () => {
+      // Setup: Position with accrued interest
+      await positionRepo.save({
+        id: 'pos-1',
+        userId,
+        productCode: 'default',
+        investedAmount: 10000,
+        accruedInterest: 500, // 5 KES
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lastAccruedAt: new Date(),
+      });
+
+      walletService.getWallet.mockResolvedValue({
+        id: 'wallet-1',
+        userId,
+        walletType: 'savings',
+        balance: 0,
+        availableBalance: 0,
+      } as any);
+
+      await service.claimAccruedInterest(userId);
+
+      expect(walletService.credit).toHaveBeenCalledWith({
+        userId,
+        walletType: 'savings',
+        amount: 500,
+      });
+
+      expect(transactionService.create).toHaveBeenCalledWith(expect.objectContaining({
+        userId,
+        type: 'interest_payout',
+        amount: 500,
+        category: 'investment',
+        skipLimits: true,
+      }));
+
+      const position = await positionRepo.findByUserId(userId);
+      expect(position?.accruedInterest).toBe(0);
+    });
+
+    it('should do nothing if no accrued interest', async () => {
+      await positionRepo.save({
+        id: 'pos-1',
+        userId,
+        productCode: 'default',
+        investedAmount: 10000,
+        accruedInterest: 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lastAccruedAt: new Date(),
+      });
+
+      walletService.getWallet.mockResolvedValue({
+        id: 'wallet-1',
+        userId,
+        walletType: 'savings',
+        balance: 0,
+        availableBalance: 0,
+      } as any);
+
+      await service.claimAccruedInterest(userId);
+
+      expect(walletService.credit).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('updatePreference', () => {
+    it('should update preferences and return summary', async () => {
+      walletService.getWallet.mockResolvedValue({
+        id: 'wallet-1',
+        userId,
+        walletType: 'savings',
+        balance: 0,
+        availableBalance: 0,
+      } as any);
+
+      const summary = await service.updatePreference(userId, {
+        autoInvestEnabled: true,
+        targetAllocationPct: 75,
+      });
+
+      expect(summary.autoInvestEnabled).toBe(true);
+      expect(summary.targetAllocationPct).toBe(75);
+
+      const stored = await preferenceRepo.findByUserId(userId);
+      expect(stored?.autoInvestEnabled).toBe(true);
+      expect(stored?.targetAllocationPct).toBe(75);
+    });
+  });
 });

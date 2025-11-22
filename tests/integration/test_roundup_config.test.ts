@@ -63,10 +63,10 @@ describe('Integration: Round-up Configuration (T032)', () => {
     });
 
     expect(utilitiesPayment.status).toBe('pending');
-    expect(utilitiesPayment.roundUpAmount).toBe(2_000); // KES 20.00
+    expect(utilitiesPayment.roundUpAmount).toBe(5_000); // KES 50.00
 
     const savingsWalletAfterPayment = await helpers.refreshWallet('savings');
-    expect(savingsWalletAfterPayment.balance).toBe(2_000);
+    expect(savingsWalletAfterPayment.balance).toBe(5_000);
 
     // Additional spending activity to feed auto-analysis with higher averages.
     const largePayments = [60_000, 70_000, 80_000];

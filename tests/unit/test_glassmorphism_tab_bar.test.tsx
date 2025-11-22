@@ -1,15 +1,11 @@
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { render } from '../test-utils';
 import { GlassmorphismTabBar } from '@/components/GlassmorphismTabBar';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 
 // Mock dependencies
 jest.mock('expo-blur', () => ({
   BlurView: 'BlurView',
-}));
-
-jest.mock('react-native-safe-area-context', () => ({
-  useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
 }));
 
 jest.mock('react-native-vector-icons/MaterialIcons', () => 'Icon');

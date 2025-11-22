@@ -38,14 +38,18 @@ Intelligent background service for the "Auto" strategy.
     -   Updates the user's `RoundUpRule` with the recommended settings.
 
 ### Integration in Payments
-The `PaymentService` calls `calculateRoundUp` before processing any debit.
+The `PaymentService` calls `calculateRoundUp` before processing any debit or initialization.
 
-1.  **Check Balance**: Ensures `MainWallet` has enough for `TransactionAmount + RoundUpAmount`.
-2.  **Execute**:
-    -   Debit Main (Total).
-    -   Credit Savings (RoundUp).
-    -   Pay Merchant (TransactionAmount).
-3.  **Record**: Creates a primary transaction (`payment`) and a linked secondary transaction (`round_up`).
+1.  **Wallet Payments (Merchant/Internal P2P)**:
+    -   **Check Balance**: Ensures `MainWallet` has enough for `TransactionAmount + RoundUpAmount`.
+    -   **Execute**: Debit Main (Total) -> Credit Savings (RoundUp) -> Process Payment.
+
+2.  **External Payments (M-Pesa/Card -> Recipient)**:
+    -   **Calculation**: Round-up is calculated on `TransactionAmount + Fee`.
+    -   **Charge**: The user is charged `TransactionAmount + Fee + RoundUpAmount` via Paystack.
+    -   **Settlement**: On success, the `RoundUpAmount` is credited to the user's Savings Wallet.
+
+3.  **Record**: Creates a primary transaction (`payment` or `transfer_out`) and a linked secondary transaction (`round_up`).
 
 ### Data Model
 

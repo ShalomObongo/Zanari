@@ -202,6 +202,10 @@ jest.mock('react-native', () => ({
   },
   Linking: {
     openURL: mockJestFn().mockResolvedValue(undefined),
+    canOpenURL: mockJestFn().mockResolvedValue(true),
+    getInitialURL: mockJestFn().mockResolvedValue(null),
+    addEventListener: mockJestFn().mockReturnValue({ remove: mockJestFn() }),
+    removeEventListener: mockJestFn(),
   },
 }));
 

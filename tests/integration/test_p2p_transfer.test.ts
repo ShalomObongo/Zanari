@@ -58,8 +58,8 @@ describe('Integration: P2P Transfer (T029)', () => {
     });
 
     expect(transferResult.status).toBe('pending');
-  expect(transferResult.roundUpAmount).toBe(1_800); // KES 18.00 saved
-  expect(transferResult.totalCharged).toBe(transferAmount + transferResult.roundUpAmount);
+    expect(transferResult.roundUpAmount).toBe(5_000); // KES 50.00 saved
+    expect(transferResult.totalCharged).toBe(transferAmount + transferResult.roundUpAmount);
     expect(transferResult.roundUpTransaction).not.toBeNull();
     expect(transferResult.paystackTransferReference).toBeTruthy();
     expect(transferResult.paystackRecipientCode).toBeTruthy();

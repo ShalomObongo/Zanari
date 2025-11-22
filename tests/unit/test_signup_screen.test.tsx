@@ -1,15 +1,8 @@
-import { fireEvent, render } from '@testing-library/react-native';
+import { fireEvent, render } from '../test-utils';
 
 import SignupScreen from '@/screens/auth/SignupScreen';
 
 const mockRegister = jest.fn();
-
-jest.mock('@react-navigation/native', () => ({
-  useNavigation: () => ({
-    goBack: jest.fn(),
-    navigate: jest.fn(),
-  }),
-}));
 
 jest.mock('@/store/authStore', () => {
   const originalModule = jest.requireActual('@/store/authStore');

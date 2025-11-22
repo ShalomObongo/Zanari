@@ -42,9 +42,10 @@ Intelligent tagging engine.
 ### Data Model
 
 -   **`transactions` Table**:
-    -   `type`: Enum (`payment`, `transfer_in`, `transfer_out`, `round_up`, etc.).
+    -   `type`: Enum (`payment`, `transfer_in`, `transfer_out`, `deposit`, `round_up`, `investment_allocation`, `investment_redemption`, `interest_payout`).
     -   `category`: Enum (`groceries`, `transport`, `utilities`, etc.).
     -   `merchant_info`: JSONB containing Name, Till Number, etc.
+    -   `metadata`: JSONB for flexible data (e.g., recipient details for transfers, round-up calculations).
     -   `auto_categorized`: Boolean flag.
 
 ## Frontend Implementation
