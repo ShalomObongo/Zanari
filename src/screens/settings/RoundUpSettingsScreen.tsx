@@ -209,7 +209,7 @@ const RoundUpSettingsScreen = () => {
 
   if (isLoading && !rule) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView style={styles.container} edges={['bottom']}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.colors.accent} />
           <Text style={styles.loadingText}>Loading round-up settings...</Text>
@@ -221,7 +221,7 @@ const RoundUpSettingsScreen = () => {
   return (
     <>
       <StatusBar barStyle={theme.colors.statusBarStyle} backgroundColor={theme.colors.surface} />
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView style={styles.container} edges={['bottom']}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>

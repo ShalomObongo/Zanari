@@ -216,7 +216,7 @@ const ChangePINScreen: React.FC = () => {
   return (
     <>
       <StatusBar barStyle={theme.colors.statusBarStyle} backgroundColor={theme.colors.background} />
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView style={styles.container} edges={['bottom']}>
         <KeyboardAvoidingView
           style={styles.keyboardContainer}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}

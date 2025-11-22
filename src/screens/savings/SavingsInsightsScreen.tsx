@@ -64,7 +64,7 @@ const SavingsInsightsScreen: React.FC = () => {
   return (
     <>
       <StatusBar barStyle={theme.colors.statusBarStyle} backgroundColor={theme.colors.surface} />
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView style={styles.container} edges={['bottom']}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>

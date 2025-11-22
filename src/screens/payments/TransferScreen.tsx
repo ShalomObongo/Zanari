@@ -497,7 +497,7 @@ const TransferScreen: React.FC<TransferScreenProps> = () => {
   return (
     <>
       <StatusBar barStyle={theme.colors.statusBarStyle} backgroundColor={theme.colors.surface} />
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView style={styles.container} edges={['bottom']}>
         <KeyboardAvoidingView
           style={styles.keyboardContainer}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
