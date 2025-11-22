@@ -2,7 +2,7 @@
 
 <div align="center">
 
-  ![Zanari Banner](https://via.placeholder.com/1200x300/4F46E5/FFFFFF?text=Zanari+Financial+Wellness)
+  ![Zanari Banner](assets/branding/zanari-banner.svg)
 
   **Next-Gen Personal Finance for Africa**
   
