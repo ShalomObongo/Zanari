@@ -31,6 +31,22 @@ The application uses **Supabase (PostgreSQL)** as its primary data store. The sc
 -   Supports "Lock-in" feature to prevent early withdrawal.
 -   Tracks milestones (25%, 50%, etc.) in a JSONB array.
 
+### `investment_products`
+-   Catalog of available investment options.
+-   Stores `code` (unique identifier), `name`, and `annual_yield_bps` (Basis Points).
+-   Allows dynamic rate updates without code changes.
+
+### `savings_investment_positions`
+-   Tracks a user's holdings in a specific product.
+-   `invested_amount`: Integer (cents).
+-   `accrued_interest`: **NUMERIC(20, 10)** (High precision) to support continuous micro-accrual without rounding errors.
+-   `last_accrued_at`: Timestamp of the last interest calculation.
+
+### `savings_investment_preferences`
+-   User-specific settings for investments.
+-   `auto_invest_enabled`: Boolean.
+-   `target_allocation_pct`: Percentage of savings to keep invested.
+
 ### `round_up_rules`
 -   Configures the "Round Up" feature.
 -   `increment_type`: Fixed amounts (10, 50, 100) or `auto`.

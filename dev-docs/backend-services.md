@@ -35,6 +35,15 @@ This document outlines the key services in the backend and their responsibilitie
 -   **Key Functions**: Creating goals, tracking progress, processing deposits/withdrawals for specific goals.
 -   **Dependencies**: `SavingsGoalRepository`.
 
+### SavingsInvestmentService
+-   **Responsibility**: Manages investment positions and interest accrual.
+-   **Key Functions**:
+    -   `allocate`: Moves funds from savings to investment.
+    -   `redeem`: Moves funds from investment to savings.
+    -   `getSummary`: Calculates real-time interest based on dynamic rates.
+    -   `claimAccruedInterest`: Pays out accumulated interest.
+-   **Dependencies**: `SavingsInvestmentPositionRepository`, `InvestmentProductRepository`, `WalletService`.
+
 ### KYCService
 -   **Responsibility**: Handles Know Your Customer (KYC) compliance.
 -   **Key Functions**: Uploading documents, tracking verification status.

@@ -16,9 +16,11 @@ Located in `api/src/services/SavingsInvestmentService.ts`.
 
 #### Key Responsibilities
 1.  **Interest Accrual**:
-    -   Calculated on-the-fly whenever the user's position is accessed (`getSummary`, `allocate`, `redeem`).
-    -   Formula: `(Invested Amount * APY * Time Elapsed) / (10000 * MS_PER_YEAR)`.
-    -   Updates the `lastAccruedAt` timestamp to ensure interest isn't double-counted.
+    -   **High Precision**: Uses floating-point math (no integer rounding) for internal calculations to support micro-accruals.
+    -   **Batch Processing**: A background script (`scripts/accrue-interest.ts`) runs periodically to calculate and persist interest for all users.
+    -   **On-Demand**: The service also calculates pending interest on-the-fly when `getSummary` is called, ensuring the UI is always up-to-date.
+    -   **Formula**: `(Invested Amount * APY * Time Elapsed) / (MS_PER_YEAR)`.
+    -   **Source of Truth**: Rates are fetched dynamically from the `investment_products` table.
 
 2.  **Allocation (Invest)**:
     -   Debits the **Savings Wallet** (via `WalletService`).
@@ -34,12 +36,14 @@ Located in `api/src/services/SavingsInvestmentService.ts`.
 
 4.  **Claiming Interest**:
     -   Moves `accruedInterest` from the position to the **Savings Wallet**.
+    -   **Rounding**: The high-precision accrued interest is floored to the nearest cent (integer) only at the moment of payout.
     -   Creates a transaction record with type `interest_payout` and status `completed`.
     -   Resets `accruedInterest` to 0.
 
 ### Data Model
+-   **`investment_products`**: Defines available products and their dynamic APY rates (e.g., "Standard Savings" @ 12%).
 -   **`savings_investment_preferences`**: Stores user settings like `auto_invest_enabled` and `target_allocation_pct`.
--   **`savings_investment_positions`**: Stores the `invested_amount`, `accrued_interest`, and `last_accrued_at`.
+-   **`savings_investment_positions`**: Stores the `invested_amount`, `accrued_interest` (NUMERIC 20,10), and `last_accrued_at`.
 
 ### API Endpoints
 -   `GET /investments/savings/summary`: Returns current balances, accrued interest, and projected yield.

@@ -41,5 +41,8 @@ The backend is structured into three distinct layers:
 -   **Paystack**: Used for payment processing. The `PaymentService` interacts with `PaystackClient`.
 -   **SMTP/Email**: Configurable via environment variables. Falls back to Supabase native auth emails if SMTP is not configured.
 
+## Background Jobs & Scripts
+-   **Interest Accrual**: `scripts/accrue-interest.ts` is a standalone script designed to be run via cron (e.g., daily or hourly). It iterates through all users with investment positions and persists their accrued interest to the database.
+
 ## Development Mode
 The backend supports a "Sandbox" mode. If `SUPABASE_URL` is not set, the container initializes in-memory repositories and services. This allows developers to run the API and frontend without a live internet connection or external dependencies.
