@@ -47,7 +47,7 @@ function validatePosition(position: SavingsInvestmentPosition): void {
   assert(position.investedAmount >= 0, 'investedAmount cannot be negative');
   assert(Number.isInteger(position.investedAmount), 'investedAmount must be stored in cents');
   assert(position.accruedInterest >= 0, 'accruedInterest cannot be negative');
-  assert(Number.isInteger(position.accruedInterest), 'accruedInterest must be stored in cents');
+  // assert(Number.isInteger(position.accruedInterest), 'accruedInterest must be stored in cents'); // Removed for high precision
   assert(position.productCode.length > 0, 'productCode must be provided');
 }
 
@@ -56,8 +56,8 @@ export function fromRow(row: SavingsInvestmentPositionRow): SavingsInvestmentPos
     id: row.id,
     userId: row.user_id,
     productCode: row.product_code,
-    investedAmount: row.invested_amount,
-    accruedInterest: row.accrued_interest,
+    investedAmount: Number(row.invested_amount),
+    accruedInterest: Number(row.accrued_interest),
     lastAccruedAt: row.last_accrued_at ? new Date(row.last_accrued_at) : null,
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),

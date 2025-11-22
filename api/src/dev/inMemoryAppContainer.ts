@@ -10,6 +10,7 @@ import { Transaction } from '../models/Transaction';
 import { UUID } from '../models/base';
 import { createDefaultPreference, SavingsInvestmentPreference } from '../models/SavingsInvestmentPreference';
 import { createSavingsInvestmentPosition, SavingsInvestmentPosition } from '../models/SavingsInvestmentPosition';
+import { InvestmentProduct } from '../models/InvestmentProduct';
 import { AuthService } from '../services/AuthService';
 import { WalletService } from '../services/WalletService';
 import { TransactionService } from '../services/TransactionService';
@@ -30,6 +31,7 @@ import { InMemoryIdentityProvider } from '../services/IdentityProvider';
 import {
   AuthSessionRepository,
   IdentityProvider,
+  InvestmentProductRepository,
   KYCDocumentRepository,
   Logger,
   NotificationService,
@@ -169,6 +171,14 @@ function cloneSession(session: AuthSession): AuthSession {
     updatedAt: cloneDate(session.updatedAt)!,
     expiresAt: cloneDate(session.expiresAt)!,
     verifiedAt: cloneDate(session.verifiedAt),
+  };
+}
+
+function cloneProduct(product: InvestmentProduct): InvestmentProduct {
+  return {
+    ...product,
+    createdAt: cloneDate(product.createdAt)!,
+    updatedAt: cloneDate(product.updatedAt)!,
   };
 }
 
@@ -421,6 +431,10 @@ class InMemorySavingsInvestmentPositionRepository implements SavingsInvestmentPo
     this.store.set(copy.userId, copy);
     return clonePosition(copy);
   }
+
+  async findAllUserIds(): Promise<UUID[]> {
+    return Array.from(this.store.keys());
+  }
 }
 
 class InMemoryRoundUpRuleRepository implements RoundUpRuleRepository {
@@ -641,6 +655,27 @@ export class InMemoryPaystackClient implements PaystackClient {
   }
 }
 
+class InMemoryInvestmentProductRepository implements InvestmentProductRepository {
+  private readonly products = new Map<string, InvestmentProduct>();
+
+  constructor(initialProducts: InvestmentProduct[] = []) {
+    initialProducts.forEach((product) => {
+      this.products.set(product.code, cloneProduct(product));
+    });
+  }
+
+  async findByCode(code: string): Promise<InvestmentProduct | null> {
+    const product = this.products.get(code);
+    return product ? cloneProduct(product) : null;
+  }
+
+  async findAllActive(): Promise<InvestmentProduct[]> {
+    return [...this.products.values()]
+      .filter((p) => p.isActive)
+      .map(cloneProduct);
+  }
+}
+
 interface InMemoryContainerOptions {
   logger: Logger;
 }
@@ -708,6 +743,16 @@ export function createInMemoryAppContainer({ logger }: InMemoryContainerOptions)
     isEnabled: true,
   });
 
+  const defaultProduct: InvestmentProduct = {
+    id: randomUUID(),
+    code: 'default_savings_pool',
+    name: 'Zanari Yield Pool',
+    annualYieldBps: 1200,
+    isActive: true,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+
   const userRepository = new InMemoryUserRepository([demoUser]);
   const walletRepository = new InMemoryWalletRepository([mainWallet, savingsWallet]);
   const transactionRepository = new InMemoryTransactionRepository();
@@ -717,6 +762,7 @@ export function createInMemoryAppContainer({ logger }: InMemoryContainerOptions)
   const authSessionRepository = new InMemoryAuthSessionRepository();
   const savingsInvestmentPreferenceRepository = new InMemorySavingsInvestmentPreferenceRepository();
   const savingsInvestmentPositionRepository = new InMemorySavingsInvestmentPositionRepository();
+  const investmentProductRepository = new InMemoryInvestmentProductRepository([defaultProduct]);
 
   const authService = new AuthService({
     userRepository,
@@ -752,6 +798,7 @@ export function createInMemoryAppContainer({ logger }: InMemoryContainerOptions)
     transactionService,
     preferenceRepository: savingsInvestmentPreferenceRepository,
     positionRepository: savingsInvestmentPositionRepository,
+    productRepository: investmentProductRepository,
     logger,
   });
   const autoAnalyzeService = new AutoAnalyzeService({ transactionRepository, roundUpRuleRepository, logger });
@@ -808,6 +855,7 @@ export function createInMemoryAppContainer({ logger }: InMemoryContainerOptions)
       authSessionRepository,
       savingsInvestmentPreferenceRepository,
       savingsInvestmentPositionRepository,
+      investmentProductRepository,
     },
     services: {
       authService,

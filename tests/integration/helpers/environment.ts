@@ -17,6 +17,7 @@ import { Transaction } from '../../../api/src/models/Transaction';
 import { UUID } from '../../../api/src/models/base';
 import { createDefaultPreference, SavingsInvestmentPreference } from '../../../api/src/models/SavingsInvestmentPreference';
 import { createSavingsInvestmentPosition, SavingsInvestmentPosition } from '../../../api/src/models/SavingsInvestmentPosition';
+import { InvestmentProduct } from '../../../api/src/models/InvestmentProduct';
 import {
   AuthSessionRepository,
   CategorizationRule,
@@ -29,6 +30,7 @@ import {
   RetryQueue,
   SavingsGoalRepository,
   RoundUpRuleRepository,
+  InvestmentProductRepository,
   KYCDocumentRepository,
   SavingsInvestmentPreferenceRepository,
   SavingsInvestmentPositionRepository,
@@ -139,6 +141,14 @@ function cloneDocument(document: KYCDocument): KYCDocument {
     processedAt: cloneDate(document.processedAt),
     expiresAt: cloneDate(document.expiresAt),
     extractedData: document.extractedData ? { ...document.extractedData } : null,
+  };
+}
+
+function cloneProduct(product: InvestmentProduct): InvestmentProduct {
+  return {
+    ...product,
+    createdAt: cloneDate(product.createdAt)!,
+    updatedAt: cloneDate(product.updatedAt)!,
   };
 }
 
@@ -391,6 +401,10 @@ class InMemorySavingsInvestmentPositionRepository implements SavingsInvestmentPo
     const copy = clonePosition(position);
     this.store.set(copy.userId, copy);
     return clonePosition(copy);
+  }
+
+  async findAllUserIds(): Promise<UUID[]> {
+    return Array.from(this.store.keys());
   }
 }
 
@@ -742,6 +756,7 @@ export interface IntegrationTestEnvironment {
     authSessionRepository: InMemoryAuthSessionRepository;
     savingsInvestmentPreferenceRepository: InMemorySavingsInvestmentPreferenceRepository;
     savingsInvestmentPositionRepository: InMemorySavingsInvestmentPositionRepository;
+    investmentProductRepository: InMemoryInvestmentProductRepository;
   };
   services: {
     authService: AuthService;
@@ -794,6 +809,7 @@ export async function createIntegrationTestEnvironment(): Promise<IntegrationTes
   const authSessionRepository = new InMemoryAuthSessionRepository();
   const savingsInvestmentPreferenceRepository = new InMemorySavingsInvestmentPreferenceRepository();
   const savingsInvestmentPositionRepository = new InMemorySavingsInvestmentPositionRepository();
+  const investmentProductRepository = new InMemoryInvestmentProductRepository();
 
   const otpSender = new TestOtpSender();
   const tokenService = new TestTokenService();
@@ -840,6 +856,7 @@ export async function createIntegrationTestEnvironment(): Promise<IntegrationTes
     transactionService,
     preferenceRepository: savingsInvestmentPreferenceRepository,
     positionRepository: savingsInvestmentPositionRepository,
+    productRepository: investmentProductRepository,
   });
 
   const userId = randomUUID();
@@ -882,6 +899,7 @@ export async function createIntegrationTestEnvironment(): Promise<IntegrationTes
       authSessionRepository,
       savingsInvestmentPreferenceRepository,
       savingsInvestmentPositionRepository,
+      investmentProductRepository,
     },
     services: {
       authService,
@@ -984,4 +1002,25 @@ export async function createIntegrationTestEnvironment(): Promise<IntegrationTes
   };
 
   return environment;
+}
+
+class InMemoryInvestmentProductRepository implements InvestmentProductRepository {
+  private readonly products = new Map<string, InvestmentProduct>();
+
+  constructor(initialProducts: InvestmentProduct[] = []) {
+    initialProducts.forEach((product) => {
+      this.products.set(product.code, cloneProduct(product));
+    });
+  }
+
+  async findByCode(code: string): Promise<InvestmentProduct | null> {
+    const product = this.products.get(code);
+    return product ? cloneProduct(product) : null;
+  }
+
+  async findAllActive(): Promise<InvestmentProduct[]> {
+    return [...this.products.values()]
+      .filter((p) => p.isActive)
+      .map(cloneProduct);
+  }
 }

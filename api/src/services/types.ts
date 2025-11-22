@@ -9,6 +9,7 @@ import { Transaction, TransactionCategory, TransactionType } from '../models/Tra
 import { SavingsGoal } from '../models/SavingsGoal';
 import { SavingsInvestmentPreference } from '../models/SavingsInvestmentPreference';
 import { SavingsInvestmentPosition } from '../models/SavingsInvestmentPosition';
+import { InvestmentProduct } from '../models/InvestmentProduct';
 import { RoundUpRule } from '../models/RoundUpRule';
 import { KYCDocument, KYCDocumentType } from '../models/KYCDocument';
 import { UUID } from '../models/base';
@@ -80,7 +81,13 @@ export interface SavingsInvestmentPreferenceRepository {
 
 export interface SavingsInvestmentPositionRepository {
   findByUserId(userId: UUID): Promise<SavingsInvestmentPosition | null>;
+  findAllUserIds(): Promise<UUID[]>;
   save(position: SavingsInvestmentPosition): Promise<SavingsInvestmentPosition>;
+}
+
+export interface InvestmentProductRepository {
+  findByCode(code: string): Promise<InvestmentProduct | null>;
+  findAllActive(): Promise<InvestmentProduct[]>;
 }
 
 export interface RoundUpRuleRepository {

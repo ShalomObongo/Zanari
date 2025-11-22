@@ -10,6 +10,7 @@ import {
   NullLogger,
   SavingsInvestmentPreferenceRepository,
   SavingsInvestmentPositionRepository,
+  InvestmentProductRepository,
   SystemClock,
 } from './types';
 import { UUID } from '../models/base';
@@ -38,9 +39,9 @@ interface SavingsInvestmentServiceOptions {
   transactionService: TransactionService;
   preferenceRepository: SavingsInvestmentPreferenceRepository;
   positionRepository: SavingsInvestmentPositionRepository;
+  productRepository: InvestmentProductRepository;
   logger?: Logger;
   clock?: Clock;
-  annualYieldBps?: number;
   minInvestmentAmount?: number;
 }
 
@@ -49,9 +50,9 @@ export class SavingsInvestmentService {
   private readonly transactionService: TransactionService;
   private readonly preferenceRepository: SavingsInvestmentPreferenceRepository;
   private readonly positionRepository: SavingsInvestmentPositionRepository;
+  private readonly productRepository: InvestmentProductRepository;
   private readonly logger: Logger;
   private readonly clock: Clock;
-  private readonly annualYieldBps: number;
   private readonly minInvestmentAmount: number;
 
   constructor(options: SavingsInvestmentServiceOptions) {
@@ -59,9 +60,9 @@ export class SavingsInvestmentService {
     this.transactionService = options.transactionService;
     this.preferenceRepository = options.preferenceRepository;
     this.positionRepository = options.positionRepository;
+    this.productRepository = options.productRepository;
     this.logger = options.logger ?? NullLogger;
     this.clock = options.clock ?? new SystemClock();
-    this.annualYieldBps = options.annualYieldBps ?? 1200; // 12% APY baseline
     this.minInvestmentAmount = options.minInvestmentAmount ?? 500; // cents (KES 5)
   }
 
@@ -70,7 +71,16 @@ export class SavingsInvestmentService {
     const preference = await this.preferenceRepository.getOrCreateDefault(userId);
     const position = await this.ensurePosition(userId);
     const accruedPosition = await this.accrueInterest(position);
-    return this.buildSummary(wallet.balance, wallet.availableBalance, preference, accruedPosition);
+    const product = await this.productRepository.findByCode(accruedPosition.productCode);
+    
+    return this.buildSummary(
+      wallet.balance, 
+      wallet.availableBalance, 
+      preference, 
+      accruedPosition,
+      product?.annualYieldBps ?? 0,
+      product?.name ?? DEFAULT_PRODUCT_NAME
+    );
   }
 
   async updatePreference(userId: UUID, updates: Partial<Omit<SavingsInvestmentPreference, 'userId' | 'createdAt' | 'updatedAt'>>): Promise<SavingsInvestmentSummary> {
@@ -108,9 +118,12 @@ export class SavingsInvestmentService {
     });
 
     const position = await this.ensurePosition(userId);
+    // Accrue interest before changing principal
+    const accruedPosition = await this.accrueInterest(position);
+    
     const updatedPosition: SavingsInvestmentPosition = {
-      ...position,
-      investedAmount: position.investedAmount + amount,
+      ...accruedPosition,
+      investedAmount: accruedPosition.investedAmount + amount,
       updatedAt: this.clock.now(),
     };
     await this.positionRepository.save(updatedPosition);
@@ -121,13 +134,16 @@ export class SavingsInvestmentService {
   async redeem(userId: UUID, amount: number): Promise<SavingsInvestmentSummary> {
     this.assertPositiveAmount(amount);
     const position = await this.ensurePosition(userId);
-    if (position.investedAmount < amount) {
+    // Accrue interest before changing principal
+    const accruedPosition = await this.accrueInterest(position);
+
+    if (accruedPosition.investedAmount < amount) {
       throw new Error('Requested amount exceeds invested balance');
     }
 
     const updatedPosition: SavingsInvestmentPosition = {
-      ...position,
-      investedAmount: position.investedAmount - amount,
+      ...accruedPosition,
+      investedAmount: accruedPosition.investedAmount - amount,
       updatedAt: this.clock.now(),
     };
     await this.positionRepository.save(updatedPosition);
@@ -157,14 +173,16 @@ export class SavingsInvestmentService {
       throw new Error('Investment position not found');
     }
 
-    if (refreshed.accruedInterest <= 0) {
+    if (refreshed.accruedInterest < 1) { // Less than 1 cent
       return this.getSummary(userId);
     }
 
-    const payout = refreshed.accruedInterest;
+    const payout = Math.floor(refreshed.accruedInterest);
+    const remaining = refreshed.accruedInterest - payout;
+    
     const updatedPosition: SavingsInvestmentPosition = {
       ...refreshed,
-      accruedInterest: 0,
+      accruedInterest: remaining,
       updatedAt: this.clock.now(),
     };
     await this.positionRepository.save(updatedPosition);
@@ -243,7 +261,13 @@ export class SavingsInvestmentService {
       return position;
     }
 
-    const interest = Math.floor((position.investedAmount * this.annualYieldBps * elapsedMs) / (10000 * MS_PER_YEAR));
+    const product = await this.productRepository.findByCode(position.productCode);
+    const annualYieldBps = product?.annualYieldBps ?? 0;
+
+    // High precision calculation: (Principal * Rate * Time) / Constants
+    // Rate is in BPS (1/10000), Time is in ms
+    const interest = (position.investedAmount * annualYieldBps * elapsedMs) / (10000 * MS_PER_YEAR);
+    
     if (interest <= 0) {
       return position;
     }
@@ -264,15 +288,17 @@ export class SavingsInvestmentService {
     savingsAvailable: number,
     preference: SavingsInvestmentPreference,
     position: SavingsInvestmentPosition,
+    annualYieldBps: number,
+    productName: string
   ): SavingsInvestmentSummary {
-    const projectedMonthlyYield = Math.floor((position.investedAmount * this.annualYieldBps) / (10000 * 12));
+    const projectedMonthlyYield = Math.floor((position.investedAmount * annualYieldBps) / (10000 * 12));
     const totalValue = savingsBalance + position.investedAmount + position.accruedInterest;
     return {
       autoInvestEnabled: preference.autoInvestEnabled,
       targetAllocationPct: preference.targetAllocationPct,
       productCode: position.productCode ?? DEFAULT_PRODUCT_CODE,
-      productName: DEFAULT_PRODUCT_NAME,
-      annualYieldBps: this.annualYieldBps,
+      productName: productName,
+      annualYieldBps: annualYieldBps,
       investedAmount: position.investedAmount,
       accruedInterest: position.accruedInterest,
       projectedMonthlyYield,

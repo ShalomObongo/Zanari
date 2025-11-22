@@ -543,6 +543,11 @@ const SavingsGoalsScreen: React.FC = () => {
         <View style={styles.interestHighlightCard}>
           <Text style={styles.breakdownLabel}>Interest (KES)</Text>
           <Text style={styles.interestAmount}>{longInterestDisplay}</Text>
+          {investmentSummary.lastAccruedAt && (
+            <Text style={styles.lastUpdatedText}>
+              Last updated: {new Date(investmentSummary.lastAccruedAt).toLocaleTimeString()}
+            </Text>
+          )}
         </View>
 
         <View style={styles.investmentStatsRow}>
@@ -1888,6 +1893,12 @@ const createStyles = (theme: any) => StyleSheet.create({
     fontFamily: theme.fonts.bold,
     color: theme.colors.accent,
     letterSpacing: 1,
+    marginTop: theme.spacing.xs,
+  },
+  lastUpdatedText: {
+    fontSize: theme.fontSizes.xs,
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.textSecondary,
     marginTop: theme.spacing.xs,
   },
   investmentStat: {

@@ -8,6 +8,7 @@ import { SupabaseSavingsInvestmentPositionRepository } from './repositories/Supa
 import { SupabaseTransactionRepository } from './repositories/SupabaseTransactionRepository';
 import { SupabaseUserRepository } from './repositories/SupabaseUserRepository';
 import { SupabaseWalletRepository } from './repositories/SupabaseWalletRepository';
+import { SupabaseInvestmentProductRepository } from './repositories/SupabaseInvestmentProductRepository';
 import { AutoAnalyzeService } from './services/AutoAnalyzeService';
 import { AuthService } from './services/AuthService';
 import { CategorizationService } from './services/CategorizationService';
@@ -65,6 +66,7 @@ export function createAppContainer() {
   const roundUpRuleRepository = new SupabaseRoundUpRuleRepository(supabase);
   const savingsInvestmentPreferenceRepository = new SupabaseSavingsInvestmentPreferenceRepository(supabase);
   const savingsInvestmentPositionRepository = new SupabaseSavingsInvestmentPositionRepository(supabase);
+  const investmentProductRepository = new SupabaseInvestmentProductRepository(supabase);
   const kycDocumentRepository = new SupabaseKYCDocumentRepository(supabase);
   const authSessionRepository = new SupabaseAuthSessionRepository(supabase);
   const pinTokenService = new SupabasePinTokenService(supabase);
@@ -127,13 +129,16 @@ export function createAppContainer() {
     notificationService,
     logger,
   });
+
   const savingsInvestmentService = new SavingsInvestmentService({
     walletService,
     transactionService,
     preferenceRepository: savingsInvestmentPreferenceRepository,
     positionRepository: savingsInvestmentPositionRepository,
+    productRepository: investmentProductRepository,
     logger,
   });
+
 
   const kycService = new KYCService({
     repository: kycDocumentRepository,

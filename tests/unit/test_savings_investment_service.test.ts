@@ -4,7 +4,8 @@ import { SavingsInvestmentPreference } from '../../api/src/models/SavingsInvestm
 import { SavingsInvestmentPosition } from '../../api/src/models/SavingsInvestmentPosition';
 import { WalletService } from '../../api/src/services/WalletService';
 import { TransactionService } from '../../api/src/services/TransactionService';
-import { Clock, SavingsInvestmentPreferenceRepository, SavingsInvestmentPositionRepository } from '../../api/src/services/types';
+import { Clock, SavingsInvestmentPreferenceRepository, SavingsInvestmentPositionRepository, InvestmentProductRepository } from '../../api/src/services/types';
+import { InvestmentProduct } from '../../api/src/models/InvestmentProduct';
 
 // Mock Clock
 class MockClock implements Clock {
@@ -63,6 +64,36 @@ class MockPositionRepository implements SavingsInvestmentPositionRepository {
     this.store.set(position.userId, position);
     return position;
   }
+
+  async findAllUserIds(): Promise<string[]> {
+    return Array.from(this.store.keys());
+  }
+}
+
+class MockProductRepository implements InvestmentProductRepository {
+  async findByCode(code: string): Promise<InvestmentProduct | null> {
+    return {
+      id: 'prod-1',
+      code,
+      name: 'Test Product',
+      annualYieldBps: 1200,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+  }
+
+  async findAllActive(): Promise<InvestmentProduct[]> {
+    return [{
+      id: 'prod-1',
+      code: 'default',
+      name: 'Test Product',
+      annualYieldBps: 1200,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }];
+  }
 }
 
 describe('SavingsInvestmentService', () => {
@@ -71,6 +102,7 @@ describe('SavingsInvestmentService', () => {
   let transactionService: jest.Mocked<TransactionService>;
   let preferenceRepo: MockPreferenceRepository;
   let positionRepo: MockPositionRepository;
+  let productRepo: MockProductRepository;
   let clock: MockClock;
   const userId = randomUUID();
 
@@ -87,6 +119,7 @@ describe('SavingsInvestmentService', () => {
 
     preferenceRepo = new MockPreferenceRepository();
     positionRepo = new MockPositionRepository();
+    productRepo = new MockProductRepository();
     clock = new MockClock(new Date('2025-01-01T00:00:00Z'));
 
     service = new SavingsInvestmentService({
@@ -94,8 +127,8 @@ describe('SavingsInvestmentService', () => {
       transactionService,
       preferenceRepository: preferenceRepo,
       positionRepository: positionRepo,
+      productRepository: productRepo,
       clock,
-      annualYieldBps: 1200, // 12%
       minInvestmentAmount: 500, // 5 KES
     });
   });
