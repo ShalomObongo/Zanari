@@ -59,7 +59,7 @@ Orchestrates complex payment flows involving external providers.
     -   `balance`: Ledger balance in cents.
     -   `available_balance`: Spendable balance (may differ if funds are locked).
 -   **`transactions` Table**:
-    -   `type`: `payment`, `transfer_in`, `transfer_out`, `deposit`, `withdrawal`.
+    -   `type`: `payment`, `transfer_in`, `transfer_out`, `deposit`, `withdrawal`, `investment_allocation`, `investment_redemption`, `interest_payout`.
     -   `external_reference`: Paystack reference.
     -   `round_up_details`: JSONB storing round-up metadata.
 

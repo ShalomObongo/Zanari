@@ -23,15 +23,18 @@ Located in `api/src/services/SavingsInvestmentService.ts`.
 2.  **Allocation (Invest)**:
     -   Debits the **Savings Wallet** (via `WalletService`).
     -   Credits the **Investment Position**.
+    -   Creates a transaction record with type `investment_allocation` and status `completed`.
     -   Validates minimum investment amount (default KES 5.00).
 
 3.  **Redemption (Withdraw)**:
     -   Debits the **Investment Position**.
     -   Credits the **Savings Wallet**.
+    -   Creates a transaction record with type `investment_redemption` and status `completed`.
     -   Ensures the user cannot withdraw more than they have invested.
 
 4.  **Claiming Interest**:
     -   Moves `accruedInterest` from the position to the **Savings Wallet**.
+    -   Creates a transaction record with type `interest_payout` and status `completed`.
     -   Resets `accruedInterest` to 0.
 
 ### Data Model
@@ -44,6 +47,7 @@ Located in `api/src/services/SavingsInvestmentService.ts`.
 -   `POST /investments/savings/redeem`: Move investment to cash.
 -   `POST /investments/savings/claim-interest`: Cash out interest.
 -   `POST /investments/savings/preferences`: Update auto-invest settings.
+-   `GET /transactions?category=investment`: Retrieve investment history (allocations, redemptions, payouts).
 
 ## Frontend Implementation
 

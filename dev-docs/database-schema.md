@@ -20,7 +20,7 @@ The application uses **Supabase (PostgreSQL)** as its primary data store. The sc
 
 ### `transactions`
 -   The central ledger for all money movement.
--   **Types**: `payment`, `transfer_in`, `transfer_out`, `round_up`, `bill_payment`, `withdrawal`, `deposit`.
+-   **Types**: `payment`, `transfer_in`, `transfer_out`, `round_up`, `bill_payment`, `withdrawal`, `deposit`, `investment_allocation`, `investment_redemption`, `interest_payout`.
 -   **Status**: `pending`, `completed`, `failed`, `cancelled`.
 -   Stores external references (Paystack ID) and merchant info.
 -   Includes retry logic fields (`retry_count`, `next_retry_at`).
