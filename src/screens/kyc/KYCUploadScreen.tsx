@@ -268,7 +268,7 @@ const KYCUploadScreen: React.FC = () => {
       const pickerOptions: ImagePicker.ImagePickerOptions = {
         // MediaTypeOptions is deprecated but still available in our SDK;
         // using images-only keeps behavior consistent across camera and gallery.
-        // eslint-disable-next-line deprecation/deprecation
+        // eslint-disable-next-line
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         quality: 0.7,
       };

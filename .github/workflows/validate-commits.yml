@@ -1,0 +1,70 @@
+name: Validate commits
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  validate:
+    name: Validate (lint, type-check, tests, commit messages)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint --if-present
+
+      - name: Type check
+        run: npm run type-check --if-present
+
+      - name: Run tests
+        run: npm test --if-present
+
+      - name: Validate commit messages
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Checking commit messages for Conventional Commits..."
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            git fetch origin "+refs/heads/${{ github.head_ref }}:refs/remotes/origin/${{ github.head_ref }}"
+            RANGE="origin/${{ github.base_ref }}..origin/${{ github.head_ref }}"
+          else
+            BEFORE=${{ github.event.before }}
+            if [[ "$BEFORE" == "0000000000000000000000000000000000000000" ]]; then
+              RANGE="${{ github.sha }}"
+            else
+              RANGE="$BEFORE..${{ github.sha }}"
+            fi
+          fi
+          echo "Commit range: $RANGE"
+          COMMITS=$(git rev-list --no-merges "$RANGE" || true)
+          if [[ -z "$COMMITS" ]]; then
+            echo "No commits to check."
+            exit 0
+          fi
+          REGEX='^(feat|fix|chore|docs|style|refactor|perf|test|ci|build|revert)(\([A-Za-z0-9_\-\/]+\))?: .+'
+          ERR=0
+          while IFS= read -r sha; do
+            MSG=$(git log --format=%B -n 1 "$sha" | sed -n '1p')
+            echo "Commit $sha message: '$MSG'"
+            if ! echo "$MSG" | grep -Eq "$REGEX"; then
+              echo "Commit $sha does not follow Conventional Commits: $MSG"
+              ERR=1
+            fi
+          done <<< "$COMMITS"
+          if [[ $ERR -ne 0 ]]; then
+            echo "One or more commit messages do not follow Conventional Commits."
+            exit 1
+          fi

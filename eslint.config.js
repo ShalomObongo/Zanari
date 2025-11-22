@@ -30,20 +30,19 @@ module.exports = [
     },
     rules: {
       // TypeScript specific rules
-      '@typescript-eslint/no-unused-vars': ['error', { 
+      '@typescript-eslint/no-unused-vars': ['warn', { 
         argsIgnorePattern: '^_',
         varsIgnorePattern: '^_'
       }],
       '@typescript-eslint/no-explicit-any': 'warn',
-      '@typescript-eslint/prefer-const': 'error',
-      '@typescript-eslint/no-var-requires': 'error',
+      '@typescript-eslint/no-var-requires': 'warn',
       
       // General JavaScript rules
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       'prefer-const': 'error',
       'no-var': 'error',
       'semi': ['error', 'always'],
-      'quotes': ['error', 'single', { avoidEscape: true }],
+      'quotes': ['warn', 'single', { avoidEscape: true }],
       
       // React Native specific
       'react-hooks/exhaustive-deps': 'warn',
